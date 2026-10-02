@@ -60,6 +60,10 @@ app.get('/', (req, res) => {
     endpoints: {
       auth: '/api/v1/auth',
       users: '/api/v1/users',
+      employees: '/api/v1/employees',
+      roles: '/api/v1/roles',
+      permissions: '/api/v1/permissions',
+      designations: '/api/v1/designations',
       notifications: '/api/v1/notifications'
     }
   });

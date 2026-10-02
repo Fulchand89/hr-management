@@ -67,6 +67,14 @@ const login = async ({ email, password }) => {
     throw new ForbiddenError('Your account has been suspended. Please contact HR.');
   }
 
+  if (user.status === USER_STATUS.TERMINATED) {
+    throw new ForbiddenError('Your employment has been terminated. Access revoked.');
+  }
+
+  if (user.status === USER_STATUS.RESIGNED) {
+    throw new ForbiddenError('Your employment status is resigned. Access revoked.');
+  }
+
   if (user.status === USER_STATUS.INACTIVE) {
     throw new ForbiddenError('Your account is inactive. Please contact HR.');
   }
@@ -97,8 +105,8 @@ const refreshTokens = async (token) => {
       throw new UnauthorizedError('Invalid or expired refresh token. Please sign in again.');
     }
 
-    if (user.status !== USER_STATUS.ACTIVE) {
-      throw new ForbiddenError('Account is not active.');
+    if ([USER_STATUS.SUSPENDED, USER_STATUS.INACTIVE, USER_STATUS.TERMINATED, USER_STATUS.RESIGNED].includes(user.status)) {
+      throw new ForbiddenError('Account is inactive, suspended or access revoked.');
     }
 
     // Rotate refresh token

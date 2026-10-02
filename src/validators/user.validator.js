@@ -24,9 +24,11 @@ const adminCreateUserSchema = Joi.object({
   lastName: Joi.string().trim().min(2).max(60).required(),
   email: Joi.string().trim().email().required(),
   password: Joi.string().min(8).max(128).required(),
-  role: Joi.string().valid(...ALL_ROLES).default('employee'),
+  role: Joi.string().trim().min(2).max(50).default('employee'),
+  roleId: Joi.string().uuid().optional(),
   department: Joi.string().trim().max(100).default('General'),
   designation: Joi.string().trim().max(100).allow('', null).optional(),
+  designationId: Joi.string().uuid().allow(null).optional(),
   phone: Joi.string().trim().max(25).allow('', null).optional(),
   status: Joi.string().valid(...ALL_STATUSES).default('active')
 });
@@ -34,9 +36,11 @@ const adminCreateUserSchema = Joi.object({
 const adminUpdateUserSchema = Joi.object({
   firstName: Joi.string().trim().min(2).max(60).optional(),
   lastName: Joi.string().trim().min(2).max(60).optional(),
-  role: Joi.string().valid(...ALL_ROLES).optional(),
+  role: Joi.string().trim().min(2).max(50).optional(),
+  roleId: Joi.string().uuid().optional(),
   department: Joi.string().trim().max(100).optional(),
   designation: Joi.string().trim().max(100).allow('', null).optional(),
+  designationId: Joi.string().uuid().allow(null).optional(),
   phone: Joi.string().trim().max(25).allow('', null).optional(),
   status: Joi.string().valid(...ALL_STATUSES).optional()
 }).min(1);

@@ -184,7 +184,17 @@ All 15 tests covering authentication, RBAC, input validation, and system endpoin
 | `DELETE` | `/api/v1/users/:id` | Delete user | Admin only |
 | `POST` | `/api/v1/users/:id/avatar` | Upload user profile picture | Bearer JWT |
 
-### 3. Notifications & Realtime (`/api/v1/notifications`)
+### 3. Employee Management (`/api/v1/employees`)
+| Method | Endpoint | Description | Auth & Roles |
+|---|---|---|---|
+| `POST` | `/api/v1/employees` | Register new employee (Validation + auto-generated code + initial leave quotas + activity log) | Admin, HR |
+| `GET` | `/api/v1/employees` | List employees (Pagination + Search + Filter by Department, Designation, Branch, Status, Gender) | Admin, HR, Manager |
+| `GET` | `/api/v1/employees/:id` | Complete 360° Profile View (Department, Branch, Manager, Reportees, Leave Balances, Assets, Documents, Salary Structure) | Admin, HR, Manager, Self |
+| `PUT` | `/api/v1/employees/:id` | Update employee details (Prevents self-manager, validates unique email/code) | Admin, HR |
+| `PATCH` | `/api/v1/employees/:id/status` | Status transition (`active`, `probation`, `suspended`, `terminated`, `resigned`) with mandatory reason | Admin, HR |
+| `GET` | `/api/v1/employees/:id/status` | Real-time pulse check (`clocked_in`, `clocked_out`, `on_leave`, `holiday`, `not_clocked_in`) + today's attendance | Admin, HR, Manager, Self |
+
+### 4. Notifications & Realtime (`/api/v1/notifications`)
 | Method | Endpoint | Description | Auth & Roles |
 |---|---|---|---|
 | `POST` | `/api/v1/notifications/broadcast` | Broadcast announcement via WebSocket & optional email | Admin, HR |

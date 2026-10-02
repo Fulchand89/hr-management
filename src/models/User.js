@@ -23,6 +23,7 @@ class User extends Model {
         id: this.id,
         email: this.email,
         role: this.role,
+        roleId: this.roleId,
         department: this.department
       },
       env.JWT.SECRET,
@@ -39,6 +40,80 @@ class User extends Model {
       env.JWT.REFRESH_SECRET,
       { expiresIn: env.JWT.REFRESH_EXPIRES_IN }
     );
+  }
+
+  /**
+   * Fetch all effective permissions for this user (Role Permissions + Direct User Permissions)
+   */
+  async getEffectivePermissions() {
+    const permissionsSet = new Set();
+
+    // 1. Role-based permissions
+    if (this.roleId) {
+      const Role = this.sequelize.models.Role;
+      const Permission = this.sequelize.models.Permission;
+      const roleWithPerms = await Role.findByPk(this.roleId, {
+        include: [
+          {
+            model: Permission,
+            as: 'permissions',
+            attributes: ['name']
+          }
+        ]
+      });
+
+      if (roleWithPerms && roleWithPerms.permissions) {
+        roleWithPerms.permissions.forEach((p) => permissionsSet.add(p.name));
+      }
+    }
+
+    // 2. Direct user permissions
+    const UserPermission = this.sequelize.models.UserPermission;
+    const Permission = this.sequelize.models.Permission;
+    if (UserPermission && Permission) {
+      const directPerms = await UserPermission.findAll({
+        where: { userId: this.id },
+        include: [{ model: Permission, attributes: ['name'] }]
+      });
+
+      directPerms.forEach((up) => {
+        if (up.Permission) {
+          if (up.granted) {
+            permissionsSet.add(up.Permission.name);
+          } else {
+            // Explicit deny
+            permissionsSet.delete(up.Permission.name);
+          }
+        }
+      });
+    }
+
+    return Array.from(permissionsSet);
+  }
+
+  /**
+   * Check if user has specific permission
+   */
+  async hasPermission(permissionName) {
+    // Admin role has all permissions
+    if (this.role === ROLES.ADMIN) {
+      return true;
+    }
+
+    const effective = await this.getEffectivePermissions();
+    return effective.includes(permissionName) || effective.includes('*');
+  }
+
+  /**
+   * Check if user has any of the listed permissions
+   */
+  async hasAnyPermission(permissionNames = []) {
+    if (this.role === ROLES.ADMIN) {
+      return true;
+    }
+
+    const effective = await this.getEffectivePermissions();
+    return permissionNames.some((p) => effective.includes(p) || effective.includes('*'));
   }
 
   /**
@@ -93,17 +168,83 @@ const initUserModel = (sequelize) => {
         allowNull: false
       },
       role: {
-        type: DataTypes.ENUM(Object.values(ROLES)),
+        type: DataTypes.STRING(50),
         defaultValue: ROLES.EMPLOYEE,
         allowNull: false
+      },
+      roleId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'roles',
+          key: 'id'
+        },
+        onDelete: 'SET NULL'
+      },
+      employeeCode: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        unique: true
       },
       department: {
         type: DataTypes.STRING(100),
         defaultValue: 'General',
         allowNull: false
       },
+      departmentId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'departments',
+          key: 'id'
+        },
+        onDelete: 'SET NULL'
+      },
+      branchId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'branches',
+          key: 'id'
+        },
+        onDelete: 'SET NULL'
+      },
+      managerId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'users',
+          key: 'id'
+        },
+        onDelete: 'SET NULL'
+      },
       designation: {
         type: DataTypes.STRING(100),
+        allowNull: true
+      },
+      designationId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'designations',
+          key: 'id'
+        },
+        onDelete: 'SET NULL'
+      },
+      joiningDate: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
+      },
+      salary: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true
+      },
+      dob: {
+        type: DataTypes.DATEONLY,
+        allowNull: true
+      },
+      gender: {
+        type: DataTypes.ENUM('male', 'female', 'other'),
         allowNull: true
       },
       phone: {
@@ -143,8 +284,13 @@ const initUserModel = (sequelize) => {
       timestamps: true,
       indexes: [
         { unique: true, fields: ['email'] },
+        { unique: true, fields: ['employeeCode'] },
         { fields: ['role'] },
-        { fields: ['department'] },
+        { fields: ['roleId'] },
+        { fields: ['departmentId'] },
+        { fields: ['branchId'] },
+        { fields: ['managerId'] },
+        { fields: ['designationId'] },
         { fields: ['status'] }
       ],
       hooks: {

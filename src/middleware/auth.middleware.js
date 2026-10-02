@@ -35,6 +35,14 @@ const authenticate = async (req, res, next) => {
       return next(new ForbiddenError('Your account has been suspended. Please contact HR administration.'));
     }
 
+    if (user.status === USER_STATUS.TERMINATED) {
+      return next(new ForbiddenError('Your employment has been terminated. Access revoked.'));
+    }
+
+    if (user.status === USER_STATUS.RESIGNED) {
+      return next(new ForbiddenError('Your employment status is resigned. Access revoked.'));
+    }
+
     if (user.status === USER_STATUS.INACTIVE) {
       return next(new ForbiddenError('Your account is currently inactive. Please contact HR administration.'));
     }

@@ -8,6 +8,7 @@ const validate = require('../middleware/validate.middleware');
 const upload = require('../middleware/upload.middleware');
 const { ROLES } = require('../constants/roles');
 const { adminCreateUserSchema, adminUpdateUserSchema } = require('../validators/user.validator');
+const { assignUserPermissionsSchema } = require('../validators/rbac.validator');
 
 // All user management routes require valid authentication
 router.use(authenticate);
@@ -29,5 +30,27 @@ router.delete('/:id', authorize(ROLES.ADMIN), userController.deleteUser);
 
 // Upload profile avatar
 router.post('/:id/avatar', upload.single('avatar'), userController.uploadAvatar);
+
+// ==========================================
+// USER PERMISSIONS ROUTES
+// ==========================================
+
+// Get user permissions (Admin, HR, or self)
+router.get('/:id/permissions', authorize(ROLES.ADMIN, ROLES.HR), userController.getUserPermissions);
+
+// Assign direct permissions to user (Admin only)
+router.post(
+  '/:id/permissions',
+  authorize(ROLES.ADMIN),
+  validate(assignUserPermissionsSchema),
+  userController.assignUserPermissions
+);
+
+// Remove a direct permission from user (Admin only)
+router.delete(
+  '/:id/permissions/:permissionId',
+  authorize(ROLES.ADMIN),
+  userController.removeUserPermission
+);
 
 module.exports = router;
