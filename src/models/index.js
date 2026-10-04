@@ -55,6 +55,10 @@ User.belongsTo(Role, { foreignKey: 'roleId', as: 'roleDetails' });
 Designation.hasMany(User, { foreignKey: 'designationId', as: 'employees' });
 User.belongsTo(Designation, { foreignKey: 'designationId', as: 'designationDetails' });
 
+// Designation <-> Department
+Department.hasMany(Designation, { foreignKey: 'departmentId', as: 'designations' });
+Designation.belongsTo(Department, { foreignKey: 'departmentId', as: 'departmentDetails' });
+
 // C. Department <-> User
 Department.hasMany(User, { foreignKey: 'departmentId', as: 'employees' });
 User.belongsTo(Department, { foreignKey: 'departmentId', as: 'departmentDetails' });

@@ -26,13 +26,50 @@ const initDesignationModel = (sequelize) => {
         allowNull: true,
         unique: true
       },
+      departmentId: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'departments',
+          key: 'id'
+        },
+        onDelete: 'SET NULL'
+      },
       department: {
         type: DataTypes.STRING(100),
         allowNull: true
       },
       description: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING(500),
         allowNull: true
+      },
+      minSalary: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+        validate: {
+          min: { args: [0], msg: 'Minimum salary cannot be negative' }
+        }
+      },
+      maxSalary: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: true,
+        validate: {
+          min: { args: [0], msg: 'Maximum salary cannot be negative' }
+        }
+      },
+      level: {
+        type: DataTypes.ENUM(
+          'entry',
+          'junior',
+          'mid',
+          'senior',
+          'lead',
+          'manager',
+          'executive',
+          'director'
+        ),
+        defaultValue: 'mid',
+        allowNull: false
       },
       status: {
         type: DataTypes.ENUM('active', 'inactive'),
@@ -47,7 +84,10 @@ const initDesignationModel = (sequelize) => {
       timestamps: true,
       indexes: [
         { unique: true, fields: ['title'] },
+        { fields: ['code'] },
+        { fields: ['departmentId'] },
         { fields: ['department'] },
+        { fields: ['level'] },
         { fields: ['status'] }
       ]
     }
