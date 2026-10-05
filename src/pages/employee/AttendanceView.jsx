@@ -62,13 +62,12 @@ export const AttendanceView = ({
               </div>
               <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    status === 'PUNCHED_OUT'
-                      ? 'bg-emerald-500'
-                      : status === 'ON_BREAK'
+                  className={`h-full rounded-full transition-all duration-500 ${status === 'PUNCHED_OUT'
+                    ? 'bg-emerald-500'
+                    : status === 'ON_BREAK'
                       ? 'bg-amber-500'
                       : 'bg-[#8B1D2C]'
-                  }`}
+                    }`}
                   style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                 />
               </div>
@@ -162,15 +161,14 @@ export const AttendanceView = ({
 
                     {/* Node Dot */}
                     <div
-                      className={`w-5 h-5 rounded-full z-10 shrink-0 flex items-center justify-center mt-0.5 ${
-                        step.status === 'completed'
-                          ? 'bg-emerald-500 ring-4 ring-emerald-100 text-white'
-                          : step.status === 'break'
+                      className={`w-5 h-5 rounded-full z-10 shrink-0 flex items-center justify-center mt-0.5 ${step.status === 'completed'
+                        ? 'bg-emerald-500 ring-4 ring-emerald-100 text-white'
+                        : step.status === 'break'
                           ? 'bg-amber-500 ring-4 ring-amber-100 text-white'
                           : step.status === 'punched_out'
-                          ? 'bg-[#8B1D2C] ring-4 ring-rose-100 text-white'
-                          : 'bg-slate-300 ring-4 ring-slate-100'
-                      }`}
+                            ? 'bg-[#8B1D2C] ring-4 ring-rose-100 text-white'
+                            : 'bg-slate-300 ring-4 ring-slate-100'
+                        }`}
                     >
                       {step.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
                     </div>
@@ -183,10 +181,10 @@ export const AttendanceView = ({
                           {step.status === 'completed'
                             ? 'Logged on time'
                             : step.status === 'break'
-                            ? 'Paused session'
-                            : step.status === 'punched_out'
-                            ? 'Final punch'
-                            : 'Pending'}
+                              ? 'Paused session'
+                              : step.status === 'punched_out'
+                                ? 'Final punch'
+                                : 'Pending'}
                         </div>
                       </div>
                       <span className="font-mono font-bold text-xs text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
