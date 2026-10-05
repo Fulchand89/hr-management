@@ -9,6 +9,7 @@ const designationRoutes = require('./designation.routes');
 const notificationRoutes = require('./notification.routes');
 const employeeRoutes = require('./employee.routes');
 const departmentRoutes = require('./department.routes');
+const attendanceRoutes = require('./attendance.routes');
 const { sequelize } = require('../config/db');
 
 // Health Check Endpoint
@@ -34,6 +35,7 @@ router.get('/health', async (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/employees', employeeRoutes);
+router.use('/attendance', attendanceRoutes);
 router.use('/roles', roleRoutes);
 router.use('/permissions', permissionRoutes);
 router.use('/designations', designationRoutes);

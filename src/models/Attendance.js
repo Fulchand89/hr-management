@@ -50,6 +50,19 @@ const initAttendanceModel = (sequelize) => {
         defaultValue: 'present',
         allowNull: false
       },
+      breakStartTime: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      totalBreakMinutes: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false
+      },
+      timeline: {
+        type: DataTypes.JSON,
+        allowNull: true
+      },
       ipAddress: {
         type: DataTypes.STRING(45),
         allowNull: true
