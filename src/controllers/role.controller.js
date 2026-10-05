@@ -70,9 +70,26 @@ const assignPermissionsToRole = async (req, res, next) => {
   }
 };
 
+const getRoleUsers = async (req, res, next) => {
+  try {
+    const result = await rbacService.getRoleUsers(req.params.id);
+    return ApiResponse.success(res, {
+      message: 'Role users retrieved successfully',
+      data: result.users,
+      meta: {
+        role: result.role,
+        totalUsers: result.totalUsers
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllRoles,
   getRoleById,
+  getRoleUsers,
   createRole,
   updateRole,
   deleteRole,

@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const { Role, Permission, RolePermission, UserPermission, User, sequelize } = require('../models');
 const { NotFoundError, BadRequestError, ConflictError } = require('../utils/apiError');
 const { ROLES } = require('../constants/roles');
@@ -49,6 +50,48 @@ class RbacService {
     }
 
     return role;
+  }
+
+  /**
+   * Get all users assigned to a specific role
+   */
+  async getRoleUsers(roleId) {
+    const role = await Role.findByPk(roleId);
+    if (!role) {
+      throw new NotFoundError(`Role not found with ID ${roleId}`);
+    }
+
+    const users = await User.findAll({
+      where: {
+        [Op.or]: [
+          { roleId },
+          { role: role.name }
+        ]
+      },
+      attributes: [
+        'id',
+        'employeeCode',
+        'firstName',
+        'lastName',
+        'email',
+        'department',
+        'designation',
+        'status',
+        'avatar'
+      ],
+      order: [['firstName', 'ASC']]
+    });
+
+    return {
+      role: {
+        id: role.id,
+        name: role.name,
+        displayName: role.displayName,
+        isSystem: role.isSystem
+      },
+      users,
+      totalUsers: users.length
+    };
   }
 
   /**

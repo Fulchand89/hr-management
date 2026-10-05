@@ -21,6 +21,9 @@ router.get('/', authorize(ROLES.ADMIN, ROLES.HR), roleController.getAllRoles);
 // Get role by ID (Admin and HR)
 router.get('/:id', authorize(ROLES.ADMIN, ROLES.HR), roleController.getRoleById);
 
+// Get users assigned to role (Admin and HR)
+router.get('/:id/users', authorize(ROLES.ADMIN, ROLES.HR), roleController.getRoleUsers);
+
 // Create new role (Admin only)
 router.post('/', authorize(ROLES.ADMIN), validate(createRoleSchema), roleController.createRole);
 
