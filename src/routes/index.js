@@ -10,6 +10,8 @@ const notificationRoutes = require('./notification.routes');
 const employeeRoutes = require('./employee.routes');
 const departmentRoutes = require('./department.routes');
 const attendanceRoutes = require('./attendance.routes');
+const leaveRoutes = require('./leave.routes');
+const dashboardRoutes = require('./dashboard.routes');
 const { sequelize } = require('../config/db');
 
 // Health Check Endpoint
@@ -36,10 +38,12 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/attendance', attendanceRoutes);
+router.use('/leaves', leaveRoutes);
 router.use('/roles', roleRoutes);
 router.use('/permissions', permissionRoutes);
 router.use('/designations', designationRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 module.exports = router;

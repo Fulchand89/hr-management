@@ -251,6 +251,34 @@ const initUserModel = (sequelize) => {
         type: DataTypes.STRING(25),
         allowNull: true
       },
+      address: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+      },
+      emergencyContactName: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+      },
+      emergencyContactPhone: {
+        type: DataTypes.STRING(25),
+        allowNull: true
+      },
+      emergencyContactRelation: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+      },
+      bankAccountNumber: {
+        type: DataTypes.STRING(50),
+        allowNull: true
+      },
+      bankName: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+      },
+      bankIfsc: {
+        type: DataTypes.STRING(20),
+        allowNull: true
+      },
       avatar: {
         type: DataTypes.STRING(255),
         allowNull: true

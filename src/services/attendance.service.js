@@ -159,7 +159,9 @@ const getTodayStatus = async (userId) => {
     attendanceStatus: live.status,
     status: live.status, // dual property for frontend flexibility
     clockInTime: live.clockInTime,
+    clockInFormatted: attendance && attendance.clockIn ? formatTime12h(attendance.clockIn) : '--:--',
     clockOutTime: live.clockOutTime,
+    clockOutFormatted: attendance && attendance.clockOut ? formatTime12h(attendance.clockOut) : '--:--',
     totalHours: attendance ? attendance.totalHours : 0,
     timeString: live.timeString,
     sinceText: live.sinceText,

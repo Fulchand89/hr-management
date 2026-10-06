@@ -627,11 +627,64 @@ const getEmployeeRealTimeStatus = async (id) => {
   };
 };
 
+/**
+ * 7. Get logged-in employee's own profile (self-service)
+ */
+const getMyProfile = async (userId) => {
+  const user = await User.findByPk(userId, {
+    attributes: {
+      exclude: ['password', 'refreshToken', 'resetPasswordToken', 'resetPasswordExpires']
+    },
+    include: [
+      { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
+      { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] },
+      { model: Branch, as: 'branchDetails', attributes: ['id', 'name', 'city'] },
+      {
+        model: User,
+        as: 'manager',
+        attributes: ['id', 'firstName', 'lastName', 'email', 'designation', 'avatar']
+      }
+    ]
+  });
+
+  if (!user) throw new NotFoundError('Employee profile not found');
+  return user;
+};
+
+/**
+ * 8. Update logged-in employee's own editable profile fields (self-service)
+ */
+const updateMyProfile = async (userId, payload) => {
+  // Strict whitelist — employee cannot change admin-controlled fields
+  const ALLOWED_FIELDS = ['phone', 'address', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation', 'bankAccountNumber', 'bankName', 'bankIfsc'];
+
+  const updateData = {};
+  ALLOWED_FIELDS.forEach((field) => {
+    if (payload[field] !== undefined) {
+      updateData[field] = payload[field];
+    }
+  });
+
+  // Support frontend emergencyContact alias
+  if (payload.emergencyContact !== undefined && updateData.emergencyContactName === undefined) {
+    updateData.emergencyContactName = payload.emergencyContact;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new BadRequestError('No valid fields provided to update');
+  }
+
+  await User.update(updateData, { where: { id: userId } });
+  return getMyProfile(userId);
+};
+
 module.exports = {
   createEmployee,
   getAllEmployees,
   getEmployee360Profile,
   updateEmployee,
   changeEmployeeStatus,
-  getEmployeeRealTimeStatus
+  getEmployeeRealTimeStatus,
+  getMyProfile,
+  updateMyProfile
 };

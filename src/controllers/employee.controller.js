@@ -1,5 +1,9 @@
 const employeeService = require('../services/employee.service');
 const ApiResponse = require('../utils/apiResponse');
+const bcrypt = require('bcryptjs');
+const path = require('path');
+const { User } = require('../models');
+const { BadRequestError } = require('../utils/apiError');
 
 /**
  * 1. POST /api/v1/employees - Register new employee
@@ -92,11 +96,105 @@ const getEmployeeStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * 7. GET /api/v1/employees/me - Get own profile (self-service)
+ */
+const getMyProfile = async (req, res, next) => {
+  try {
+    const profile = await employeeService.getMyProfile(req.user.id);
+    return ApiResponse.success(res, {
+      message: 'Profile retrieved successfully',
+      data: profile
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 8. PUT /api/v1/employees/me - Update own editable profile fields (self-service)
+ */
+const updateMyProfile = async (req, res, next) => {
+  try {
+    const updated = await employeeService.updateMyProfile(req.user.id, req.body);
+    return ApiResponse.success(res, {
+      message: 'Profile updated successfully',
+      data: updated
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 9. PUT /api/v1/employees/me/password - Change own password
+ */
+const changeMyPassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      throw new BadRequestError('currentPassword, newPassword and confirmPassword are required');
+    }
+
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestError('New passwords do not match');
+    }
+
+    if (newPassword.length < 8) {
+      throw new BadRequestError('New password must be at least 8 characters');
+    }
+
+    // Fetch user with password hash
+    const user = await User.findByPk(req.user.id);
+    const isValid = await user.validatePassword(currentPassword);
+
+    if (!isValid) {
+      throw new BadRequestError('Current password is incorrect');
+    }
+
+    user.password = newPassword; // model hook will hash it
+    await user.save();
+
+    return ApiResponse.success(res, {
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 10. POST /api/v1/employees/me/avatar - Upload own profile photo
+ */
+const uploadMyAvatar = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new BadRequestError('Please upload an image file');
+    }
+
+    const avatarUrl = `/uploads/${req.file.filename}`;
+
+    await User.update({ avatar: avatarUrl }, { where: { id: req.user.id } });
+
+    return ApiResponse.success(res, {
+      message: 'Avatar uploaded successfully',
+      data: { avatar: avatarUrl, avatarUrl }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createEmployee,
   getAllEmployees,
   getEmployeeById,
   updateEmployee,
   changeEmployeeStatus,
-  getEmployeeStatus
+  getEmployeeStatus,
+  getMyProfile,
+  updateMyProfile,
+  changeMyPassword,
+  uploadMyAvatar
 };

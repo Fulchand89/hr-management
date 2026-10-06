@@ -21,9 +21,23 @@ app.use(
 );
 
 // Cross-Origin Resource Sharing
+const allowedOrigins = [
+  env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: env.CLIENT_URL || '*',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true);
+      }
+      return callback(new Error('Blocked by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -61,6 +75,9 @@ app.get('/', (req, res) => {
       auth: '/api/v1/auth',
       users: '/api/v1/users',
       employees: '/api/v1/employees',
+      attendance: '/api/v1/attendance',
+      leaves: '/api/v1/leaves',
+      departments: '/api/v1/departments',
       roles: '/api/v1/roles',
       permissions: '/api/v1/permissions',
       designations: '/api/v1/designations',

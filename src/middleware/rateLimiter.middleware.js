@@ -6,9 +6,10 @@ const env = require('../config/env');
  */
 const apiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT.WINDOW_MS,
-  max: env.RATE_LIMIT.MAX,
+  max: env.NODE_ENV === 'development' ? 50000 : env.RATE_LIMIT.MAX,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => env.NODE_ENV === 'development' || env.NODE_ENV === 'test',
   message: {
     success: false,
     message: 'Too many requests created from this IP, please try again after 15 minutes.'
@@ -20,9 +21,10 @@ const apiLimiter = rateLimit({
  */
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.RATE_LIMIT.AUTH_MAX,
+  max: env.NODE_ENV === 'development' ? 1000 : env.RATE_LIMIT.AUTH_MAX,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => env.NODE_ENV === 'test',
   message: {
     success: false,
     message: 'Too many authentication attempts from this IP. Please try again after 15 minutes.'

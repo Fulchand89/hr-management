@@ -19,12 +19,6 @@ const errorHandler = (err, req, res, next) => {
   let message = err.message || 'Internal Server Error';
   let errors = err.errors || null;
 
-  // Log error stack for unexpected server errors
-  if (statusCode >= 500) {
-    logger.error(`[500 Internal Error] ${req.method} ${req.url}:`, err.stack || err);
-  } else {
-    logger.warn(`[${statusCode} Handled Error] ${req.method} ${req.url}: ${message}`);
-  }
 
   // Handle Sequelize validation errors
   if (err.name === 'SequelizeValidationError') {
@@ -53,6 +47,14 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'MulterError') {
     statusCode = 400;
     message = `File upload error: ${err.message}`;
+  }
+
+  // Log error details
+  if (statusCode >= 500) {
+    logger.error(`[500 Internal Error] ${req.method} ${req.url}:`, err.stack || err);
+  } else {
+    const errorDetails = errors ? ` - Details: ${JSON.stringify(errors)}` : '';
+    logger.warn(`[${statusCode} Handled Error] ${req.method} ${req.url}: ${message}${errorDetails}`);
   }
 
   res.status(statusCode).json({

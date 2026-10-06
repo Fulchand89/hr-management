@@ -3,50 +3,64 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const tableInfo = await queryInterface.describeTable('designations');
+
     // 1. Add departmentId
-    await queryInterface.addColumn('designations', 'departmentId', {
-      type: Sequelize.UUID,
-      allowNull: true,
-      references: {
-        model: 'departments',
-        key: 'id'
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'SET NULL'
-    });
+    if (!tableInfo.departmentId) {
+      await queryInterface.addColumn('designations', 'departmentId', {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: 'departments',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      });
+    }
 
     // 2. Add minSalary
-    await queryInterface.addColumn('designations', 'minSalary', {
-      type: Sequelize.DECIMAL(12, 2),
-      allowNull: true
-    });
+    if (!tableInfo.minSalary) {
+      await queryInterface.addColumn('designations', 'minSalary', {
+        type: Sequelize.DECIMAL(12, 2),
+        allowNull: true
+      });
+    }
 
     // 3. Add maxSalary
-    await queryInterface.addColumn('designations', 'maxSalary', {
-      type: Sequelize.DECIMAL(12, 2),
-      allowNull: true
-    });
+    if (!tableInfo.maxSalary) {
+      await queryInterface.addColumn('designations', 'maxSalary', {
+        type: Sequelize.DECIMAL(12, 2),
+        allowNull: true
+      });
+    }
 
     // 4. Add level
-    await queryInterface.addColumn('designations', 'level', {
-      type: Sequelize.ENUM(
-        'entry',
-        'junior',
-        'mid',
-        'senior',
-        'lead',
-        'manager',
-        'executive',
-        'director'
-      ),
-      defaultValue: 'mid',
-      allowNull: false
-    });
+    if (!tableInfo.level) {
+      await queryInterface.addColumn('designations', 'level', {
+        type: Sequelize.ENUM(
+          'entry',
+          'junior',
+          'mid',
+          'senior',
+          'lead',
+          'manager',
+          'executive',
+          'director'
+        ),
+        defaultValue: 'mid',
+        allowNull: false
+      });
+    }
 
     // 5. Add index on departmentId
-    await queryInterface.addIndex('designations', ['departmentId'], {
-      name: 'designations_department_id_idx'
-    });
+    try {
+      await queryInterface.addIndex('designations', ['departmentId'], {
+        name: 'designations_department_id_idx'
+      });
+    } catch (_) {
+      // ignore if already indexed
+    }
   },
 
   async down(queryInterface) {
