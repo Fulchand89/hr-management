@@ -1,0 +1,251 @@
+{
+  "info": {
+    "_postman_id": "hr-role-management-collection-2026",
+    "name": "HR Management - Role APIs",
+    "description": "Complete collection for testing Role Management APIs with automated token saving and chaining.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdRoleId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth - Login as Admin (Auto-saves Token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    var res = pm.response.json();",
+              "    if (res.data && res.data.accessToken) {",
+              "        pm.collectionVariables.set('token', res.data.accessToken);",
+              "        console.log('✅ Access token automatically saved to collection variable!');",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@hrmanagement.com\",\n  \"password\": \"AdminPassword@123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        },
+        "description": "Login as Admin. Test script automatically saves accessToken to {{token}} variable."
+      }
+    },
+    {
+      "name": "2. Get All Roles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/roles",
+          "host": ["{{baseUrl}}"],
+          "path": ["roles"]
+        },
+        "description": "Fetch list of all roles in system along with attached permissions."
+      }
+    },
+    {
+      "name": "3. Create New Custom Role (Auto-saves createdRoleId)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    var res = pm.response.json();",
+              "    if (res.data && res.data.id) {",
+              "        pm.collectionVariables.set('createdRoleId', res.data.id);",
+              "        console.log('✅ Created role ID saved to {{createdRoleId}}:', res.data.id);",
+              "    }",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"team_lead\",\n  \"displayName\": \"Team Lead\",\n  \"description\": \"Technical squad leader\",\n  \"permissionIds\": []\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/roles",
+          "host": ["{{baseUrl}}"],
+          "path": ["roles"]
+        },
+        "description": "Admin creates a custom role."
+      }
+    },
+    {
+      "name": "4. Get Role by ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/roles/{{createdRoleId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["roles", "{{createdRoleId}}"]
+        },
+        "description": "Fetch details of single role by ID."
+      }
+    },
+    {
+      "name": "5. Get Users Assigned to Role",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/roles/{{createdRoleId}}/users",
+          "host": ["{{baseUrl}}"],
+          "path": ["roles", "{{createdRoleId}}", "users"]
+        },
+        "description": "List all employees currently assigned to this role."
+      }
+    },
+    {
+      "name": "6. Update Role Details",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"displayName\": \"Senior Technical Team Lead\",\n  \"description\": \"Lead architect and squad coordinator\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/roles/{{createdRoleId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["roles", "{{createdRoleId}}"]
+        },
+        "description": "Update displayName or description of custom role."
+      }
+    },
+    {
+      "name": "7. Assign Permissions to Role",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"permissionIds\": [\n    \"79d8e231-3d13-478a-b5b3-956f7bc47b09\",\n    \"cecfa1b5-57bf-4915-821d-3c0b5acf478b\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/roles/{{createdRoleId}}/permissions",
+          "host": ["{{baseUrl}}"],
+          "path": ["roles", "{{createdRoleId}}", "permissions"]
+        },
+        "description": "Attach permissions to role."
+      }
+    },
+    {
+      "name": "8. Delete Custom Role",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/roles/{{createdRoleId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["roles", "{{createdRoleId}}"]
+        },
+        "description": "Delete unassigned custom role."
+      }
+    },
+    {
+      "name": "9. Security Check - Try Deleting System Role (Expect 400)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/roles/ea02e21d-6142-4b6f-aa0c-1bf80a7b5ba8",
+          "host": ["{{baseUrl}}"],
+          "path": ["roles", "ea02e21d-6142-4b6f-aa0c-1bf80a7b5ba8"]
+        },
+        "description": "Attempts to delete Admin system role. Server should reject with 400 Bad Request."
+      }
+    }
+  ]
+}
