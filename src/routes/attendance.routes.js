@@ -12,7 +12,10 @@ const {
   punchOutSchema,
   attendanceHistoryQuerySchema,
   adminAttendanceQuerySchema,
-  regularizeAttendanceSchema
+  regularizeAttendanceSchema,
+  createCorrectionSchema,
+  queryCorrectionSchema,
+  actionCorrectionSchema
 } = require('../validators/attendance.validator');
 
 // All attendance routes require authenticated user session
@@ -44,6 +47,15 @@ router.get(
   attendanceController.getMyHistory
 );
 
+// Attendance corrections self-service
+router.post(
+  '/corrections',
+  validate(createCorrectionSchema, 'body'),
+  attendanceController.createCorrection
+);
+
+router.get('/corrections/mine', attendanceController.getMyCorrections);
+
 // ==========================================
 // 2. Admin & HR Management Attendance Routes
 // ==========================================
@@ -62,6 +74,27 @@ router.put(
   authorize(ROLES.ADMIN, ROLES.HR),
   validate(regularizeAttendanceSchema, 'body'),
   attendanceController.regularize
+);
+
+// Attendance corrections management for Admin / HR
+router.get(
+  '/admin/corrections',
+  authorize(ROLES.ADMIN, ROLES.HR, ROLES.MANAGER),
+  validate(queryCorrectionSchema, 'query'),
+  attendanceController.getAdminCorrections
+);
+
+router.get(
+  '/admin/corrections/:id',
+  authorize(ROLES.ADMIN, ROLES.HR, ROLES.MANAGER),
+  attendanceController.getCorrectionById
+);
+
+router.patch(
+  '/admin/corrections/:id/action',
+  authorize(ROLES.ADMIN, ROLES.HR, ROLES.MANAGER),
+  validate(actionCorrectionSchema, 'body'),
+  attendanceController.actionCorrection
 );
 
 module.exports = router;

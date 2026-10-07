@@ -16,4 +16,19 @@ const getEmployeeDashboard = async (req, res, next) => {
   }
 };
 
-module.exports = { getEmployeeDashboard };
+/**
+ * GET /api/v1/dashboard/hr - HR / Admin workforce dashboard summary
+ */
+const getHRDashboard = async (req, res, next) => {
+  try {
+    const data = await dashboardService.getHRDashboard(req.user.id);
+    return ApiResponse.success(res, {
+      message: 'HR Dashboard metrics retrieved successfully',
+      data
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getEmployeeDashboard, getHRDashboard };

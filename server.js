@@ -24,10 +24,8 @@ const startServer = async () => {
     // 2. Test Database Connection
     const dbConnected = await testConnection();
 
-    if (dbConnected && env.NODE_ENV === 'development') {
-      // In development, ensure tables are synchronized
-      await sequelize.sync();
-      logger.info('Database models synchronized.');
+    if (dbConnected) {
+      logger.info('Database connection verified. Tables managed via migrations.');
     }
 
     // 3. Initialize Scheduled Cron Jobs

@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Attendance, Shift, User, Department, Designation, ActivityLog } = require('../models');
+const { Attendance, AttendanceCorrection, Shift, User, Department, Designation, ActivityLog } = require('../models');
 const { NotFoundError, BadRequestError } = require('../utils/apiError');
 const logger = require('../config/logger');
 
@@ -606,6 +606,269 @@ const regularizeAttendance = async (attendanceId, payload, adminUser) => {
   return attendance;
 };
 
+/**
+ * 9. Create a new attendance correction request
+ */
+const createAttendanceCorrection = async (userId, payload) => {
+  let attendanceId = payload.attendanceId || null;
+
+  if (!attendanceId && payload.date) {
+    const existingAttendance = await Attendance.findOne({
+      where: { userId, date: payload.date }
+    });
+    if (existingAttendance) {
+      attendanceId = existingAttendance.id;
+    }
+  }
+
+  const correction = await AttendanceCorrection.create({
+    userId,
+    attendanceId,
+    date: payload.date,
+    punchType: payload.punchType,
+    originalTime: payload.originalTime,
+    requestedTime: payload.requestedTime,
+    reason: payload.reason,
+    status: 'pending'
+  });
+
+  return correction;
+};
+
+/**
+ * 10. Get current user's attendance correction requests
+ */
+const getMyAttendanceCorrections = async (userId, query = {}) => {
+  const page = parseInt(query.page, 10) || 1;
+  const limit = parseInt(query.limit, 10) || 20;
+  const offset = (page - 1) * limit;
+
+  const where = { userId };
+  if (query.status && query.status !== 'all') {
+    where.status = query.status;
+  }
+  if (query.date) {
+    where.date = query.date;
+  }
+
+  const { rows, count } = await AttendanceCorrection.findAndCountAll({
+    where,
+    order: [['createdAt', 'DESC']],
+    limit,
+    offset,
+    include: [
+      {
+        model: Attendance,
+        as: 'attendance',
+        attributes: ['id', 'clockIn', 'clockOut', 'status', 'totalHours']
+      },
+      {
+        model: User,
+        as: 'reviewer',
+        attributes: ['id', 'firstName', 'lastName']
+      }
+    ]
+  });
+
+  return {
+    records: rows,
+    meta: {
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit)
+    }
+  };
+};
+
+/**
+ * 11. Get all attendance corrections (Admin/HR view)
+ */
+const getAdminAttendanceCorrections = async (query = {}) => {
+  const page = parseInt(query.page, 10) || 1;
+  const limit = parseInt(query.limit, 10) || 20;
+  const offset = (page - 1) * limit;
+
+  const where = {};
+  if (query.status && query.status !== 'all') {
+    where.status = query.status;
+  }
+  if (query.date) {
+    where.date = query.date;
+  }
+
+  const userWhere = {};
+  if (query.departmentId) {
+    userWhere.departmentId = query.departmentId;
+  }
+  if (query.search) {
+    userWhere[Op.or] = [
+      { firstName: { [Op.like]: `%${query.search}%` } },
+      { lastName: { [Op.like]: `%${query.search}%` } },
+      { employeeCode: { [Op.like]: `%${query.search}%` } },
+      { email: { [Op.like]: `%${query.search}%` } }
+    ];
+  }
+
+  const { rows, count } = await AttendanceCorrection.findAndCountAll({
+    where,
+    order: [['createdAt', 'DESC']],
+    limit,
+    offset,
+    include: [
+      {
+        model: User,
+        as: 'applicant',
+        where: Object.keys(userWhere).length > 0 ? userWhere : undefined,
+        attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'department', 'designation', 'email', 'avatar']
+      },
+      {
+        model: User,
+        as: 'reviewer',
+        attributes: ['id', 'firstName', 'lastName']
+      },
+      {
+        model: Attendance,
+        as: 'attendance',
+        attributes: ['id', 'clockIn', 'clockOut', 'status', 'totalHours']
+      }
+    ]
+  });
+
+  return {
+    records: rows,
+    meta: {
+      total: count,
+      page,
+      limit,
+      totalPages: Math.ceil(count / limit)
+    }
+  };
+};
+
+/**
+ * 12. Get a single attendance correction by ID
+ */
+const getAttendanceCorrectionById = async (id) => {
+  const correction = await AttendanceCorrection.findByPk(id, {
+    include: [
+      {
+        model: User,
+        as: 'applicant',
+        attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'department', 'designation', 'email', 'avatar']
+      },
+      {
+        model: User,
+        as: 'reviewer',
+        attributes: ['id', 'firstName', 'lastName']
+      },
+      {
+        model: Attendance,
+        as: 'attendance'
+      }
+    ]
+  });
+
+  if (!correction) {
+    throw new NotFoundError(`Attendance correction with ID ${id} not found`);
+  }
+
+  return correction;
+};
+
+/**
+ * 13. Action attendance correction (approve / reject)
+ */
+const actionAttendanceCorrection = async (id, payload, actionerUser) => {
+  const correction = await AttendanceCorrection.findByPk(id, {
+    include: [
+      {
+        model: User,
+        as: 'applicant',
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      }
+    ]
+  });
+
+  if (!correction) {
+    throw new NotFoundError(`Attendance correction with ID ${id} not found`);
+  }
+
+  if (correction.status !== 'pending') {
+    throw new BadRequestError(`Correction request has already been ${correction.status}`);
+  }
+
+  correction.status = payload.status;
+  correction.actionedBy = actionerUser.id;
+  correction.actionReason = payload.actionReason || null;
+  correction.actionedAt = new Date();
+  await correction.save();
+
+  // If approved, update attendance record
+  if (payload.status === 'approved') {
+    let attendance = null;
+    if (correction.attendanceId) {
+      attendance = await Attendance.findByPk(correction.attendanceId);
+    } else {
+      attendance = await Attendance.findOne({
+        where: { userId: correction.userId, date: correction.date }
+      });
+    }
+
+    if (attendance) {
+      const dateStr = correction.date;
+      if (correction.punchType === 'Check In Time') {
+        const timeMatch = correction.requestedTime.match(/(\d+):(\d+)(?:\s*(AM|PM))?/i);
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const meridiem = timeMatch[3]?.toUpperCase();
+          if (meridiem === 'PM' && hours < 12) hours += 12;
+          if (meridiem === 'AM' && hours === 12) hours = 0;
+          const clockInDate = new Date(`${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
+          if (!isNaN(clockInDate.getTime())) {
+            attendance.clockIn = clockInDate;
+          }
+        }
+      } else if (correction.punchType === 'Check Out Time') {
+        const timeMatch = correction.requestedTime.match(/(\d+):(\d+)(?:\s*(AM|PM))?/i);
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const meridiem = timeMatch[3]?.toUpperCase();
+          if (meridiem === 'PM' && hours < 12) hours += 12;
+          if (meridiem === 'AM' && hours === 12) hours = 0;
+          const clockOutDate = new Date(`${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
+          if (!isNaN(clockOutDate.getTime())) {
+            attendance.clockOut = clockOutDate;
+          }
+        }
+      }
+
+      if (attendance.clockIn && attendance.clockOut) {
+        const diffMs = new Date(attendance.clockOut) - new Date(attendance.clockIn);
+        const diffHours = Math.max(0, diffMs / (1000 * 60 * 60));
+        attendance.totalHours = parseFloat(diffHours.toFixed(2));
+      }
+
+      attendance.remarks = (attendance.remarks ? attendance.remarks + ' | ' : '') + `Corrected per request ${correction.id}`;
+      await attendance.save();
+    }
+  }
+
+  // Activity log
+  await ActivityLog.create({
+    userId: actionerUser.id,
+    action: `ATTENDANCE_CORRECTION_${payload.status.toUpperCase()}`,
+    module: 'ATTENDANCE',
+    targetId: correction.id,
+    ipAddress: 'INTERNAL',
+    details: `${actionerUser.firstName} ${payload.status} attendance correction for ${correction.applicant?.firstName || 'Employee'}`
+  }).catch((err) => logger.warn('ActivityLog warning:', err.message));
+
+  return correction;
+};
+
 module.exports = {
   getTodayStatus,
   punchIn,
@@ -614,5 +877,10 @@ module.exports = {
   punchOut,
   getMyAttendanceHistory,
   getAdminDailyAttendance,
-  regularizeAttendance
+  regularizeAttendance,
+  createAttendanceCorrection,
+  getMyAttendanceCorrections,
+  getAdminAttendanceCorrections,
+  getAttendanceCorrectionById,
+  actionAttendanceCorrection
 };

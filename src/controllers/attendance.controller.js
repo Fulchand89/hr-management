@@ -122,6 +122,83 @@ const regularize = async (req, res, next) => {
   }
 };
 
+/**
+ * 9. POST /api/v1/attendance/corrections - Submit attendance correction request
+ */
+const createCorrection = async (req, res, next) => {
+  try {
+    const record = await attendanceService.createAttendanceCorrection(req.user.id, req.body);
+    return ApiResponse.created(res, {
+      message: 'Attendance correction request submitted successfully',
+      data: record
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 10. GET /api/v1/attendance/corrections/mine - Get current user's corrections
+ */
+const getMyCorrections = async (req, res, next) => {
+  try {
+    const result = await attendanceService.getMyAttendanceCorrections(req.user.id, req.query);
+    return ApiResponse.success(res, {
+      message: 'My attendance corrections retrieved successfully',
+      data: result.records,
+      meta: result.meta
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 11. GET /api/v1/attendance/admin/corrections - Admin view of all corrections
+ */
+const getAdminCorrections = async (req, res, next) => {
+  try {
+    const result = await attendanceService.getAdminAttendanceCorrections(req.query);
+    return ApiResponse.success(res, {
+      message: 'Attendance corrections retrieved successfully',
+      data: result.records,
+      meta: result.meta
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 12. GET /api/v1/attendance/admin/corrections/:id - Single correction details
+ */
+const getCorrectionById = async (req, res, next) => {
+  try {
+    const record = await attendanceService.getAttendanceCorrectionById(req.params.id);
+    return ApiResponse.success(res, {
+      message: 'Attendance correction details retrieved successfully',
+      data: record
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 13. PATCH /api/v1/attendance/admin/corrections/:id/action - Approve/Reject correction
+ */
+const actionCorrection = async (req, res, next) => {
+  try {
+    const record = await attendanceService.actionAttendanceCorrection(req.params.id, req.body, req.user);
+    return ApiResponse.success(res, {
+      message: `Attendance correction ${req.body.status} successfully`,
+      data: record
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTodayStatus,
   punchIn,
@@ -130,5 +207,10 @@ module.exports = {
   punchOut,
   getMyHistory,
   getAdminDaily,
-  regularize
+  regularize,
+  createCorrection,
+  getMyCorrections,
+  getAdminCorrections,
+  getCorrectionById,
+  actionCorrection
 };

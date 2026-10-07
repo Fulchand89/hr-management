@@ -10,6 +10,7 @@ const {
   Branch,
   Shift,
   Attendance,
+  AttendanceCorrection,
   Holiday,
   LeaveType,
   LeaveBalance,
@@ -31,8 +32,8 @@ const seedDatabase = async () => {
     await sequelize.authenticate();
     logger.info('Connected to database. Synchronizing tables...');
 
-    // Synchronize all models
-    await sequelize.sync();
+    // Tables are managed via migrations
+    // await sequelize.sync();
 
     logger.info('Starting complete 20-Table HRMS seeding process...');
 
@@ -477,16 +478,32 @@ const seedDatabase = async () => {
       }
     });
 
+    // ==========================================
+    // 16. SEED ATTENDANCE CORRECTIONS
+    // ==========================================
+    await AttendanceCorrection.findOrCreate({
+      where: { userId: emp.id, date: '2026-01-01' },
+      defaults: {
+        userId: emp.id,
+        date: '2026-01-01',
+        punchType: 'Check In Time',
+        originalTime: '10:15 AM',
+        requestedTime: '09:05 AM',
+        reason: 'I was on time but system was not working properly',
+        status: 'pending'
+      }
+    });
+
     await ActivityLog.create({
       userId: admin.id,
       action: 'SYSTEM_FULL_INITIALIZATION',
       module: 'system',
       targetId: 'HRMS_PORTAL',
       ipAddress: '127.0.0.1',
-      details: JSON.stringify({ message: '20 HRMS Tables initialized and seeded with enterprise standard data.' })
+      details: JSON.stringify({ message: '21 HRMS Tables initialized and seeded with enterprise standard data.' })
     });
 
-    logger.success('All 20 Tables in HR Management System successfully seeded with enterprise data!');
+    logger.success('All 21 Tables in HR Management System successfully seeded with enterprise data!');
   } catch (error) {
     logger.error('Seeding failed:', error);
     process.exit(1);

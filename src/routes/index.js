@@ -12,6 +12,7 @@ const departmentRoutes = require('./department.routes');
 const attendanceRoutes = require('./attendance.routes');
 const leaveRoutes = require('./leave.routes');
 const dashboardRoutes = require('./dashboard.routes');
+const reportsRoutes = require('./reports.routes');
 const { sequelize } = require('../config/db');
 
 // Health Check Endpoint
@@ -45,5 +46,6 @@ router.use('/designations', designationRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/reports', reportsRoutes);
 
 module.exports = router;

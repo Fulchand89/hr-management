@@ -22,6 +22,7 @@ const { initEmployeeDocumentModel } = require('./EmployeeDocument');
 const { initCompanyAssetModel } = require('./CompanyAsset');
 const { initNotificationModel } = require('./Notification');
 const { initActivityLogModel } = require('./ActivityLog');
+const { initAttendanceCorrectionModel } = require('./AttendanceCorrection');
 
 // 1. Initialize all models
 const Role = initRoleModel(sequelize);
@@ -34,6 +35,7 @@ const User = initUserModel(sequelize);
 const UserPermission = initUserPermissionModel(sequelize);
 const Shift = initShiftModel(sequelize);
 const Attendance = initAttendanceModel(sequelize);
+const AttendanceCorrection = initAttendanceCorrectionModel(sequelize);
 const Holiday = initHolidayModel(sequelize);
 const LeaveType = initLeaveTypeModel(sequelize);
 const LeaveBalance = initLeaveBalanceModel(sequelize);
@@ -114,6 +116,13 @@ Attendance.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Shift.hasMany(Attendance, { foreignKey: 'shiftId', as: 'attendances' });
 Attendance.belongsTo(Shift, { foreignKey: 'shiftId', as: 'shift' });
 
+// Attendance Corrections
+User.hasMany(AttendanceCorrection, { foreignKey: 'userId', as: 'attendanceCorrections' });
+AttendanceCorrection.belongsTo(User, { foreignKey: 'userId', as: 'applicant' });
+AttendanceCorrection.belongsTo(User, { foreignKey: 'actionedBy', as: 'reviewer' });
+Attendance.hasMany(AttendanceCorrection, { foreignKey: 'attendanceId', as: 'corrections' });
+AttendanceCorrection.belongsTo(Attendance, { foreignKey: 'attendanceId', as: 'attendance' });
+
 // I. Leave Management
 User.hasMany(LeaveBalance, { foreignKey: 'userId', as: 'leaveBalances' });
 LeaveBalance.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -161,6 +170,7 @@ const db = {
   Branch,
   Shift,
   Attendance,
+  AttendanceCorrection,
   Holiday,
   LeaveType,
   LeaveBalance,
