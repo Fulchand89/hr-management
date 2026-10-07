@@ -6,7 +6,6 @@ import {
   Building2,
   Briefcase,
   Calendar,
-  Clock,
   MapPin,
   ShieldCheck,
   CreditCard,
@@ -26,11 +25,7 @@ import {
   EyeOff,
   RefreshCw,
   Heart,
-  FileText,
-  Sparkles,
-  ChevronRight,
-  ShieldAlert,
-  Award
+  Sparkles
 } from 'lucide-react';
 import {
   getMyProfile,
@@ -46,11 +41,10 @@ export const ProfileView = ({ onLogout }) => {
     empId: '',
     phone: '',
     email: '',
+    role: '',
     department: '',
     designation: '',
     joiningDate: '',
-    shift: 'General',
-    shiftTime: '09:00 AM - 06:00 PM',
     location: '',
     status: 'Active',
     manager: null,
@@ -64,7 +58,6 @@ export const ProfileView = ({ onLogout }) => {
     accountNoRaw: '',
     accountNo: '',
     ifsc: '',
-    pan: '',
     avatar: null,
     leaves: {}
   });
@@ -118,7 +111,7 @@ export const ProfileView = ({ onLogout }) => {
 
       if (resProfile?.data || resProfile) {
         const u = resProfile?.data ?? resProfile;
-        const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Employee User';
+        const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'User';
         const rawDate = u.joiningDate || u.createdAt;
         const joinDateFormatted = rawDate
           ? new Date(rawDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -140,17 +133,21 @@ export const ProfileView = ({ onLogout }) => {
               name: typeName,
               code: b.leaveType?.code || 'LV',
               left: Number(b.remaining) || 0,
-              total: Number(b.allocated) || 12,
+              total: Number(b.allocated) || 0,
               used: Number(b.used) || 0
             };
           });
         }
 
-        const deptName = u.departmentDetails?.name || u.department || 'General Administration';
-        const desigTitle = u.designationDetails?.title || u.designation || 'Specialist';
+        const deptName = u.departmentDetails?.name || u.department || 'Not Assigned';
+        const desigTitle = u.designationDetails?.title || u.designation || 'Not Assigned';
         const locName = u.branchDetails
-          ? `${u.branchDetails.name}, ${u.branchDetails.city}`
-          : (u.location || 'Corporate Headquarters');
+          ? `${u.branchDetails.name}${u.branchDetails.city ? ', ' + u.branchDetails.city : ''}`
+          : (u.location || 'Not Assigned');
+
+        const roleFormatted = u.role
+          ? (u.role === 'hr' ? 'HR Manager' : u.role === 'admin' ? 'Administrator' : 'Employee')
+          : 'Employee';
 
         const rawAcc = u.bankAccountNumber || '';
         const maskedAcc = rawAcc.length >= 4 ? `•••• •••• ${rawAcc.slice(-4)}` : (rawAcc || 'Not Provided');
@@ -162,11 +159,10 @@ export const ProfileView = ({ onLogout }) => {
           phone: u.phone || 'Not Provided',
           dob: dobFormatted,
           gender: u.gender ? u.gender.charAt(0).toUpperCase() + u.gender.slice(1) : 'Not Specified',
+          role: roleFormatted,
           department: deptName,
           designation: desigTitle,
           joiningDate: joinDateFormatted,
-          shift: u.shift || 'General',
-          shiftTime: u.shiftTime || '09:00 AM - 06:00 PM',
           status: u.status === 'active' ? 'Active' : (u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : 'Active'),
           avatar: u.avatar || null,
           manager: u.manager || null,
@@ -174,12 +170,11 @@ export const ProfileView = ({ onLogout }) => {
           address: u.address || 'Not Provided',
           emergencyContactName: u.emergencyContactName || 'Not Provided',
           emergencyContactPhone: u.emergencyContactPhone || 'Not Provided',
-          emergencyContactRelation: u.emergencyContactRelation || 'Family',
+          emergencyContactRelation: u.emergencyContactRelation || 'Not Specified',
           bankName: u.bankName || 'Not Provided',
           accountNoRaw: rawAcc,
           accountNo: maskedAcc,
           ifsc: u.bankIfsc || 'Not Provided',
-          pan: u.panNumber || 'Not Provided',
           leaves: balancesObj
         });
 
@@ -221,7 +216,7 @@ export const ProfileView = ({ onLogout }) => {
         address: editAddress || 'Not Provided',
         emergencyContactName: editEmergencyName || 'Not Provided',
         emergencyContactPhone: editEmergencyPhone || 'Not Provided',
-        emergencyContactRelation: editEmergencyRelation || 'Family'
+        emergencyContactRelation: editEmergencyRelation || 'Not Specified'
       }));
       setTimeout(() => {
         setIsEditModalOpen(false);
@@ -312,10 +307,10 @@ export const ProfileView = ({ onLogout }) => {
   // Tabs configuration
   const tabs = [
     { id: 'all', label: 'All Information', icon: Sparkles },
-    { id: 'work', label: 'Work & Policy', icon: Briefcase },
+    { id: 'work', label: 'Work Details', icon: Briefcase },
     { id: 'personal', label: 'Personal & Contact', icon: User },
     { id: 'leaves', label: 'Leave Quotas', icon: CalendarDays },
-    { id: 'financial', label: 'Bank & Statutory', icon: CreditCard }
+    { id: 'financial', label: 'Bank Details', icon: CreditCard }
   ];
 
   if (isLoading) {
@@ -530,17 +525,17 @@ export const ProfileView = ({ onLogout }) => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5 mt-5 border-t border-slate-100 text-xs">
             <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-100 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-[#8B1D2C] flex items-center justify-center shrink-0 shadow-2xs font-bold">
-                <Clock className="w-4 h-4" />
+                <ShieldCheck className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Work Shift</span>
-                <span className="font-bold text-slate-800 truncate block">{profile.shift} ({profile.shiftTime.split(' - ')[0]})</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">System Role</span>
+                <span className="font-bold text-slate-800 truncate block">{profile.role}</span>
               </div>
             </div>
 
             <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-100 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs font-bold">
-                <ShieldCheck className="w-4 h-4" />
+                <User className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Manager</span>
@@ -560,11 +555,11 @@ export const ProfileView = ({ onLogout }) => {
 
             <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-100 flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs font-bold">
-                <Award className="w-4 h-4" />
+                <Calendar className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Employment</span>
-                <span className="font-bold text-slate-800 truncate block">Full-time Regular</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Joining Date</span>
+                <span className="font-bold text-slate-800 truncate block">{profile.joiningDate}</span>
               </div>
             </div>
           </div>
@@ -709,43 +704,7 @@ export const ProfileView = ({ onLogout }) => {
             </div>
           )}
 
-          {/* Section: Shift Timings & Attendance Policy */}
-          {(activeTab === 'all' || activeTab === 'work') && (
-            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-900">Shift Timings & Attendance Policy</h2>
-                    <p className="text-[11px] text-slate-400 font-medium">Daily schedule regulations and compliance rules</p>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-slate-500">Standard Policy</span>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
-                <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-100">
-                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px] block">Assigned Shift</span>
-                  <span className="font-black text-slate-900 text-sm mt-1 block">{profile.shift} Shift</span>
-                  <span className="text-[11px] text-slate-500 mt-0.5 block font-mono font-medium">{profile.shiftTime}</span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-100">
-                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px] block">Grace Period</span>
-                  <span className="font-black text-emerald-700 text-sm mt-1 block">15 Minutes</span>
-                  <span className="text-[11px] text-slate-500 mt-0.5 block font-medium">Grace punch-in allowed without penalty</span>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50/70 border border-slate-100">
-                  <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px] block">Weekly Offs</span>
-                  <span className="font-black text-slate-900 text-sm mt-1 block">Saturday & Sunday</span>
-                  <span className="text-[11px] text-slate-500 mt-0.5 block font-medium">5 Working Days / Week</span>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Section: Personal & Emergency Contact */}
           {(activeTab === 'all' || activeTab === 'personal') && (
@@ -829,9 +788,11 @@ export const ProfileView = ({ onLogout }) => {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-rose-800">Emergency Contact</span>
-                    <span className="text-[11px] font-bold text-rose-900 bg-rose-100 px-2 py-0.5 rounded-full">
-                      {profile.emergencyContactRelation}
-                    </span>
+                    {profile.emergencyContactRelation && profile.emergencyContactRelation !== 'Not Specified' && (
+                      <span className="text-[11px] font-bold text-rose-900 bg-rose-100 px-2 py-0.5 rounded-full">
+                        {profile.emergencyContactRelation}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1">
                     <span className="font-bold text-slate-900 text-sm">{profile.emergencyContactName}</span>
@@ -871,9 +832,9 @@ export const ProfileView = ({ onLogout }) => {
                 ) : (
                   Object.entries(profile.leaves).map(([key, val]) => {
                     const left = val.left ?? 0;
-                    const total = val.total ?? 12;
+                    const total = val.total ?? 0;
                     const used = val.used ?? Math.max(0, total - left);
-                    const pct = Math.round((left / total) * 100);
+                    const pct = total > 0 ? Math.round((left / total) * 100) : 0;
                     return (
                       <div key={key} className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-slate-200 transition-all">
                         <div className="flex items-center justify-between text-xs">
@@ -894,7 +855,7 @@ export const ProfileView = ({ onLogout }) => {
                         <div className="w-full h-2 bg-slate-200 rounded-full mt-2.5 overflow-hidden">
                           <div
                             className="h-full bg-gradient-to-r from-[#8B1D2C] to-rose-500 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(100, Math.max(5, pct))}%` }}
+                            style={{ width: `${Math.min(100, Math.max(total > 0 ? 5 : 0, pct))}%` }}
                           />
                         </div>
 
@@ -910,7 +871,7 @@ export const ProfileView = ({ onLogout }) => {
             </div>
           )}
 
-          {/* Section: Bank & Statutory (Financial Security Card) */}
+          {/* Section: Bank Details */}
           {(activeTab === 'all' || activeTab === 'financial') && (
             <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -919,8 +880,8 @@ export const ProfileView = ({ onLogout }) => {
                     <CreditCard className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">Bank & Tax Records</h3>
-                    <p className="text-[11px] text-slate-400">Direct salary deposit and PAN</p>
+                    <h3 className="text-sm font-bold text-slate-900">Bank Details</h3>
+                    <p className="text-[11px] text-slate-400">Direct salary deposit account</p>
                   </div>
                 </div>
                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
@@ -975,22 +936,6 @@ export const ProfileView = ({ onLogout }) => {
                       className="text-slate-400 hover:text-[#8B1D2C] transition-colors cursor-pointer"
                     >
                       {copiedKey === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* PAN Number */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100">
-                  <span className="text-slate-400 font-medium">PAN Number</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold font-mono text-slate-900">{profile.pan}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(profile.pan, 'pan')}
-                      title="Copy PAN"
-                      className="text-slate-400 hover:text-[#8B1D2C] transition-colors cursor-pointer"
-                    >
-                      {copiedKey === 'pan' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>

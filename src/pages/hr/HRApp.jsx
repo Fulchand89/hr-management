@@ -20,6 +20,7 @@ import HRAttendanceDetailModal from './HRAttendanceDetailModal';
 import HRAttendanceCorrectionDetailView from './HRAttendanceCorrectionDetailView';
 import HRHolidayManagementView from './HRHolidayManagementView';
 import HRReportsView from './HRReportsView';
+import HRStaffAttendance from './HRStaffAttendance';
 
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -271,6 +272,7 @@ export const HRApp = () => {
                   : 0
               }
               timeline={timeline}
+              grossWorkingHours={formatTime(workingSeconds + breakSeconds)}
               totalWorkingHours={formatTime(workingSeconds)}
               breakDuration={formatTime(breakSeconds)}
               onBack={() => navigate('/hr/dashboard')}
@@ -291,6 +293,12 @@ export const HRApp = () => {
         <Route
           path="myattendance"
           element={<HRMyAttendanceView onBack={() => navigate('/hr/dashboard')} />}
+        />
+
+        {/* Staff Attendance Records */}
+        <Route
+          path="staff-attendance"
+          element={<HRStaffAttendance />}
         />
 
         {/* Leaves & Requests View */}

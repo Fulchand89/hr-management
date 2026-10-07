@@ -18,6 +18,7 @@ export const AttendanceView = ({
   sinceText = '',
   progress = 0,
   timeline = [],
+  grossWorkingHours = '00:00:00',
   totalWorkingHours = '00:00:00',
   breakDuration = '00:00:00',
   onBack,
@@ -178,6 +179,8 @@ export const AttendanceView = ({
                         }`}
                     >
                       {step.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
+                      {step.status === 'break' && <Coffee className="w-2.5 h-2.5 text-white" />}
+                      {step.status === 'punched_out' && <CheckCircle2 className="w-3 h-3 text-white" />}
                     </div>
 
                     {/* Label & Time */}
@@ -207,8 +210,8 @@ export const AttendanceView = ({
             {/* Duration Summary in Timeline */}
             <div className="pt-4 border-t border-slate-100 space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 font-medium">Total Working Time</span>
-                <span className="font-bold font-mono text-slate-900">{totalWorkingHours}</span>
+                <span className="text-slate-500 font-medium">Total Shift Time (Gross)</span>
+                <span className="font-bold font-mono text-slate-900">{grossWorkingHours || totalWorkingHours}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 font-medium">Break Duration</span>

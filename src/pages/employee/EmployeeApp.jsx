@@ -266,6 +266,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
                   : 0
               }
               timeline={timeline}
+              grossWorkingHours={formatTime(workingSeconds + breakSeconds)}
               totalWorkingHours={formatTime(workingSeconds)}
               breakDuration={formatTime(breakSeconds)}
               onBack={() => navigate('/employee/dashboard')}

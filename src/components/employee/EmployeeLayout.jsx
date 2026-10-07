@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
   Clock,
@@ -36,6 +37,15 @@ export const EmployeeLayout = ({
   onLogout,
   children,
 }) => {
+  const { user } = useAuth();
+  const userName = user?.firstName
+    ? `${user.firstName} ${user.lastName || ''}`.trim()
+    : (user?.name || user?.email?.split('@')[0] || 'Employee');
+  const userCode = user?.employeeCode || 'EMP-01';
+  const userDept = user?.department || 'Operations';
+  const userEmail = user?.email || 'employee@company.com';
+  const userAvatar = user?.avatar || null;
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -45,7 +55,7 @@ export const EmployeeLayout = ({
     { id: 'attendance', label: 'Live Punch & Timer', icon: Clock },
     { id: 'my-attendance', label: 'My Attendance', icon: CalendarCheck },
     { id: 'leaves', label: 'Leaves & Requests', icon: CalendarDays },
-    { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadNotifications },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'profile', label: 'My Profile', icon: User },
   ];
 
@@ -213,14 +223,20 @@ export const EmployeeLayout = ({
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                 className="flex items-center gap-2 p-1 pl-2 rounded-xl hover:bg-slate-100 cursor-pointer transition-colors border border-transparent hover:border-slate-200"
               >
-                <img
-                  src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150"
-                  alt="Ankit Sharma"
-                  className="w-8 h-8 rounded-lg object-cover ring-2 ring-slate-200"
-                />
+                {userAvatar ? (
+                  <img
+                    src={userAvatar.startsWith('http') ? userAvatar : `http://localhost:5000${userAvatar}`}
+                    alt={userName}
+                    className="w-8 h-8 rounded-lg object-cover ring-2 ring-slate-200"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-[#8B1D2C] text-white flex items-center justify-center font-bold text-xs ring-2 ring-slate-200 uppercase">
+                    {userName.charAt(0) || 'E'}
+                  </div>
+                )}
                 <div className="hidden xl:block text-left">
-                  <div className="text-xs font-bold text-slate-800 leading-tight">Ankit Parte</div>
-                  <div className="text-[10px] text-slate-400">EMP001 &bull; Engineering</div>
+                  <div className="text-xs font-bold text-slate-800 leading-tight">{userName}</div>
+                  <div className="text-[10px] text-slate-400">{userCode} &bull; {userDept}</div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden xl:block" />
               </button>
@@ -229,8 +245,8 @@ export const EmployeeLayout = ({
               {isProfileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-xs font-bold text-slate-900">Ankit Parte</p>
-                    <p className="text-[11px] text-slate-500">ankit@company.com</p>
+                    <p className="text-xs font-bold text-slate-900">{userName}</p>
+                    <p className="text-[11px] text-slate-500">{userEmail}</p>
                     <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700">
                       Active Employee
                     </span>

@@ -75,6 +75,23 @@ export const getAdminDailyAttendance = async (params = {}) => {
   return res.data;
 };
 
+export const getAdminStaffHistory = async (employeeId, month, year) => {
+  const res = await apiClient.get(`/attendance/admin/staff/${employeeId}/history`, {
+    params: { month, year }
+  });
+  return res.data;
+};
+
+export const getAdminMonthlyGrid = async (params = {}) => {
+  const res = await apiClient.get('/attendance/admin/monthly', { params });
+  return res.data;
+};
+
+export const getAdminDetailsAll = async (params = {}) => {
+  const res = await apiClient.get('/attendance/admin/details-all', { params });
+  return res.data;
+};
+
 // ─────────────────────────────────────────────
 // ATTENDANCE CORRECTIONS (HR & EMPLOYEE)
 // ─────────────────────────────────────────────
@@ -240,6 +257,11 @@ export const sendDirectNotification = async (userId, payload) => {
 
 export const getMyProfile = async () => {
   const res = await apiClient.get('/employees/me');
+  return res.data;
+};
+
+export const getAllEmployees = async (params = {}) => {
+  const res = await apiClient.get('/employees', { params });
   return res.data;
 };
 

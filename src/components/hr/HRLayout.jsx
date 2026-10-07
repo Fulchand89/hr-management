@@ -148,6 +148,7 @@ export const HRLayout = ({
   const isDashboard = currentPath === '/hr' || currentPath.startsWith('/hr/dashboard');
   const isAttendance = currentPath.startsWith('/hr/attendance') && !currentPath.includes('correction');
   const isMyAttendance = currentPath.startsWith('/hr/my-attendance') || currentPath.startsWith('/hr/myattendance');
+  const isStaffAttendance = currentPath.startsWith('/hr/staff-attendance');
   const isPersonalLeaves = currentPath.startsWith('/hr/leaves');
   const isAttendanceCorrection = currentPath.startsWith('/hr/attendance-correction');
   const isStaffLeaves = (currentPath.startsWith('/hr/leave-requests') || currentPath.startsWith('/hr/leave-detail')) && !currentPath.includes('LEV-101');
@@ -192,6 +193,13 @@ export const HRLayout = ({
       icon: Clock,
       path: '/hr/attendance-correction',
       isActive: isAttendanceCorrection,
+    },
+    {
+      id: 'staff-attendance',
+      label: 'Staff Attendance',
+      icon: Users,
+      path: '/hr/staff-attendance',
+      isActive: isStaffAttendance,
     },
     {
       id: 'leave-requests',
