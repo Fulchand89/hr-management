@@ -390,10 +390,17 @@ const seedDatabase = async () => {
         date: todayStr,
         clockIn: new Date(new Date().setHours(9, 5, 0)),
         clockOut: new Date(new Date().setHours(18, 10, 0)),
-        totalHours: 9.08,
+        totalBreakMinutes: 45,
+        totalHours: 8.33,
         status: 'present',
         ipAddress: '192.168.1.100',
-        remarks: 'Normal biometric check-in'
+        remarks: 'Normal biometric check-in',
+        timeline: [
+          { label: 'Punch In', time: '09:05 AM', timestamp: new Date(new Date().setHours(9, 5, 0)).toISOString(), status: 'completed' },
+          { label: 'Break Started', time: '01:15 PM', timestamp: new Date(new Date().setHours(13, 15, 0)).toISOString(), status: 'break' },
+          { label: 'Break Ended', time: '02:00 PM', timestamp: new Date(new Date().setHours(14, 0, 0)).toISOString(), status: 'completed' },
+          { label: 'Punch Out', time: '06:10 PM', timestamp: new Date(new Date().setHours(18, 10, 0)).toISOString(), status: 'punched_out' }
+        ]
       }
     });
 

@@ -30,6 +30,22 @@ const formatSecondsToHMS = (totalSeconds) => {
 };
 
 /**
+ * Safely parse timeline into an array
+ */
+const parseTimelineArray = (rawTimeline) => {
+  if (Array.isArray(rawTimeline)) return rawTimeline;
+  if (typeof rawTimeline === 'string') {
+    try {
+      const parsed = JSON.parse(rawTimeline);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+/**
  * Compute real-time status and metrics for an attendance record
  */
 const computeLiveMetrics = (attendance, shift = null) => {
@@ -41,9 +57,12 @@ const computeLiveMetrics = (attendance, shift = null) => {
       status: 'NOT_PUNCHED_IN',
       clockInTime: null,
       clockOutTime: null,
+      grossSeconds: 0,
+      grossWorkingHours: '00:00:00',
       workingSeconds: 0,
       breakSeconds: 0,
       totalWorkingHours: '00:00:00',
+      netWorkingHours: '00:00:00',
       breakDuration: '00:00:00',
       progress: 0,
       sinceText: 'Not clocked in yet',
@@ -77,7 +96,7 @@ const computeLiveMetrics = (attendance, shift = null) => {
     cumulativeBreakSec += ongoingBreakSec;
   }
 
-  // 3. Working seconds calculation
+  // 3. Gross & Net Working seconds calculation
   const referenceEnd = clockOutDate || now;
   const totalElapsedSec = Math.max(0, Math.floor((referenceEnd - clockInDate) / 1000));
   const workingSec = Math.max(0, totalElapsedSec - cumulativeBreakSec);
@@ -93,49 +112,83 @@ const computeLiveMetrics = (attendance, shift = null) => {
     sinceText = `Shift ended at ${formatTime12h(clockOutDate)}`;
   }
 
-  // 6. Timeline synthesis
-  let timeline = Array.isArray(attendance.timeline) && attendance.timeline.length > 0
-    ? [...attendance.timeline]
-    : [];
+  // 6. Timeline synthesis (Dynamic, non-hardcoded)
+  const rawTimeline = parseTimelineArray(attendance.timeline);
+  let timeline = rawTimeline.length > 0 ? [...rawTimeline] : [];
 
   if (timeline.length === 0) {
     timeline.push({
       label: 'Punch In',
       time: formatTime12h(clockInDate),
+      timestamp: clockInDate.toISOString(),
       status: 'completed'
     });
-    if (breakStartDate || attendance.totalBreakMinutes > 0) {
+    if (breakStartDate) {
       timeline.push({
         label: 'Break Started',
-        time: breakStartDate ? formatTime12h(breakStartDate) : '01:15 PM',
+        time: formatTime12h(breakStartDate),
+        timestamp: breakStartDate.toISOString(),
+        status: 'break'
+      });
+    } else if (attendance.totalBreakMinutes > 0) {
+      // Calculate realistic break boundaries matching the exact recorded totalBreakMinutes
+      const totalBreakSec = attendance.totalBreakMinutes * 60;
+      const netWorkingSec = Math.max(0, totalElapsedSec - totalBreakSec);
+      const breakOffsetSec = Math.floor(netWorkingSec / 2);
+      const synthStart = new Date(clockInDate.getTime() + breakOffsetSec * 1000);
+      const synthEnd = new Date(synthStart.getTime() + totalBreakSec * 1000);
+
+      timeline.push({
+        label: 'Break Started',
+        time: formatTime12h(synthStart),
+        timestamp: synthStart.toISOString(),
+        status: 'break'
+      });
+      timeline.push({
+        label: 'Break Ended',
+        time: formatTime12h(synthEnd),
+        timestamp: synthEnd.toISOString(),
         status: 'completed'
       });
-      if (!breakStartDate && attendance.totalBreakMinutes > 0) {
-        timeline.push({
-          label: 'Break Ended',
-          time: '01:50 PM',
-          status: 'completed'
-        });
-      }
     }
     timeline.push({
       label: 'Punch Out',
       time: clockOutDate ? formatTime12h(clockOutDate) : '--:--',
-      status: clockOutDate ? 'completed' : 'pending'
+      timestamp: clockOutDate ? clockOutDate.toISOString() : null,
+      status: clockOutDate ? 'punched_out' : 'pending'
+    });
+  } else {
+    // Ensure appropriate status indicators for break and punchout nodes
+    timeline = timeline.map((item) => {
+      const lbl = (item.label || '').toLowerCase();
+      if (lbl.includes('break') && !lbl.includes('ended')) {
+        return { ...item, status: item.status || 'break' };
+      }
+      if (lbl.includes('punch out')) {
+        return { ...item, status: 'punched_out' };
+      }
+      return item;
     });
   }
+
+  const grossWorkingHoursStr = formatSecondsToHMS(totalElapsedSec);
+  const netWorkingHoursStr = formatSecondsToHMS(workingSec);
+  const breakDurationStr = formatSecondsToHMS(cumulativeBreakSec);
 
   return {
     status: currentStatus,
     clockInTime: attendance.clockIn,
     clockOutTime: attendance.clockOut,
+    grossSeconds: totalElapsedSec,
+    grossWorkingHours: grossWorkingHoursStr,
     workingSeconds: workingSec,
     breakSeconds: cumulativeBreakSec,
-    totalWorkingHours: formatSecondsToHMS(workingSec),
-    breakDuration: formatSecondsToHMS(cumulativeBreakSec),
+    totalWorkingHours: netWorkingHoursStr, // Net Effective Hours
+    netWorkingHours: netWorkingHoursStr,
+    breakDuration: breakDurationStr,
     progress: progressPercent,
     sinceText,
-    timeString: formatSecondsToHMS(workingSec),
+    timeString: netWorkingHoursStr,
     timeline
   };
 };
@@ -167,7 +220,10 @@ const getTodayStatus = async (userId) => {
     sinceText: live.sinceText,
     progress: live.progress,
     timeline: live.timeline,
+    grossSeconds: live.grossSeconds,
+    grossWorkingHours: live.grossWorkingHours,
     totalWorkingHours: live.totalWorkingHours,
+    netWorkingHours: live.netWorkingHours,
     breakDuration: live.breakDuration,
     workingSeconds: live.workingSeconds,
     breakSeconds: live.breakSeconds,
@@ -290,16 +346,26 @@ const startBreak = async (user, payload = {}, ipAddress = null) => {
   }
 
   const reason = payload.reason || 'Tea / Lunch Break';
-  const updatedTimeline = Array.isArray(attendance.timeline) ? [...attendance.timeline] : [];
+  const updatedTimeline = parseTimelineArray(attendance.timeline);
+  if (updatedTimeline.length === 0 && attendance.clockIn) {
+    updatedTimeline.push({
+      label: 'Punch In',
+      time: formatTime12h(attendance.clockIn),
+      timestamp: new Date(attendance.clockIn).toISOString(),
+      status: 'completed'
+    });
+  }
   updatedTimeline.push({
-    label: reason,
+    label: 'Break Started',
+    reason,
     time: formatTime12h(now),
     timestamp: now.toISOString(),
-    status: 'completed'
+    status: 'break'
   });
 
   attendance.breakStartTime = now;
   attendance.timeline = updatedTimeline;
+  attendance.changed('timeline', true);
   await attendance.save();
 
   // Log activity
@@ -337,7 +403,7 @@ const endBreak = async (user, ipAddress = null) => {
   const breakDurationMinutes = Math.max(1, Math.round((now - new Date(attendance.breakStartTime)) / 60000));
   const newTotalBreak = (attendance.totalBreakMinutes || 0) + breakDurationMinutes;
 
-  const updatedTimeline = Array.isArray(attendance.timeline) ? [...attendance.timeline] : [];
+  const updatedTimeline = parseTimelineArray(attendance.timeline);
   updatedTimeline.push({
     label: 'Break Ended',
     time: formatTime12h(now),
@@ -348,6 +414,7 @@ const endBreak = async (user, ipAddress = null) => {
   attendance.totalBreakMinutes = newTotalBreak;
   attendance.breakStartTime = null;
   attendance.timeline = updatedTimeline;
+  attendance.changed('timeline', true);
   await attendance.save();
 
   // Log activity
@@ -382,11 +449,19 @@ const punchOut = async (user, payload = {}, ipAddress = null) => {
     throw new BadRequestError('You have already punched out for today');
   }
 
+  const updatedTimeline = parseTimelineArray(attendance.timeline);
+
   // If currently on break, auto-conclude the break
   let totalBreakMinutes = attendance.totalBreakMinutes || 0;
   if (attendance.breakStartTime) {
     const ongoingBreak = Math.max(1, Math.round((now - new Date(attendance.breakStartTime)) / 60000));
     totalBreakMinutes += ongoingBreak;
+    updatedTimeline.push({
+      label: 'Break Ended',
+      time: formatTime12h(now),
+      timestamp: now.toISOString(),
+      status: 'completed'
+    });
     attendance.breakStartTime = null;
   }
 
@@ -400,12 +475,11 @@ const punchOut = async (user, payload = {}, ipAddress = null) => {
     finalStatus = 'half_day';
   }
 
-  const updatedTimeline = Array.isArray(attendance.timeline) ? [...attendance.timeline] : [];
   updatedTimeline.push({
     label: 'Punch Out',
     time: formatTime12h(now),
     timestamp: now.toISOString(),
-    status: 'completed'
+    status: 'punched_out'
   });
 
   attendance.clockOut = now;
@@ -414,6 +488,7 @@ const punchOut = async (user, payload = {}, ipAddress = null) => {
   attendance.status = finalStatus;
   attendance.remarks = payload.remarks || attendance.remarks;
   attendance.timeline = updatedTimeline;
+  attendance.changed('timeline', true);
   await attendance.save();
 
   // Log activity
@@ -523,12 +598,11 @@ const getAdminDailyAttendance = async (query = {}) => {
   const limit = parseInt(query.limit, 10) || 20;
   const offset = (page - 1) * limit;
 
-  const whereClause = { date: targetDate };
-  if (query.status) {
-    whereClause.status = query.status;
-  }
+  const userWhere = { role: { [Op.ne]: 'ADMIN' } }; // Filter out super admins if needed
 
-  const userWhere = {};
+  if (query.employeeId) {
+    userWhere.id = query.employeeId;
+  }
   if (query.departmentId) {
     userWhere.departmentId = query.departmentId;
   }
@@ -541,35 +615,258 @@ const getAdminDailyAttendance = async (query = {}) => {
     ];
   }
 
-  const { rows, count } = await Attendance.findAndCountAll({
-    where: whereClause,
+  const { rows, count } = await User.findAndCountAll({
+    where: userWhere,
+    attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'avatar', 'department', 'designation'],
     include: [
       {
-        model: User,
-        as: 'user',
-        where: userWhere,
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'avatar', 'department', 'designation']
-      },
-      {
-        model: Shift,
-        as: 'shift',
-        attributes: ['id', 'name', 'startTime', 'endTime']
+        model: Attendance,
+        as: 'attendances',
+        where: { date: targetDate },
+        required: false, // LEFT JOIN to get all users even if no attendance
+        include: [
+          {
+            model: Shift,
+            as: 'shift',
+            attributes: ['id', 'name', 'startTime', 'endTime']
+          }
+        ]
       }
     ],
-    order: [['clockIn', 'ASC']],
+    order: [['firstName', 'ASC']],
     limit,
     offset
   });
 
+  const formattedRecords = rows.map((user) => {
+    const attendance = user.attendances && user.attendances.length > 0 ? user.attendances[0] : null;
+    let computedStatus = 'Absent';
+    if (attendance) {
+      if (attendance.status === 'present') computedStatus = 'Present';
+      else if (attendance.status === 'late') computedStatus = 'Late';
+      else if (attendance.status === 'half_day') computedStatus = 'Half Day';
+      else if (attendance.status === 'absent') computedStatus = 'Absent';
+      else computedStatus = 'Present'; // default fallback for ongoing
+    }
+
+    const formatHours = (decimalHours) => {
+      if (!decimalHours) return '0h 0m';
+      const hours = Math.floor(decimalHours);
+      const minutes = Math.round((decimalHours % 1) * 60);
+      return `${hours}h ${minutes}m`;
+    };
+
+    return {
+      id: attendance ? attendance.id : `empty-${user.id}`,
+      userId: user.id,
+      employeeId: user.employeeCode || `EMP-${user.id.substring(0, 4).toUpperCase()}`,
+      employeeName: `${user.firstName} ${user.lastName}`,
+      department: user.department || 'N/A',
+      designation: user.designation || 'N/A',
+      status: computedStatus,
+      punchIn: attendance && attendance.clockIn ? formatTime12h(attendance.clockIn) : '--:--',
+      punchOut: attendance && attendance.clockOut ? formatTime12h(attendance.clockOut) : '--:--',
+      totalHours: attendance ? formatHours(attendance.totalHours) : '0h 0m',
+      raw: attendance
+    };
+  });
+
   return {
     date: targetDate,
-    records: rows,
+    records: formattedRecords,
     meta: {
       totalRecords: count,
       currentPage: page,
       totalPages: Math.ceil(count / limit),
       limit
     }
+  };
+};
+
+/**
+ * 7c. Admin: Get Monthly/Custom Grid for ALL Staff
+ */
+const getAdminMonthlyAttendance = async (query = {}) => {
+  let startDateStr, endDateStr;
+
+  if (query.startDate && query.endDate) {
+    startDateStr = query.startDate;
+    endDateStr = query.endDate;
+  } else {
+    const currentDate = new Date();
+    const year = parseInt(query.year, 10) || currentDate.getFullYear();
+    const month = parseInt(query.month, 10) || currentDate.getMonth() + 1;
+    startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  }
+
+  const startDate = new Date(startDateStr);
+  const endDate = new Date(endDateStr);
+  
+  // Generate array of dates
+  const datesArray = [];
+  let curr = new Date(startDate);
+  while (curr <= endDate) {
+    datesArray.push(curr.toISOString().split('T')[0]);
+    curr.setDate(curr.getDate() + 1);
+  }
+
+  const userWhere = { role: { [Op.ne]: 'ADMIN' } };
+  if (query.employeeId) userWhere.id = query.employeeId;
+  if (query.departmentId) userWhere.departmentId = query.departmentId;
+
+  const users = await User.findAll({
+    where: userWhere,
+    attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'department'],
+    order: [['firstName', 'ASC']]
+  });
+
+  const attendances = await Attendance.findAll({
+    where: {
+      date: { [Op.between]: [startDateStr, endDateStr] }
+    },
+    attributes: ['userId', 'date', 'status', 'totalHours', 'clockIn', 'clockOut']
+  });
+
+  const attendanceByUser = {};
+  attendances.forEach(att => {
+    if (!attendanceByUser[att.userId]) attendanceByUser[att.userId] = {};
+    attendanceByUser[att.userId][att.date] = att;
+  });
+
+  const grid = users.map(user => {
+    const userAtt = attendanceByUser[user.id] || {};
+    let presentDays = 0;
+    let lateDays = 0;
+    let absentDays = 0;
+    let totalWorkingHours = 0;
+
+    const days = datesArray.map(dateStr => {
+      const record = userAtt[dateStr];
+      const dObj = new Date(dateStr);
+      const isWeekend = dObj.getDay() === 0;
+      
+      let status = 'A';
+      let rawStatus = 'absent';
+      let hours = 0;
+      let punchIn = null;
+      let punchOut = null;
+
+      if (record) {
+        if (record.status === 'present') { status = 'P'; presentDays++; rawStatus = 'present'; }
+        else if (record.status === 'late') { status = 'L'; lateDays++; presentDays++; rawStatus = 'late'; }
+        else if (record.status === 'half_day') { status = 'H'; presentDays += 0.5; rawStatus = 'half_day'; }
+        
+        hours = record.totalHours || 0;
+        totalWorkingHours += hours;
+        
+        punchIn = record.clockIn ? formatTime12h(record.clockIn) : null;
+        punchOut = record.clockOut ? formatTime12h(record.clockOut) : null;
+      } else {
+        if (isWeekend) {
+          status = 'W';
+          rawStatus = 'weekend';
+        } else {
+          const todayStr = new Date().toISOString().split('T')[0];
+          if (dateStr <= todayStr) absentDays++;
+          else { status = '-'; rawStatus = 'future'; }
+        }
+      }
+
+      return {
+        date: dateStr,
+        day: dObj.getDate(),
+        status,
+        rawStatus,
+        hours: parseFloat(hours.toFixed(2)),
+        punchIn,
+        punchOut
+      };
+    });
+
+    const formatHours = (decimalHours) => {
+      const h = Math.floor(decimalHours);
+      const m = Math.round((decimalHours % 1) * 60);
+      return `${h}h ${m}m`;
+    };
+
+    return {
+      userId: user.id,
+      employeeId: user.employeeCode || `EMP-${user.id.substring(0,4).toUpperCase()}`,
+      employeeName: `${user.firstName} ${user.lastName}`,
+      department: user.department || 'N/A',
+      summary: {
+        present: presentDays,
+        absent: absentDays,
+        late: lateDays,
+        totalHoursStr: formatHours(totalWorkingHours)
+      },
+      days
+    };
+  });
+
+  return {
+    startDate: startDateStr,
+    endDate: endDateStr,
+    dates: datesArray.map(d => ({ dateStr: d, day: new Date(d).getDate() })),
+    records: grid
+  };
+};
+
+/**
+ * 7d. Admin: Get Details All (Flat List for Date Range)
+ */
+const getAdminDetailsAll = async (query = {}) => {
+  const currentDate = new Date();
+  const startDateStr = query.startDate || `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-01`;
+  const endDateStr = query.endDate || currentDate.toISOString().split('T')[0];
+
+  const userWhere = { role: { [Op.ne]: 'ADMIN' } };
+  if (query.employeeId) userWhere.id = query.employeeId;
+  
+  const { rows, count } = await User.findAndCountAll({
+    where: userWhere,
+    attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'department'],
+    include: [
+      {
+        model: Attendance,
+        as: 'attendances',
+        where: { date: { [Op.between]: [startDateStr, endDateStr] } },
+        required: true, // Only fetch those who have an attendance record
+      }
+    ],
+    order: [['firstName', 'ASC'], [{ model: Attendance, as: 'attendances' }, 'date', 'ASC']]
+  });
+
+  // Flatten the array
+  const flatRecords = [];
+  rows.forEach(user => {
+    user.attendances.forEach(att => {
+      const bMins = att.totalBreakMinutes || 0;
+      const bH = Math.floor(bMins / 60);
+      const bM = bMins % 60;
+      const breakStr = bMins > 0 ? `${bH > 0 ? bH + 'h ' : ''}${bM}m` : '0m';
+
+      flatRecords.push({
+        id: att.id,
+        employeeId: user.employeeCode || `EMP-${user.id.substring(0,4).toUpperCase()}`,
+        employeeName: `${user.firstName} ${user.lastName}`,
+        department: user.department || 'N/A',
+        date: att.date,
+        status: att.status,
+        punchIn: att.clockIn ? formatTime12h(att.clockIn) : '--:--',
+        punchOut: att.clockOut ? formatTime12h(att.clockOut) : '--:--',
+        totalHours: att.totalHours ? `${Math.floor(att.totalHours)}h ${Math.round((att.totalHours%1)*60)}m` : '0h 0m',
+        breakTaken: breakStr
+      });
+    });
+  });
+
+  return {
+    startDate: startDateStr,
+    endDate: endDateStr,
+    records: flatRecords
   };
 };
 
@@ -877,6 +1174,8 @@ module.exports = {
   punchOut,
   getMyAttendanceHistory,
   getAdminDailyAttendance,
+  getAdminMonthlyAttendance,
+  getAdminDetailsAll,
   regularizeAttendance,
   createAttendanceCorrection,
   getMyAttendanceCorrections,

@@ -68,6 +68,28 @@ router.get(
   attendanceController.getAdminDaily
 );
 
+// Get monthly attendance history for a specific staff member
+router.get(
+  '/admin/staff/:id/history',
+  authorize(ROLES.ADMIN, ROLES.HR, ROLES.MANAGER),
+  validate(attendanceHistoryQuerySchema, 'query'),
+  attendanceController.getAdminStaffHistory
+);
+
+// Get full monthly attendance grid for ALL staff
+router.get(
+  '/admin/monthly',
+  authorize(ROLES.ADMIN, ROLES.HR, ROLES.MANAGER),
+  attendanceController.getAdminMonthlyGrid
+);
+
+// Get detailed flat list for ALL staff in a date range
+router.get(
+  '/admin/details-all',
+  authorize(ROLES.ADMIN, ROLES.HR, ROLES.MANAGER),
+  attendanceController.getAdminDetailsAllGrid
+);
+
 // Regularize attendance record for an employee
 router.put(
   '/admin/regularize/:id',

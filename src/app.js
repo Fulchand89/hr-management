@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 
 const env = require('./config/env');
 const routes = require('./routes');
+const { setupSwagger } = require('./docs/swagger');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
 const { notFoundHandler, errorHandler } = require('./middleware/error.middleware');
 
@@ -16,6 +17,7 @@ const app = express();
 // Security HTTP headers
 app.use(
   helmet({
+    contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
   })
 );
@@ -70,7 +72,9 @@ app.get('/', (req, res) => {
   res.json({
     name: env.APP_NAME,
     version: '1.0.0',
-    documentation: '/api/v1/health',
+    documentation: '/api/docs',
+    swaggerJson: '/api/docs.json',
+    health: '/api/v1/health',
     endpoints: {
       auth: '/api/v1/auth',
       users: '/api/v1/users',
@@ -85,6 +89,9 @@ app.get('/', (req, res) => {
     }
   });
 });
+
+// Setup Swagger API Documentation UI and raw JSON endpoint
+setupSwagger(app);
 
 // Mount V1 API routes
 app.use('/api/v1', routes);

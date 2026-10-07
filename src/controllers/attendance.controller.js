@@ -108,6 +108,56 @@ const getAdminDaily = async (req, res, next) => {
 };
 
 /**
+ * 7b. GET /api/v1/attendance/admin/staff/:id/history - Admin view of a specific staff's monthly attendance
+ */
+const getAdminStaffHistory = async (req, res, next) => {
+  try {
+    const history = await attendanceService.getMyAttendanceHistory(req.params.id, req.query);
+    return ApiResponse.success(res, {
+      message: 'Staff attendance history retrieved successfully',
+      data: history
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 7c. GET /api/v1/attendance/admin/monthly - Admin view of monthly grid for all staff
+ */
+const getAdminMonthlyGrid = async (req, res, next) => {
+  try {
+    const grid = await attendanceService.getAdminMonthlyAttendance(req.query);
+    return ApiResponse.success(res, {
+      message: 'Monthly staff attendance grid retrieved successfully',
+      data: grid
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 7d. GET /api/v1/attendance/admin/details-all - Admin view of flat list for all staff in a date range
+ */
+const getAdminDetailsAllGrid = async (req, res, next) => {
+  try {
+    const data = await attendanceService.getAdminDetailsAll(req.query);
+    return ApiResponse.success(res, {
+      message: 'Detailed staff attendance retrieved successfully',
+      data: data.records,
+      meta: {
+        startDate: data.startDate,
+        endDate: data.endDate,
+        totalRecords: data.records ? data.records.length : 0
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * 8. PUT /api/v1/attendance/admin/regularize/:id - Regularize attendance record
  */
 const regularize = async (req, res, next) => {
@@ -207,6 +257,9 @@ module.exports = {
   punchOut,
   getMyHistory,
   getAdminDaily,
+  getAdminStaffHistory,
+  getAdminMonthlyGrid,
+  getAdminDetailsAllGrid,
   regularize,
   createCorrection,
   getMyCorrections,

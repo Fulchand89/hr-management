@@ -1,0 +1,865 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "HR Management System - Mobile & Web REST API",
+    "version": "1.0.0",
+    "description": "Comprehensive RESTful API documentation for the HR Management System. Designed for Mobile App (iOS/Android/Flutter/React Native) and Frontend developers.\n\n### Authentication\nMost endpoints require a JWT Bearer token in the `Authorization` header:\n`Authorization: Bearer <your_jwt_access_token>`\n\n### Base URLs\n- **Development:** `http://localhost:5000/api/v1`\n- **Production:** `https://your-domain.com/api/v1`",
+    "contact": {
+      "name": "HRMS API Support",
+      "email": "support@hrmanagement.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "http://127.0.0.1:5000/api/v1",
+      "description": "Local Loopback Server"
+    }
+  ],
+  "tags": [
+    { "name": "Authentication", "description": "User login, registration, token refresh, password reset, and profile" },
+    { "name": "Attendance", "description": "Punch in, punch out, break tracking, monthly history, and attendance regularizations" },
+    { "name": "Leaves", "description": "Leave applications, quotas, approval workflow, and company holidays" },
+    { "name": "Employees", "description": "Employee 360° profile, onboarding, status changes, and directory" },
+    { "name": "Departments", "description": "Department management, budget, and member listings" },
+    { "name": "Designations", "description": "Job title and hierarchy management" },
+    { "name": "Roles & Permissions", "description": "Role-Based Access Control (RBAC) management" },
+    { "name": "Notifications", "description": "Real-time alerts, announcements, and unread counts" },
+    { "name": "Dashboard", "description": "KPI summaries and analytics for Employees and HR" },
+    { "name": "Reports", "description": "Exportable attendance, leave, and workforce reports" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token in the format: `Bearer <token>`"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string", "example": "Invalid credentials or validation error" },
+          "errors": {
+            "type": "array",
+            "items": { "type": "object" },
+            "example": [{ "field": "email", "message": "Email is required" }]
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "john.doe@company.com" },
+          "password": { "type": "string", "format": "password", "example": "UserPassword@123" }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string", "example": "Login successful" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "accessToken": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6..." },
+              "refreshToken": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6..." },
+              "user": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "example": "c71a35df-4d62-4f36-9ea7-0d5b7801b91f" },
+                  "firstName": { "type": "string", "example": "John" },
+                  "lastName": { "type": "string", "example": "Doe" },
+                  "email": { "type": "string", "example": "john.doe@company.com" },
+                  "role": { "type": "string", "example": "employee" },
+                  "employeeCode": { "type": "string", "example": "EMP-1001" },
+                  "avatar": { "type": "string", "nullable": true, "example": null }
+                }
+              }
+            }
+          }
+        }
+      },
+      "PunchInRequest": {
+        "type": "object",
+        "properties": {
+          "shiftId": { "type": "string", "nullable": true, "example": null },
+          "remarks": { "type": "string", "nullable": true, "example": "Mobile app check-in" }
+        }
+      },
+      "BreakStartRequest": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string", "example": "Lunch / Tea Break" }
+        }
+      },
+      "PunchOutRequest": {
+        "type": "object",
+        "properties": {
+          "remarks": { "type": "string", "nullable": true, "example": "Shift finished" }
+        }
+      },
+      "AttendanceTodayResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string", "example": "2026-10-07" },
+              "status": { "type": "string", "enum": ["NOT_PUNCHED_IN", "WORKING", "ON_BREAK", "PUNCHED_OUT"], "example": "WORKING" },
+              "clockInFormatted": { "type": "string", "example": "09:05 AM" },
+              "clockOutFormatted": { "type": "string", "example": "--:--" },
+              "grossWorkingHours": { "type": "string", "example": "04:30:15" },
+              "totalWorkingHours": { "type": "string", "example": "03:55:15" },
+              "breakDuration": { "type": "string", "example": "00:35:00" },
+              "workingSeconds": { "type": "integer", "example": 14115 },
+              "breakSeconds": { "type": "integer", "example": 2100 },
+              "progress": { "type": "integer", "example": 48 },
+              "timeline": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": { "type": "string", "example": "Punch In" },
+                    "time": { "type": "string", "example": "09:05 AM" },
+                    "status": { "type": "string", "enum": ["completed", "break", "punched_out", "pending"], "example": "completed" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ApplyLeaveRequest": {
+        "type": "object",
+        "required": ["leaveTypeId", "startDate", "endDate", "totalDays", "reason"],
+        "properties": {
+          "leaveTypeId": { "type": "string", "example": "5a41bfd7-01ac-469f-9efc-f1d24c08bb2c" },
+          "startDate": { "type": "string", "format": "date", "example": "2026-10-15" },
+          "endDate": { "type": "string", "format": "date", "example": "2026-10-16" },
+          "totalDays": { "type": "number", "example": 2.0 },
+          "isHalfDay": { "type": "boolean", "default": false, "example": false },
+          "halfDayType": { "type": "string", "enum": ["first_half", "second_half"], "nullable": true, "example": null },
+          "reason": { "type": "string", "example": "Family function in hometown" }
+        }
+      },
+      "LeaveBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "balances": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "allocated": { "type": "number", "example": 12 },
+                    "used": { "type": "number", "example": 2 },
+                    "remaining": { "type": "number", "example": 10 },
+                    "year": { "type": "integer", "example": 2026 },
+                    "leaveType": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string", "example": "Casual Leave" },
+                        "code": { "type": "string", "example": "CL" },
+                        "isPaid": { "type": "boolean", "example": true }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "CreateCorrectionRequest": {
+        "type": "object",
+        "required": ["date", "proposedIn", "proposedOut", "reason"],
+        "properties": {
+          "date": { "type": "string", "format": "date", "example": "2026-10-06" },
+          "proposedIn": { "type": "string", "example": "09:00" },
+          "proposedOut": { "type": "string", "example": "18:00" },
+          "reason": { "type": "string", "example": "Biometric scanner was offline during morning punch" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User Login",
+        "description": "Authenticates user via email and password, returning JWT access token and user object.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginResponse" } } }
+          },
+          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Invalid credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Refresh Access Token",
+        "description": "Generates a fresh access token using a valid refresh token.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refreshToken"],
+                "properties": { "refreshToken": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Token refreshed successfully" },
+          "401": { "description": "Invalid or expired refresh token" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get Current Profile",
+        "description": "Returns profile details of the authenticated user.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Profile data retrieved" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["Authentication"],
+        "summary": "Update Current Profile",
+        "description": "Updates personal information (phone, address, emergency contact).",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": { "type": "string", "example": "+91 9876543210" },
+                  "address": { "type": "string", "example": "123 Business Bay, Mumbai" },
+                  "emergencyContact": { "type": "string", "example": "+91 9123456780" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated successfully" }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Change Password",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["currentPassword", "newPassword"],
+                "properties": {
+                  "currentPassword": { "type": "string" },
+                  "newPassword": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Password changed successfully" },
+          "400": { "description": "Current password incorrect or validation failure" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User Logout",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Logged out successfully" }
+        }
+      }
+    },
+    "/attendance/today": {
+      "get": {
+        "tags": ["Attendance"],
+        "summary": "Get Today's Live Attendance Status",
+        "description": "Returns real-time status (NOT_PUNCHED_IN, WORKING, ON_BREAK, PUNCHED_OUT), gross hours, net effective working hours, break duration, and milestone timeline.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Today's metrics retrieved",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AttendanceTodayResponse" } } }
+          }
+        }
+      }
+    },
+    "/attendance/punch-in": {
+      "post": {
+        "tags": ["Attendance"],
+        "summary": "Punch In for Today",
+        "description": "Records clock-in timestamp for the authenticated employee.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PunchInRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Punch-in recorded successfully" },
+          "400": { "description": "Already clocked in today" }
+        }
+      }
+    },
+    "/attendance/break-start": {
+      "post": {
+        "tags": ["Attendance"],
+        "summary": "Start Break",
+        "description": "Pauses working stopwatch and begins break duration counter.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BreakStartRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Break session started" },
+          "400": { "description": "Already on break or not clocked in" }
+        }
+      }
+    },
+    "/attendance/break-end": {
+      "post": {
+        "tags": ["Attendance"],
+        "summary": "End Break (Resume Working)",
+        "description": "Concludes break duration and resumes live working stopwatch.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Break ended and work resumed" },
+          "400": { "description": "No active break found" }
+        }
+      }
+    },
+    "/attendance/punch-out": {
+      "post": {
+        "tags": ["Attendance"],
+        "summary": "Punch Out",
+        "description": "Concludes daily attendance, calculates total working hours, break minutes, and sets final status.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PunchOutRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Punch-out recorded successfully" },
+          "400": { "description": "Not clocked in today or already punched out" }
+        }
+      }
+    },
+    "/attendance/my-history": {
+      "get": {
+        "tags": ["Attendance"],
+        "summary": "Monthly Attendance History",
+        "description": "Returns full monthly attendance log array and summary metrics (Present, Absent, Late, Half-day counts) for calendar grid.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer", "example": 2026 } },
+          { "name": "month", "in": "query", "schema": { "type": "integer", "example": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Monthly logs retrieved" }
+        }
+      }
+    },
+    "/attendance/corrections": {
+      "post": {
+        "tags": ["Attendance"],
+        "summary": "Submit Attendance Correction Request",
+        "description": "Allows an employee to request manual clock-in/out adjustment for a specific date.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateCorrectionRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Correction submitted for HR approval" }
+        }
+      }
+    },
+    "/attendance/corrections/mine": {
+      "get": {
+        "tags": ["Attendance"],
+        "summary": "List My Attendance Correction Requests",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of correction requests" }
+        }
+      }
+    },
+    "/leaves/my-balances": {
+      "get": {
+        "tags": ["Leaves"],
+        "summary": "Get My Leave Quotas & Balances",
+        "description": "Returns allocated, used, and remaining days for all leave types (CL, SL, PL, ML).",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Leave balances returned",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeaveBalanceResponse" } } }
+          }
+        }
+      }
+    },
+    "/leaves/my-requests": {
+      "get": {
+        "tags": ["Leaves"],
+        "summary": "Get My Leave Applications",
+        "description": "Returns paginated list of leave requests submitted by the logged-in user with status filters.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["all", "pending", "approved", "rejected", "cancelled"] } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "List of user's leave requests" }
+        }
+      }
+    },
+    "/leaves/apply": {
+      "post": {
+        "tags": ["Leaves"],
+        "summary": "Apply for Leave",
+        "description": "Submits a new leave request. Validates date ranges and checks remaining quota automatically.",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApplyLeaveRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Leave applied successfully" },
+          "400": { "description": "Insufficient balance or invalid dates" }
+        }
+      }
+    },
+    "/leaves/cancel/{id}": {
+      "put": {
+        "tags": ["Leaves"],
+        "summary": "Cancel Pending Leave",
+        "description": "Cancels a pending leave request and restores balance if needed.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Leave request cancelled" },
+          "400": { "description": "Already processed or cannot cancel" }
+        }
+      }
+    },
+    "/leaves/admin/requests": {
+      "get": {
+        "tags": ["Leaves"],
+        "summary": "List All Staff Leave Requests (HR / Admin)",
+        "description": "Returns company-wide leave requests queue for approval/rejection.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["all", "pending", "approved", "rejected"] } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Staff leave applications list" }
+        }
+      }
+    },
+    "/leaves/admin/action/{id}": {
+      "patch": {
+        "tags": ["Leaves"],
+        "summary": "Approve or Reject Leave Request (HR / Admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["approved", "rejected"], "example": "approved" },
+                  "rejectionReason": { "type": "string", "nullable": true, "example": "Coverage arranged" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Leave status updated" }
+        }
+      }
+    },
+    "/leaves/types": {
+      "get": {
+        "tags": ["Leaves"],
+        "summary": "List All Leave Types",
+        "description": "Returns list of active leave categories (CL, SL, PL, ML) and configurations.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of leave categories" }
+        }
+      }
+    },
+    "/leaves/holidays": {
+      "get": {
+        "tags": ["Leaves"],
+        "summary": "List Company Holidays",
+        "description": "Returns list of public and company holidays for the specified year.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer", "example": 2026 } }
+        ],
+        "responses": {
+          "200": { "description": "Holiday list returned" }
+        }
+      }
+    },
+    "/employees": {
+      "get": {
+        "tags": ["Employees"],
+        "summary": "List All Employees (Directory)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "departmentId", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["active", "probation", "suspended", "terminated"] } }
+        ],
+        "responses": {
+          "200": { "description": "Employees directory list" }
+        }
+      },
+      "post": {
+        "tags": ["Employees"],
+        "summary": "Register New Employee (HR / Admin)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["firstName", "lastName", "email", "password", "departmentId", "designationId"],
+                "properties": {
+                  "firstName": { "type": "string", "example": "Sarah" },
+                  "lastName": { "type": "string", "example": "Connor" },
+                  "email": { "type": "string", "format": "email", "example": "sarah.connor@company.com" },
+                  "password": { "type": "string", "example": "UserPassword@123" },
+                  "phone": { "type": "string", "example": "+91 9876543210" },
+                  "departmentId": { "type": "string" },
+                  "designationId": { "type": "string" },
+                  "role": { "type": "string", "enum": ["employee", "hr", "manager"], "default": "employee" },
+                  "joiningDate": { "type": "string", "format": "date", "example": "2026-10-01" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Employee created successfully" }
+        }
+      }
+    },
+    "/employees/{id}": {
+      "get": {
+        "tags": ["Employees"],
+        "summary": "Get Complete Employee Profile 360°",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Employee profile details" }
+        }
+      },
+      "put": {
+        "tags": ["Employees"],
+        "summary": "Update Employee Profile",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object" } } }
+        },
+        "responses": {
+          "200": { "description": "Employee updated" }
+        }
+      }
+    },
+    "/employees/{id}/status": {
+      "get": {
+        "tags": ["Employees"],
+        "summary": "Get Real-time Status of Employee",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Real-time punch & leave status returned" }
+        }
+      },
+      "patch": {
+        "tags": ["Employees"],
+        "summary": "Change Employment Status (Active, Probation, Suspended, Terminated)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["active", "probation", "suspended", "terminated"] },
+                  "statusReason": { "type": "string", "example": "Probation period successfully completed" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Status updated successfully" }
+        }
+      }
+    },
+    "/departments": {
+      "get": {
+        "tags": ["Departments"],
+        "summary": "List All Departments",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of company departments" }
+        }
+      },
+      "post": {
+        "tags": ["Departments"],
+        "summary": "Create Department",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "example": "Engineering" },
+                  "code": { "type": "string", "example": "ENG" },
+                  "description": { "type": "string", "example": "Software and infrastructure teams" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Department created" }
+        }
+      }
+    },
+    "/departments/{id}": {
+      "get": {
+        "tags": ["Departments"],
+        "summary": "Get Department Details & Members",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Department details and member roster" }
+        }
+      }
+    },
+    "/designations": {
+      "get": {
+        "tags": ["Designations"],
+        "summary": "List All Designations",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of job designations" }
+        }
+      },
+      "post": {
+        "tags": ["Designations"],
+        "summary": "Create Designation",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "example": "Senior Software Engineer" },
+                  "code": { "type": "string", "example": "SSE" },
+                  "departmentId": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Designation created" }
+        }
+      }
+    },
+    "/notifications/my": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get My Notifications",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 15 } }
+        ],
+        "responses": {
+          "200": { "description": "List of notifications" }
+        }
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get Unread Notification Count",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Unread count returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "type": "object", "properties": { "unreadCount": { "type": "integer", "example": 3 } } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/mark-all-read": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Mark All Notifications as Read",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All notifications marked read" }
+        }
+      }
+    },
+    "/dashboard/employee": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Get Employee Dashboard Summary",
+        "description": "Returns attendance KPI metrics, punctuality score, days present, available leave quota, and upcoming holidays.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Dashboard KPI payload" }
+        }
+      }
+    },
+    "/dashboard/hr": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Get HR / Executive Dashboard Summary",
+        "description": "Returns company-wide headcount, present/absent ratios, pending leave approvals count, and department breakdown.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Executive HR dashboard payload" }
+        }
+      }
+    },
+    "/reports/attendance": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Attendance Analytics Report",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "startDate", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "endDate", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "departmentId", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Attendance report metrics" }
+        }
+      }
+    },
+    "/reports/leave": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Leave Consumption Report",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "year", "in": "query", "schema": { "type": "integer", "example": 2026 } }
+        ],
+        "responses": {
+          "200": { "description": "Leave utilization report" }
+        }
+      }
+    }
+  }
+}
