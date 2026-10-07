@@ -157,7 +157,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     try {
       await logout();
     } finally {
-      navigate('/employee/signin');
+      navigate('/signin');
     }
   };
 
@@ -177,9 +177,9 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     else navigate(`/employee/${tabId}`);
   };
 
-  // If on signin route, render standalone signin
-  if (location.pathname === '/employee/signin' || location.pathname === '/signin') {
-    return <SignInView onSignIn={() => navigate('/employee/dashboard')} />;
+  // If on legacy employee signin route, redirect to unified signin
+  if (location.pathname === '/employee/signin') {
+    return <Navigate to="/signin" replace />;
   }
 
   return (

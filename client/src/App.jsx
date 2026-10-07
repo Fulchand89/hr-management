@@ -37,7 +37,88 @@ import {
   initialRoles,
 } from './services/mockData';
 
-import { CheckCircle2, AlertCircle, LayoutDashboard } from 'lucide-react';
+import { CheckCircle2, AlertCircle, LayoutDashboard, LogOut } from 'lucide-react';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
+
+// Dynamic Security Top Bar (Shows switcher and role badge only to authorized users)
+function PortalTopBar({ portalTitle }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  if (!user) return null;
+
+  const isAdmin = user.role === 'admin';
+  const isHR = user.role === 'hr' || isAdmin;
+
+  return (
+    <div className="bg-slate-900 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs border-b border-slate-800">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-slate-300">
+          WorkPulse HRMS &bull; {portalTitle}
+        </span>
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-800 border border-slate-700 text-indigo-300">
+          Role: {user.role}
+        </span>
+        <span className="text-slate-400 text-[11px] hidden md:inline">
+          ({user.email || user.firstName})
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {/* Only HR & Admin can see HR Portal button */}
+        {isHR && !location.pathname.startsWith('/hr') && (
+          <button
+            type="button"
+            onClick={() => navigate('/hr/dashboard')}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-800 hover:bg-rose-900 text-white font-semibold transition-colors cursor-pointer"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            HR Portal &rarr;
+          </button>
+        )}
+
+        {/* ONLY Super Admin can see Switch to Admin Portal button */}
+        {isAdmin && !location.pathname.startsWith('/admin') && (
+          <button
+            type="button"
+            onClick={() => navigate('/admin/dashboard')}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors cursor-pointer"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            Admin Portal &rarr;
+          </button>
+        )}
+
+        {/* Switch to Employee Portal (for testing / self-service) */}
+        {!location.pathname.startsWith('/employee') && (
+          <button
+            type="button"
+            onClick={() => navigate('/employee/dashboard')}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white font-semibold transition-colors cursor-pointer"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            Employee Portal &rarr;
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={async () => {
+            await logout();
+            navigate('/signin');
+          }}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-300 hover:text-rose-200 font-semibold transition-colors cursor-pointer ml-1"
+          title="Sign Out"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function App() {
   const navigate = useNavigate();
@@ -149,7 +230,7 @@ export function App() {
         <Route path="/" element={<Navigate to="/employee/dashboard" replace />} />
 
         {/* Standalone Authentication */}
-        <Route path="/signin" element={<SignInView onSignIn={() => navigate('/employee/dashboard')} />} />
+        <Route path="/signin" element={<SignInView />} />
 
         {/* ========================================== */}
         {/* EMPLOYEE PORTAL DEDICATED ROUTES          */}
@@ -157,34 +238,12 @@ export function App() {
         <Route
           path="/employee/*"
           element={
-            <div>
-              {/* Top Bar with Switcher */}
-              <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between text-xs border-b border-slate-800">
-                <span className="font-semibold text-slate-300">
-                  WorkPulse HRMS &bull; Employee Self-Service Portal
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/hr/dashboard')}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-800 hover:bg-rose-900 text-white font-semibold transition-colors cursor-pointer"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    HR Portal &rarr;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/admin/dashboard')}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors cursor-pointer"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    Switch to Admin Portal &rarr;
-                  </button>
-                </div>
+            <ProtectedRoute allowedRoles={['admin', 'hr', 'manager', 'employee']}>
+              <div>
+                <PortalTopBar portalTitle="Employee Self-Service Portal" />
+                <EmployeeApp onSwitchToAdmin={() => navigate('/admin/dashboard')} />
               </div>
-
-              <EmployeeApp onSwitchToAdmin={() => navigate('/admin/dashboard')} />
-            </div>
+            </ProtectedRoute>
           }
         />
 
@@ -194,33 +253,10 @@ export function App() {
         <Route
           path="/admin/*"
           element={
-            <div>
-              {/* Top Bar with Switcher */}
-              <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between text-xs border-b border-slate-800">
-                <span className="font-semibold text-slate-300">
-                  WorkPulse HRMS &bull; Enterprise Console
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/hr/dashboard')}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-800 hover:bg-rose-900 text-white font-semibold transition-colors cursor-pointer"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    HR Portal &rarr;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/employee/dashboard')}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white font-semibold transition-colors cursor-pointer"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
-                    Switch to Employee Portal &rarr;
-                  </button>
-                </div>
-              </div>
-
-              <AdminLayout
+            <ProtectedRoute allowedRoles={['admin']}>
+              <div>
+                <PortalTopBar portalTitle="Enterprise Console (Admin)" />
+                <AdminLayout
                 employeeCount={employees.length}
                 departmentCount={departments.length}
                 designationCount={designations.length}
@@ -378,14 +414,22 @@ export function App() {
                 />
               </AdminLayout>
             </div>
-          }
-        />
+          </ProtectedRoute>
+        }
+      />
 
-        {/* ========================================== */}
-        {/* HR PORTAL DEDICATED ROUTES                 */}
-        {/* ========================================== */}
-        <Route path="/hr/signin" element={<HRSignInView onSignIn={() => navigate('/hr/dashboard')} />} />
-        <Route path="/hr/*" element={<HRApp />} />
+      {/* ========================================== */}
+      {/* HR PORTAL DEDICATED ROUTES                 */}
+      {/* ========================================== */}
+      <Route path="/hr/signin" element={<Navigate to="/signin" replace />} />
+      <Route
+        path="/hr/*"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'hr']}>
+            <HRApp />
+          </ProtectedRoute>
+        }
+      />
 
         {/* Global Fallback */}
         <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />

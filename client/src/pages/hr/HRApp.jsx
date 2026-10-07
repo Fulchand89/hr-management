@@ -52,22 +52,7 @@ export const HRApp = () => {
   const [timeline, setTimeline] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // When inside HR portal, ensure user session has HR or Admin privileges
-  useEffect(() => {
-    if (isLoading) return;
-    if (location.pathname === '/hr/signin') return;
 
-    if (!token || !user || user.role === 'employee') {
-      const autoSwitchToHR = async () => {
-        try {
-          if (login) await login('hr@hrmanagement.com', 'HrPassword@123');
-        } catch {
-          navigate('/hr/signin');
-        }
-      };
-      autoSwitchToHR();
-    }
-  }, [user, token, isLoading, location.pathname, login, navigate]);
 
   // Load today's attendance from API on mount
   const loadTodayAttendance = useCallback(async () => {
@@ -183,13 +168,13 @@ export const HRApp = () => {
     try {
       if (logout) await logout();
     } finally {
-      navigate('/hr/signin');
+      navigate('/signin');
     }
   };
 
-  // If on signin route, render standalone HR signin
+  // If on legacy hr/signin route, redirect to unified signin
   if (location.pathname === '/hr/signin') {
-    return <HRSignInView onSignIn={() => navigate('/hr/dashboard')} />;
+    return <Navigate to="/signin" replace />;
   }
 
   return (
