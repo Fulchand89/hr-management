@@ -1,27 +1,49 @@
 import React, { useState } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+
+// Employee Portal
 import EmployeeApp from './pages/employee/EmployeeApp';
+import SignInView from './pages/employee/SignInView';
+
+// HR Portal
+import HRApp from './pages/hr/HRApp';
+import HRSignInView from './pages/hr/HRSignInView';
+
+// Admin Portal Pages
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import EmployeesPage from './pages/admin/EmployeesPage';
 import OrganizationPage from './pages/admin/OrganizationPage';
 import DesignationsPage from './pages/admin/DesignationsPage';
 import RolesPermissionsPage from './pages/admin/RolesPermissionsPage';
+import AttendancePage from './pages/admin/AttendancePage';
+import LeaveManagementPage from './pages/admin/LeaveManagementPage';
+import PayrollPage from './pages/admin/PayrollPage';
+import CompanyAssetsPage from './pages/admin/CompanyAssetsPage';
+import DocumentsPage from './pages/admin/DocumentsPage';
+import AnnouncementsPage from './pages/admin/AnnouncementsPage';
+import ActivityLogsPage from './pages/admin/ActivityLogsPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+
+// Admin Modals
 import EmployeeFormModal from './components/admin/EmployeeFormModal';
 import EmployeeProfileModal from './components/admin/EmployeeProfileModal';
+
+// Initial Mock Data
 import {
   initialEmployees,
   initialDepartments,
   initialDesignations,
   initialRoles,
 } from './services/mockData';
-import { CheckCircle2, AlertCircle, Smartphone, LayoutDashboard } from 'lucide-react';
+
+import { CheckCircle2, AlertCircle, LayoutDashboard } from 'lucide-react';
 
 export function App() {
-  // App Mode: 'employee' (Default for the user images) or 'admin'
-  const [appMode, setAppMode] = useState('employee');
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Admin State
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Admin Data State
   const [employees, setEmployees] = useState(initialEmployees);
   const [departments, setDepartments] = useState(initialDepartments);
   const [designations, setDesignations] = useState(initialDesignations);
@@ -95,163 +117,279 @@ export function App() {
   // Fast Navigation Handlers from cards to filtered employee list
   const handleViewDepartmentEmployees = (deptName) => {
     setSearchQuery(deptName);
-    setActiveTab('employees');
+    navigate('/admin/employees');
   };
 
   const handleViewDesignationEmployees = (desigTitle) => {
     setSearchQuery(desigTitle);
-    setActiveTab('employees');
+    navigate('/admin/employees');
   };
 
   const handleViewRoleEmployees = (roleName) => {
     setSearchQuery(roleName);
-    setActiveTab('employees');
+    navigate('/admin/employees');
   };
 
-  // If in Employee App Mode, render the Employee App!
-  if (appMode === 'employee') {
-    return <EmployeeApp onSwitchToAdmin={() => setAppMode('admin')} />;
-  }
-
-  // Otherwise render Admin Portal
   return (
-    <div className="relative">
-      {/* Top Bar to switch back to Employee App */}
-      <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between text-xs border-b border-slate-800">
-        <span className="font-semibold text-slate-300">
-          WorkPulse HRMS &bull; Enterprise Console
-        </span>
-        <button
-          type="button"
-          onClick={() => setAppMode('employee')}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white font-semibold transition-colors cursor-pointer"
-        >
-          <LayoutDashboard className="w-3.5 h-3.5" />
-          Switch to Employee Portal &rarr;
-        </button>
-      </div>
+    <div className="relative min-h-screen">
+      {/* Toast Notification Banner */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white text-xs sm:text-sm font-medium animate-bounce-in border border-slate-700">
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-sky-400 shrink-0" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
 
-      <AdminLayout
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        employeeCount={employees.length}
-        departmentCount={departments.length}
-        designationCount={designations.length}
-        roleCount={roles.length}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onOpenAddEmployee={() => {
-          setEmployeeToEdit(null);
-          setIsEmployeeModalOpen(true);
-        }}
-      >
-        {/* Toast Notification Banner */}
-        {toast && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white text-xs sm:text-sm font-medium animate-bounce-in border border-slate-700">
-            {toast.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-sky-400 shrink-0" />
-            )}
-            <span>{toast.message}</span>
-          </div>
-        )}
+      <Routes>
+        {/* Root Redirect to Employee Dashboard */}
+        <Route path="/" element={<Navigate to="/employee/dashboard" replace />} />
 
-        {/* Dynamic View by Tab */}
-        {activeTab === 'dashboard' && (
-          <AdminDashboard
-            employees={employees}
-            departments={departments}
-            designations={designations}
-            roles={roles}
-            onNavigateTab={setActiveTab}
-            onOpenAddEmployee={() => {
-              setEmployeeToEdit(null);
-              setIsEmployeeModalOpen(true);
-            }}
-            onSelectEmployee={(emp) => setViewingEmployee(emp)}
-          />
-        )}
+        {/* Standalone Authentication */}
+        <Route path="/signin" element={<SignInView onSignIn={() => navigate('/employee/dashboard')} />} />
 
-        {activeTab === 'employees' && (
-          <EmployeesPage
-            employees={employees}
-            departments={departments}
-            designations={designations}
-            roles={roles}
-            onOpenAddModal={() => {
-              setEmployeeToEdit(null);
-              setIsEmployeeModalOpen(true);
-            }}
-            onEditEmployee={(emp) => {
-              setEmployeeToEdit(emp);
-              setIsEmployeeModalOpen(true);
-            }}
-            onDeleteEmployee={handleDeleteEmployee}
-            onViewEmployee={(emp) => setViewingEmployee(emp)}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-          />
-        )}
+        {/* ========================================== */}
+        {/* EMPLOYEE PORTAL DEDICATED ROUTES          */}
+        {/* ========================================== */}
+        <Route
+          path="/employee/*"
+          element={
+            <div>
+              {/* Top Bar with Switcher */}
+              <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between text-xs border-b border-slate-800">
+                <span className="font-semibold text-slate-300">
+                  WorkPulse HRMS &bull; Employee Self-Service Portal
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/hr/dashboard')}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-800 hover:bg-rose-900 text-white font-semibold transition-colors cursor-pointer"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    HR Portal &rarr;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/dashboard')}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors cursor-pointer"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    Switch to Admin Portal &rarr;
+                  </button>
+                </div>
+              </div>
 
-        {activeTab === 'departments' && (
-          <OrganizationPage
-            departments={departments}
-            employees={employees}
-            onAddDepartment={handleAddDepartment}
-            onViewDepartmentEmployees={handleViewDepartmentEmployees}
-          />
-        )}
-
-        {activeTab === 'designations' && (
-          <DesignationsPage
-            designations={designations}
-            departments={departments}
-            employees={employees}
-            onAddDesignation={handleAddDesignation}
-            onViewDesignationEmployees={handleViewDesignationEmployees}
-          />
-        )}
-
-        {activeTab === 'roles' && (
-          <RolesPermissionsPage
-            roles={roles}
-            employees={employees}
-            onAddRole={handleAddRole}
-            onViewRoleEmployees={handleViewRoleEmployees}
-          />
-        )}
-
-        {/* Add / Edit Employee Form Modal */}
-        <EmployeeFormModal
-          isOpen={isEmployeeModalOpen}
-          onClose={() => {
-            setIsEmployeeModalOpen(false);
-            setEmployeeToEdit(null);
-          }}
-          onSubmit={handleSaveEmployee}
-          employeeToEdit={employeeToEdit}
-          departments={departments}
-          designations={designations}
-          roles={roles}
+              <EmployeeApp onSwitchToAdmin={() => navigate('/admin/dashboard')} />
+            </div>
+          }
         />
 
-        {/* View Employee Profile Details Modal */}
-        <EmployeeProfileModal
-          isOpen={Boolean(viewingEmployee)}
-          onClose={() => setViewingEmployee(null)}
-          employee={viewingEmployee}
-          onEdit={(emp) => {
-            setViewingEmployee(null);
-            setEmployeeToEdit(emp);
-            setIsEmployeeModalOpen(true);
-          }}
-          onDelete={(id) => {
-            setViewingEmployee(null);
-            handleDeleteEmployee(id);
-          }}
+        {/* ========================================== */}
+        {/* ADMIN PORTAL DEDICATED ROUTES             */}
+        {/* ========================================== */}
+        <Route
+          path="/admin/*"
+          element={
+            <div>
+              {/* Top Bar with Switcher */}
+              <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between text-xs border-b border-slate-800">
+                <span className="font-semibold text-slate-300">
+                  WorkPulse HRMS &bull; Enterprise Console
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/hr/dashboard')}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-800 hover:bg-rose-900 text-white font-semibold transition-colors cursor-pointer"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    HR Portal &rarr;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/employee/dashboard')}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white font-semibold transition-colors cursor-pointer"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    Switch to Employee Portal &rarr;
+                  </button>
+                </div>
+              </div>
+
+              <AdminLayout
+                employeeCount={employees.length}
+                departmentCount={departments.length}
+                designationCount={designations.length}
+                roleCount={roles.length}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                onOpenAddEmployee={() => {
+                  setEmployeeToEdit(null);
+                  setIsEmployeeModalOpen(true);
+                }}
+              >
+                <Routes>
+                  <Route index element={<Navigate to="dashboard" replace />} />
+
+                  {/* 1. Dashboard */}
+                  <Route
+                    path="dashboard"
+                    element={
+                      <AdminDashboard
+                        employees={employees}
+                        departments={departments}
+                        designations={designations}
+                        roles={roles}
+                        onNavigateTab={(tab) => navigate(`/admin/${tab}`)}
+                        onOpenAddEmployee={() => {
+                          setEmployeeToEdit(null);
+                          setIsEmployeeModalOpen(true);
+                        }}
+                        onSelectEmployee={(emp) => setViewingEmployee(emp)}
+                      />
+                    }
+                  />
+
+                  {/* 2. Employees */}
+                  <Route
+                    path="employees"
+                    element={
+                      <EmployeesPage
+                        employees={employees}
+                        departments={departments}
+                        designations={designations}
+                        roles={roles}
+                        onOpenAddModal={() => {
+                          setEmployeeToEdit(null);
+                          setIsEmployeeModalOpen(true);
+                        }}
+                        onEditEmployee={(emp) => {
+                          setEmployeeToEdit(emp);
+                          setIsEmployeeModalOpen(true);
+                        }}
+                        onDeleteEmployee={handleDeleteEmployee}
+                        onViewEmployee={(emp) => setViewingEmployee(emp)}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                      />
+                    }
+                  />
+
+                  {/* 3. Departments */}
+                  <Route
+                    path="departments"
+                    element={
+                      <OrganizationPage
+                        departments={departments}
+                        employees={employees}
+                        onAddDepartment={handleAddDepartment}
+                        onViewDepartmentEmployees={handleViewDepartmentEmployees}
+                      />
+                    }
+                  />
+
+                  {/* 4. Designations */}
+                  <Route
+                    path="designations"
+                    element={
+                      <DesignationsPage
+                        designations={designations}
+                        departments={departments}
+                        employees={employees}
+                        onAddDesignation={handleAddDesignation}
+                        onViewDesignationEmployees={handleViewDesignationEmployees}
+                      />
+                    }
+                  />
+
+                  {/* 5. Roles & Access */}
+                  <Route
+                    path="roles"
+                    element={
+                      <RolesPermissionsPage
+                        roles={roles}
+                        employees={employees}
+                        onAddRole={handleAddRole}
+                        onViewRoleEmployees={handleViewRoleEmployees}
+                      />
+                    }
+                  />
+
+                  {/* 6. Attendance */}
+                  <Route path="attendance" element={<AttendancePage />} />
+
+                  {/* 7. Leaves */}
+                  <Route path="leaves" element={<LeaveManagementPage />} />
+
+                  {/* 8. Payroll */}
+                  <Route path="payroll" element={<PayrollPage />} />
+
+                  {/* 9. Company Assets */}
+                  <Route path="assets" element={<CompanyAssetsPage />} />
+
+                  {/* 10. Documents */}
+                  <Route path="documents" element={<DocumentsPage />} />
+
+                  {/* 11. Announcements */}
+                  <Route path="announcements" element={<AnnouncementsPage />} />
+
+                  {/* 12. Audit Logs */}
+                  <Route path="activity-logs" element={<ActivityLogsPage />} />
+
+                  {/* 13. Settings */}
+                  <Route path="settings" element={<AdminSettingsPage />} />
+
+                  {/* Catch-all admin fallback */}
+                  <Route path="*" element={<Navigate to="dashboard" replace />} />
+                </Routes>
+
+                {/* Add / Edit Employee Form Modal */}
+                <EmployeeFormModal
+                  isOpen={isEmployeeModalOpen}
+                  onClose={() => {
+                    setIsEmployeeModalOpen(false);
+                    setEmployeeToEdit(null);
+                  }}
+                  onSubmit={handleSaveEmployee}
+                  employeeToEdit={employeeToEdit}
+                  departments={departments}
+                  designations={designations}
+                  roles={roles}
+                />
+
+                {/* View Employee Profile Details Modal */}
+                <EmployeeProfileModal
+                  isOpen={Boolean(viewingEmployee)}
+                  onClose={() => setViewingEmployee(null)}
+                  employee={viewingEmployee}
+                  onEdit={(emp) => {
+                    setViewingEmployee(null);
+                    setEmployeeToEdit(emp);
+                    setIsEmployeeModalOpen(true);
+                  }}
+                  onDelete={(id) => {
+                    setViewingEmployee(null);
+                    handleDeleteEmployee(id);
+                  }}
+                />
+              </AdminLayout>
+            </div>
+          }
         />
-      </AdminLayout>
+
+        {/* ========================================== */}
+        {/* HR PORTAL DEDICATED ROUTES                 */}
+        {/* ========================================== */}
+        <Route path="/hr/signin" element={<HRSignInView onSignIn={() => navigate('/hr/dashboard')} />} />
+        <Route path="/hr/*" element={<HRApp />} />
+
+        {/* Global Fallback */}
+        <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
+      </Routes>
     </div>
   );
 }

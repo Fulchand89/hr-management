@@ -1,13 +1,41 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Sparkles, CheckCircle2, ShieldCheck, ArrowRight, User } from 'lucide-react';
+import { Mail, Lock, Sparkles, CheckCircle2, ArrowRight, User, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const SignInView = ({ onSignIn }) => {
-  const [identifier, setIdentifier] = useState('ankit.sharma@workpulse.io');
-  const [password, setPassword] = useState('••••••••');
+  const { login } = useAuth();
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSignIn();
+    setError('');
+    setIsLoading(true);
+    try {
+      await login(identifier, password);
+      onSignIn();
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Invalid email or password';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await login('john.doe@hrmanagement.com', 'UserPassword@123');
+      onSignIn();
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Login failed';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -109,12 +137,23 @@ export const SignInView = ({ onSignIn }) => {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold py-3.5 rounded-xl shadow-md shadow-[#8B1D2C]/30 transition-all duration-150 cursor-pointer active:scale-[0.99] text-xs flex items-center justify-center gap-2"
+                disabled={isLoading}
+                className="w-full bg-[#8B1D2C] hover:bg-[#731724] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl shadow-md shadow-[#8B1D2C]/30 transition-all duration-150 cursor-pointer active:scale-[0.99] text-xs flex items-center justify-center gap-2"
               >
-                Sign In to Portal
-                <ArrowRight className="w-4 h-4" />
+                {isLoading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</>
+                ) : (
+                  <>Sign In to Portal <ArrowRight className="w-4 h-4" /></>
+                )}
               </button>
             </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
           </form>
 
           {/* Quick Demo Login Preset Button */}
@@ -122,10 +161,11 @@ export const SignInView = ({ onSignIn }) => {
             <p className="text-[11px] text-slate-400 mb-2">Want to jump right in for demonstration?</p>
             <button
               type="button"
-              onClick={onSignIn}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              onClick={handleDemoLogin}
+              disabled={isLoading}
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-60 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <span>⚡ One-Click Demo Login (Ankit Sharma)</span>
+              <span>⚡ One-Click Demo Employee Login</span>
             </button>
           </div>
         </div>

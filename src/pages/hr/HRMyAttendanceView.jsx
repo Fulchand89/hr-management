@@ -12,10 +12,10 @@ import {
   Filter,
   Loader2,
 } from 'lucide-react';
-import AttendanceDetailModal from './AttendanceDetailModal';
-import { getMyAttendanceHistory, getHolidays } from '../../services/employeeService';
+import HRAttendanceDetailModal from './HRAttendanceDetailModal';
+import { getMyAttendanceHistory, getHolidays } from '../../services/hrService';
 
-export const MyAttendanceView = ({ onBack }) => {
+export const HRMyAttendanceView = ({ onBack }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'calendar'
   const [selectedRecordDate, setSelectedRecordDate] = useState(null);
@@ -32,8 +32,6 @@ export const MyAttendanceView = ({ onBack }) => {
   // Full attendance logs
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
-
-
 
   const loadHistory = useCallback(async () => {
     setIsLoading(true);
@@ -317,7 +315,7 @@ export const MyAttendanceView = ({ onBack }) => {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {currentLogs.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="py-12 text-center">
+                    <td colSpan="9" className="py-12 text-center">
                       <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                       <h4 className="text-sm font-bold text-slate-700">No Attendance Records Found</h4>
                       <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
@@ -327,63 +325,64 @@ export const MyAttendanceView = ({ onBack }) => {
                   </tr>
                 ) : (
                   currentLogs.map((log, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-900">{log.date}</td>
-                    <td className="py-3 px-4 text-slate-500">{log.day}</td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                          log.status === 'Present'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : log.status === 'Holiday'
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                            : log.status === 'Absent'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : log.status === 'Half Day'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : log.status === 'Late'
-                            ? 'bg-orange-50 text-orange-700 border-orange-200'
-                            : log.status === 'Leave'
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}
-                      >
+                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4 font-bold text-slate-900">{log.date}</td>
+                      <td className="py-3 px-4 text-slate-500">{log.day}</td>
+                      <td className="py-3 px-4">
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
                             log.status === 'Present'
-                              ? 'bg-emerald-500'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : log.status === 'Holiday'
-                              ? 'bg-indigo-500'
+                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                               : log.status === 'Absent'
-                              ? 'bg-rose-500'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
                               : log.status === 'Half Day'
-                              ? 'bg-amber-500'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
                               : log.status === 'Late'
-                              ? 'bg-orange-500'
+                              ? 'bg-orange-50 text-orange-700 border-orange-200'
                               : log.status === 'Leave'
-                              ? 'bg-blue-500'
-                              : 'bg-slate-400'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
                           }`}
-                        />
-                        {log.status === 'Holiday' && log.holidayName ? log.holidayName : log.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-700">{log.in}</td>
-                    <td className="py-3 px-4 font-mono text-slate-700">{log.out}</td>
-                    <td className="py-3 px-4 font-bold text-slate-900">{log.duration}</td>
-                    <td className="py-3 px-4 text-slate-500">{log.break}</td>
-                    <td className="py-3 px-4 font-mono text-emerald-600 font-semibold">{log.overtime}</td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDetail(log.date, log)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer"
-                      >
-                        View Timeline
-                      </button>
-                    </td>
-                  </tr>
-                )))}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              log.status === 'Present'
+                                ? 'bg-emerald-500'
+                                : log.status === 'Holiday'
+                                ? 'bg-indigo-500'
+                                : log.status === 'Absent'
+                                ? 'bg-rose-500'
+                                : log.status === 'Half Day'
+                                ? 'bg-amber-500'
+                                : log.status === 'Late'
+                                ? 'bg-orange-500'
+                                : log.status === 'Leave'
+                                ? 'bg-blue-500'
+                                : 'bg-slate-400'
+                            }`}
+                          />
+                          {log.status === 'Holiday' && log.holidayName ? log.holidayName : log.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-700">{log.in}</td>
+                      <td className="py-3 px-4 font-mono text-slate-700">{log.out}</td>
+                      <td className="py-3 px-4 font-bold text-slate-900">{log.duration}</td>
+                      <td className="py-3 px-4 text-slate-500">{log.break}</td>
+                      <td className="py-3 px-4 font-mono text-emerald-600 font-semibold">{log.overtime}</td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDetail(log.date, log)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer"
+                        >
+                          View Timeline
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -521,7 +520,7 @@ export const MyAttendanceView = ({ onBack }) => {
       )}
 
       {/* Attendance Detail Modal */}
-      <AttendanceDetailModal
+      <HRAttendanceDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => {
           setIsDetailModalOpen(false);
@@ -534,4 +533,4 @@ export const MyAttendanceView = ({ onBack }) => {
   );
 };
 
-export default MyAttendanceView;
+export default HRMyAttendanceView;

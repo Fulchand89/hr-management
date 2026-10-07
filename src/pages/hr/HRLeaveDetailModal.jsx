@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-export const LeaveDetailModal = ({ isOpen, onClose, leave, onCancelLeave }) => {
+export const HRLeaveDetailModal = ({ isOpen, onClose, leave, onCancelLeave }) => {
   if (!isOpen || !leave) return null;
 
   return (
@@ -150,4 +150,4 @@ export const LeaveDetailModal = ({ isOpen, onClose, leave, onCancelLeave }) => {
   );
 };
 
-export default LeaveDetailModal;
+export default HRLeaveDetailModal;

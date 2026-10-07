@@ -11,7 +11,7 @@ import {
   Laptop,
 } from 'lucide-react';
 
-export const AttendanceDetailModal = ({ isOpen, onClose, selectedDate, record }) => {
+export const HRAttendanceDetailModal = ({ isOpen, onClose, selectedDate, record }) => {
   if (!isOpen) return null;
 
   const displayDate = record?.date || selectedDate || 'Selected Date';
@@ -139,7 +139,7 @@ export const AttendanceDetailModal = ({ isOpen, onClose, selectedDate, record })
             <span className="text-slate-400 flex items-center gap-1.5">
               <Laptop className="w-3.5 h-3.5 text-blue-500" /> Session Platform
             </span>
-            <span className="font-semibold text-slate-700 font-mono">Verified Employee Session</span>
+            <span className="font-semibold text-slate-700 font-mono">Verified HR & Staff Session</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-slate-400 flex items-center gap-1.5">
@@ -162,4 +162,4 @@ export const AttendanceDetailModal = ({ isOpen, onClose, selectedDate, record })
   );
 };
 
-export default AttendanceDetailModal;
+export default HRAttendanceDetailModal;

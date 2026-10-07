@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, AlertCircle, Loader2 } from 'lucide-react';
-import { getLeaveTypes, applyLeave } from '../../services/employeeService';
+import { getLeaveTypes, applyLeave } from '../../services/hrService';
 
-export const ApplyLeaveModal = ({ isOpen, onClose, onSubmitLeave }) => {
+export const HRApplyLeaveModal = ({ isOpen, onClose, onSubmitLeave }) => {
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [leaveTypes, setLeaveTypes] = useState([]);
@@ -305,4 +305,4 @@ export const ApplyLeaveModal = ({ isOpen, onClose, onSubmitLeave }) => {
   );
 };
 
-export default ApplyLeaveModal;
+export default HRApplyLeaveModal;

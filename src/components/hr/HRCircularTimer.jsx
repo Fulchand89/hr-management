@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const CircularTimer = ({
+export const HRCircularTimer = ({
   status = 'NOT_PUNCHED_IN', // NOT_PUNCHED_IN | WORKING | ON_BREAK | PUNCHED_OUT
   timeString = '--:--:--',
   subtitle = 'Since 09:12 AM',
@@ -94,4 +94,4 @@ export const CircularTimer = ({
   );
 };
 
-export default CircularTimer;
+export default HRCircularTimer;

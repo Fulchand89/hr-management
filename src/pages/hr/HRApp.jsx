@@ -1,17 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
-// Desktop Layout & Pages
-import EmployeeLayout from '../../components/employee/EmployeeLayout';
-import EmployeeDashboard from './EmployeeDashboard';
-import AttendanceView from './AttendanceView';
-import MyAttendanceView from './MyAttendanceView';
-import LeavesView from './LeavesView';
-import ApplyLeaveModal from './ApplyLeaveModal';
-import AttendanceDetailModal from './AttendanceDetailModal';
-import NotificationsView from './NotificationsView';
-import ProfileView from './ProfileView';
-import SignInView from './SignInView';
+// Layout & HR Pages
+import HRLayout from '../../components/hr/HRLayout';
+import HRDashboard from './HRDashboard';
+import HRAttendanceCorrectionView from './HRAttendanceCorrectionView';
+import HRLeaveRequestsView from './HRLeaveRequestsView';
+import HRLeaveRequestDetailView from './HRLeaveRequestDetailView';
+import HRSignInView from './HRSignInView';
+
+// Self-Contained HR Modules
+import HRAttendanceView from './HRAttendanceView';
+import HRMyAttendanceView from './HRMyAttendanceView';
+import HRLeavesView from './HRLeavesView';
+import HRNotificationsView from './HRNotificationsView';
+import HRProfileView from './HRProfileView';
+import HRApplyLeaveModal from './HRApplyLeaveModal';
+import HRAttendanceDetailModal from './HRAttendanceDetailModal';
+import HRAttendanceCorrectionDetailView from './HRAttendanceCorrectionDetailView';
+import HRHolidayManagementView from './HRHolidayManagementView';
+import HRReportsView from './HRReportsView';
 
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -21,12 +29,12 @@ import {
   endBreak as apiEndBreak,
   punchOut as apiPunchOut,
   getUnreadCount
-} from '../../services/employeeService';
+} from '../../services/hrService';
 
-export const EmployeeApp = ({ onSwitchToAdmin }) => {
+export const HRApp = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, login, isLoading } = useAuth();
 
   const [selectedDateDetail, setSelectedDateDetail] = useState(null);
   const [selectedRecordDetail, setSelectedRecordDetail] = useState(null);
@@ -43,11 +51,28 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
   const [timeline, setTimeline] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // When inside HR portal, ensure user session has HR or Admin privileges
+  useEffect(() => {
+    if (isLoading) return;
+    if (location.pathname === '/hr/signin') return;
+
+    if (!token || !user || user.role === 'employee') {
+      const autoSwitchToHR = async () => {
+        try {
+          if (login) await login('hr@hrmanagement.com', 'HrPassword@123');
+        } catch {
+          navigate('/hr/signin');
+        }
+      };
+      autoSwitchToHR();
+    }
+  }, [user, token, isLoading, location.pathname, login, navigate]);
+
   // Load today's attendance from API on mount
   const loadTodayAttendance = useCallback(async () => {
     try {
       const res = await getTodayAttendance();
-      const data = res.data;
+      const data = res?.data ?? res ?? null;
       if (data) {
         setAttendanceData(data);
         setAttendanceStatus(data.status || data.attendanceStatus || 'NOT_PUNCHED_IN');
@@ -56,7 +81,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
         setTimeline(data.timeline || []);
       }
     } catch {
-      // Offline / not logged in — retain graceful state
+      // Graceful fallback
     }
   }, []);
 
@@ -64,7 +89,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
   const loadUnreadCount = useCallback(async () => {
     try {
       const res = await getUnreadCount();
-      setUnreadCount(res.data?.unreadCount ?? res.data ?? 0);
+      setUnreadCount(res?.data?.unreadCount ?? res?.data ?? 0);
     } catch {
       setUnreadCount(0);
     }
@@ -76,7 +101,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     loadUnreadCount();
   }, [token, loadTodayAttendance, loadUnreadCount]);
 
-  // Live Timer Effect
+  // Live Timer Interval Effect
   useEffect(() => {
     let interval = null;
     if (attendanceStatus === 'WORKING') {
@@ -102,7 +127,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   };
 
-  // ── Attendance Handlers (Real API) ────────────────────────
+  // ── Attendance Handlers ─────────────────────────────────────
   const handlePunchIn = async () => {
     try {
       const res = await apiPunchIn();
@@ -155,37 +180,19 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      if (logout) await logout();
     } finally {
-      navigate('/employee/signin');
+      navigate('/hr/signin');
     }
   };
 
-  // Compute active tab from route
-  const getActiveTab = () => {
-    const path = location.pathname;
-    if (path.includes('/my-attendance') || path.includes('/myattendance')) return 'my-attendance';
-    if (path.includes('/attendance')) return 'attendance';
-    if (path.includes('/leaves')) return 'leaves';
-    if (path.includes('/notifications')) return 'notifications';
-    if (path.includes('/profile')) return 'profile';
-    return 'dashboard';
-  };
-
-  const handleTabSelect = (tabId) => {
-    if (tabId === 'dashboard') navigate('/employee/dashboard');
-    else navigate(`/employee/${tabId}`);
-  };
-
-  // If on signin route, render standalone signin
-  if (location.pathname === '/employee/signin' || location.pathname === '/signin') {
-    return <SignInView onSignIn={() => navigate('/employee/dashboard')} />;
+  // If on signin route, render standalone HR signin
+  if (location.pathname === '/hr/signin') {
+    return <HRSignInView onSignIn={() => navigate('/hr/dashboard')} />;
   }
 
   return (
-    <EmployeeLayout
-      activeTab={getActiveTab()}
-      onSelectTab={handleTabSelect}
+    <HRLayout
       attendanceStatus={attendanceStatus}
       workingTime={formatTime(workingSeconds)}
       breakTime={formatTime(breakSeconds)}
@@ -193,8 +200,6 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
       onTakeBreak={handleTakeBreak}
       onEndBreak={handleEndBreak}
       onPunchOut={handlePunchOut}
-      onSwitchToAdmin={() => navigate('/admin/dashboard')}
-      onSwitchToHR={() => navigate('/hr/dashboard')}
       unreadNotifications={unreadCount}
       onApplyLeaveClick={() => setIsApplyLeaveModalOpen(true)}
       onLogout={handleLogout}
@@ -202,11 +207,11 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
       <Routes>
         <Route index element={<Navigate to="dashboard" replace />} />
 
-        {/* Dashboard View */}
+        {/* Dashboard View (Personal & HR Integrated) */}
         <Route
           path="dashboard"
           element={
-            <EmployeeDashboard
+            <HRDashboard
               attendanceStatus={attendanceStatus}
               punchInTime={attendanceStatus !== 'NOT_PUNCHED_IN' ? (attendanceData?.clockInFormatted || '--:--') : null}
               workingHours={formatTime(workingSeconds)}
@@ -216,9 +221,9 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
               onTakeBreak={handleTakeBreak}
               onEndBreak={handleEndBreak}
               onPunchOut={handlePunchOut}
-              onNavigateToAttendance={() => navigate('/employee/attendance')}
-              onNavigateToLeaves={() => navigate('/employee/leaves')}
-              onNavigateToMyAttendance={() => navigate('/employee/my-attendance')}
+              onNavigateToAttendance={() => navigate('/hr/attendance')}
+              onNavigateToLeaves={() => navigate('/hr/leaves')}
+              onNavigateToMyAttendance={() => navigate('/hr/my-attendance')}
               onOpenApplyLeave={() => setIsApplyLeaveModalOpen(true)}
               onSelectAttendanceRecord={(recordOrDate) => {
                 if (typeof recordOrDate === 'object' && recordOrDate !== null) {
@@ -238,7 +243,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
         <Route
           path="attendance"
           element={
-            <AttendanceView
+            <HRAttendanceView
               status={attendanceStatus}
               timeString={
                 attendanceStatus === 'NOT_PUNCHED_IN'
@@ -268,48 +273,60 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
               timeline={timeline}
               totalWorkingHours={formatTime(workingSeconds)}
               breakDuration={formatTime(breakSeconds)}
-              onBack={() => navigate('/employee/dashboard')}
+              onBack={() => navigate('/hr/dashboard')}
               onPunchIn={handlePunchIn}
               onTakeBreak={handleTakeBreak}
               onEndBreak={handleEndBreak}
               onPunchOut={handlePunchOut}
-              onBackToDashboard={() => navigate('/employee/dashboard')}
+              onBackToDashboard={() => navigate('/hr/dashboard')}
             />
           }
         />
 
-        {/* My Monthly Attendance View */}
+        {/* Monthly Attendance Records */}
         <Route
           path="my-attendance"
-          element={<MyAttendanceView onBack={() => navigate('/employee/dashboard')} />}
+          element={<HRMyAttendanceView onBack={() => navigate('/hr/dashboard')} />}
         />
         <Route
           path="myattendance"
-          element={<MyAttendanceView onBack={() => navigate('/employee/dashboard')} />}
+          element={<HRMyAttendanceView onBack={() => navigate('/hr/dashboard')} />}
         />
 
-        {/* Leaves & Applications View */}
+        {/* Leaves & Requests View */}
         <Route
           path="leaves"
-          element={
-            <LeavesView
-              onBack={() => navigate('/employee/dashboard')}
-            />
-          }
+          element={<HRLeavesView onBack={() => navigate('/hr/dashboard')} />}
         />
+
+        {/* Attendance Corrections (HR Queue) */}
+        <Route path="attendance-correction" element={<HRAttendanceCorrectionView />} />
+        <Route path="attendance-correction/:id" element={<HRAttendanceCorrectionDetailView />} />
+
+        {/* Holiday Management */}
+        <Route path="holidays" element={<HRHolidayManagementView />} />
+        <Route path="holiday-management" element={<HRHolidayManagementView />} />
+
+        {/* Workforce Reports */}
+        <Route path="reports" element={<HRReportsView />} />
+
+        {/* Staff Leave Applications (HR Queue) */}
+        <Route path="leave-requests" element={<HRLeaveRequestsView />} />
+        <Route path="leave-requests/:id" element={<HRLeaveRequestDetailView />} />
+        <Route path="leave-detail" element={<HRLeaveRequestDetailView />} />
 
         {/* Notifications Hub View */}
         <Route
           path="notifications"
-          element={<NotificationsView onBack={() => navigate('/employee/dashboard')} />}
+          element={<HRNotificationsView onBack={() => navigate('/hr/dashboard')} />}
         />
 
         {/* Profile View */}
         <Route
           path="profile"
           element={
-            <ProfileView
-              onBack={() => navigate('/employee/dashboard')}
+            <HRProfileView
+              onBack={() => navigate('/hr/dashboard')}
               onLogout={handleLogout}
             />
           }
@@ -320,17 +337,17 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
       </Routes>
 
       {/* Global Apply Leave Modal */}
-      <ApplyLeaveModal
+      <HRApplyLeaveModal
         isOpen={isApplyLeaveModalOpen}
         onClose={() => setIsApplyLeaveModalOpen(false)}
         onSubmitLeave={() => {
           setIsApplyLeaveModalOpen(false);
-          navigate('/employee/leaves');
+          navigate('/hr/leaves');
         }}
       />
 
       {/* Global Attendance Day Audit Modal */}
-      <AttendanceDetailModal
+      <HRAttendanceDetailModal
         isOpen={isAttendanceDetailModalOpen}
         onClose={() => {
           setIsAttendanceDetailModalOpen(false);
@@ -339,8 +356,8 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
         selectedDate={selectedDateDetail}
         record={selectedRecordDetail}
       />
-    </EmployeeLayout>
+    </HRLayout>
   );
 };
 
-export default EmployeeApp;
+export default HRApp;

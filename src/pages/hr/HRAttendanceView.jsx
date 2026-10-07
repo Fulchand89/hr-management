@@ -1,5 +1,5 @@
 import React from 'react';
-import CircularTimer from '../../components/employee/CircularTimer';
+import HRCircularTimer from '../../components/hr/HRCircularTimer';
 import {
   Clock,
   Coffee,
@@ -12,7 +12,7 @@ import {
   MapPin,
 } from 'lucide-react';
 
-export const AttendanceView = ({
+export const HRAttendanceView = ({
   status = 'NOT_PUNCHED_IN',
   timeString = '--:--:--',
   sinceText = '',
@@ -46,7 +46,7 @@ export const AttendanceView = ({
 
             {/* Circular Timer Visual */}
             <div className="my-6">
-              <CircularTimer
+              <HRCircularTimer
                 status={status}
                 timeString={timeString}
                 subtitle={sinceText}
@@ -62,12 +62,13 @@ export const AttendanceView = ({
               </div>
               <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${status === 'PUNCHED_OUT'
-                    ? 'bg-emerald-500'
-                    : status === 'ON_BREAK'
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    status === 'PUNCHED_OUT'
+                      ? 'bg-emerald-500'
+                      : status === 'ON_BREAK'
                       ? 'bg-amber-500'
                       : 'bg-[#8B1D2C]'
-                    }`}
+                  }`}
                   style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                 />
               </div>
@@ -157,52 +158,53 @@ export const AttendanceView = ({
                 </div>
               ) : (
                 timeline.map((step, idx) => {
-                const isLast = idx === timeline.length - 1;
+                  const isLast = idx === timeline.length - 1;
 
-                return (
-                  <div key={idx} className="relative flex items-start gap-4">
-                    {/* Connecting vertical line */}
-                    {!isLast && (
-                      <div className="absolute left-2.5 top-6 bottom-0 w-0.5 -mb-4 bg-slate-200" />
-                    )}
+                  return (
+                    <div key={idx} className="relative flex items-start gap-4">
+                      {/* Connecting vertical line */}
+                      {!isLast && (
+                        <div className="absolute left-2.5 top-6 bottom-0 w-0.5 -mb-4 bg-slate-200" />
+                      )}
 
-                    {/* Node Dot */}
-                    <div
-                      className={`w-5 h-5 rounded-full z-10 shrink-0 flex items-center justify-center mt-0.5 ${step.status === 'completed'
-                        ? 'bg-emerald-500 ring-4 ring-emerald-100 text-white'
-                        : step.status === 'break'
-                          ? 'bg-amber-500 ring-4 ring-amber-100 text-white'
-                          : step.status === 'punched_out'
+                      {/* Node Dot */}
+                      <div
+                        className={`w-5 h-5 rounded-full z-10 shrink-0 flex items-center justify-center mt-0.5 ${
+                          step.status === 'completed'
+                            ? 'bg-emerald-500 ring-4 ring-emerald-100 text-white'
+                            : step.status === 'break'
+                            ? 'bg-amber-500 ring-4 ring-amber-100 text-white'
+                            : step.status === 'punched_out'
                             ? 'bg-[#8B1D2C] ring-4 ring-rose-100 text-white'
                             : 'bg-slate-300 ring-4 ring-slate-100'
                         }`}
-                    >
-                      {step.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
-                    </div>
+                      >
+                        {step.status === 'completed' && <CheckCircle2 className="w-3 h-3" />}
+                      </div>
 
-                    {/* Label & Time */}
-                    <div className="flex-1 flex items-center justify-between pb-1">
-                      <div>
-                        <div className="text-xs font-bold text-slate-800">{step.label}</div>
-                        <div className="text-[10px] text-slate-400">
-                          {step.status === 'completed'
-                            ? 'Logged on time'
-                            : step.status === 'break'
+                      {/* Label & Time */}
+                      <div className="flex-1 flex items-center justify-between pb-1">
+                        <div>
+                          <div className="text-xs font-bold text-slate-800">{step.label}</div>
+                          <div className="text-[10px] text-slate-400">
+                            {step.status === 'completed'
+                              ? 'Logged on time'
+                              : step.status === 'break'
                               ? 'Paused session'
                               : step.status === 'punched_out'
-                                ? 'Final punch'
-                                : 'Pending'}
+                              ? 'Final punch'
+                              : 'Pending'}
+                          </div>
                         </div>
+                        <span className="font-mono font-bold text-xs text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                          {step.time || '--:--'}
+                        </span>
                       </div>
-                      <span className="font-mono font-bold text-xs text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
-                        {step.time || '--:--'}
-                      </span>
                     </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                  );
+                })
+              )}
+            </div>
 
             {/* Duration Summary in Timeline */}
             <div className="pt-4 border-t border-slate-100 space-y-2 text-xs">
@@ -251,4 +253,4 @@ export const AttendanceView = ({
   );
 };
 
-export default AttendanceView;
+export default HRAttendanceView;

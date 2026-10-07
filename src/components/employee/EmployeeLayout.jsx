@@ -29,6 +29,7 @@ export const EmployeeLayout = ({
   onEndBreak,
   onPunchOut,
   onSwitchToAdmin,
+  onSwitchToHR,
   onSwitchToMobile,
   unreadNotifications = 2,
   onApplyLeaveClick,
@@ -178,6 +179,16 @@ export const EmployeeLayout = ({
 
           {/* Right Action Tools: Notifications & Profile */}
           <div className="flex items-center gap-2.5">
+            {/* Quick Switch to HR Portal */}
+            <button
+              type="button"
+              onClick={onSwitchToHR || (() => (window.location.href = '/hr/dashboard'))}
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#8B1D2C] border border-rose-200 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+              title="Open HR Operations Hub"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#8B1D2C]" />
+              <span>HR Hub</span>
+            </button>
 
             {/* Notification Bell */}
             <div className="relative">
@@ -264,6 +275,38 @@ export const EmployeeLayout = ({
                     type="button"
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
+                      if (onSwitchToHR) {
+                        onSwitchToHR();
+                      } else {
+                        window.location.href = '/hr/dashboard';
+                      }
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-[#8B1D2C] hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-bold"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-[#8B1D2C]" /> Switch to HR Portal
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      if (onSwitchToAdmin) {
+                        onSwitchToAdmin();
+                      } else {
+                        window.location.href = '/admin/dashboard';
+                      }
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 cursor-pointer font-semibold"
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Switch to Admin Portal
+                  </button>
+
+                  <div className="my-1 border-t border-slate-100" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
                       if (onLogout) onLogout();
                     }}
                     className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-medium"
@@ -280,40 +323,7 @@ export const EmployeeLayout = ({
       {/* Main Body with Sidebar + Page Content */}
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex gap-6">
         {/* Left Desktop Sidebar Navigation */}
-        <aside className="hidden lg:flex flex-col w-64 shrink-0 space-y-6">
-          {/* Quick Profile Summary Card */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200"
-                alt="Ankit"
-                className="w-12 h-12 rounded-xl object-cover ring-2 ring-slate-100 shadow-xs"
-              />
-              <div className="min-w-0 flex-1">
-                <h3 className="font-bold text-sm text-slate-900 truncate">Ankit Parte</h3>
-                <p className="text-xs text-slate-500 truncate">Software Engineer</p>
-                <div className="mt-1 flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${statusBadge.dot}`} />
-                  <span className="text-[11px] font-semibold text-slate-600">
-                    {statusBadge.label}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Action Button */}
-            <div className="mt-4 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={onApplyLeaveClick}
-                className="w-full bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <CalendarDays className="w-3.5 h-3.5" />
-                Apply for Leave
-              </button>
-            </div>
-          </div>
-
+        <aside className="hidden lg:flex flex-col w-64 shrink-0 space-y-6 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto no-scrollbar pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {/* Navigation Links List */}
           <nav className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-2xs space-y-1">
             <div className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">

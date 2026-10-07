@@ -24,13 +24,18 @@ export const logout = async () => {
 // DASHBOARD
 // ─────────────────────────────────────────────
 
-export const getDashboard = async () => {
+export const getHRDashboard = async () => {
+  const res = await apiClient.get('/dashboard/hr');
+  return res.data;
+};
+
+export const getEmployeeDashboard = async () => {
   const res = await apiClient.get('/dashboard/employee');
   return res.data;
 };
 
 // ─────────────────────────────────────────────
-// ATTENDANCE
+// ATTENDANCE & STOPWATCH
 // ─────────────────────────────────────────────
 
 export const getTodayAttendance = async () => {
@@ -65,8 +70,42 @@ export const getMyAttendanceHistory = async (month, year) => {
   return res.data;
 };
 
+export const getAdminDailyAttendance = async (params = {}) => {
+  const res = await apiClient.get('/attendance/admin/daily', { params });
+  return res.data;
+};
+
 // ─────────────────────────────────────────────
-// LEAVES
+// ATTENDANCE CORRECTIONS (HR & EMPLOYEE)
+// ─────────────────────────────────────────────
+
+export const createAttendanceCorrection = async (payload) => {
+  const res = await apiClient.post('/attendance/corrections', payload);
+  return res.data;
+};
+
+export const getMyAttendanceCorrections = async (params = {}) => {
+  const res = await apiClient.get('/attendance/corrections/mine', { params });
+  return res.data;
+};
+
+export const getAdminAttendanceCorrections = async (params = {}) => {
+  const res = await apiClient.get('/attendance/admin/corrections', { params });
+  return res.data;
+};
+
+export const getAttendanceCorrectionById = async (id) => {
+  const res = await apiClient.get(`/attendance/admin/corrections/${id}`);
+  return res.data;
+};
+
+export const actionAttendanceCorrection = async (id, payload) => {
+  const res = await apiClient.patch(`/attendance/admin/corrections/${id}/action`, payload);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// LEAVES MANAGEMENT
 // ─────────────────────────────────────────────
 
 export const getLeaveTypes = async () => {
@@ -94,8 +133,68 @@ export const cancelLeave = async (id) => {
   return res.data;
 };
 
+export const getAdminLeaveRequests = async (params = {}) => {
+  const res = await apiClient.get('/leaves/admin/requests', { params });
+  return res.data;
+};
+
+export const getLeaveRequestById = async (id) => {
+  const res = await apiClient.get(`/leaves/${id}`);
+  return res.data;
+};
+
+export const actionLeaveRequest = async (id, payload) => {
+  const res = await apiClient.patch(`/leaves/admin/action/${id}`, payload);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// HOLIDAYS
+// ─────────────────────────────────────────────
+
 export const getHolidays = async (year) => {
   const res = await apiClient.get('/leaves/holidays', { params: { year } });
+  return res.data;
+};
+
+export const createHoliday = async (payload) => {
+  const res = await apiClient.post('/leaves/holidays', payload);
+  return res.data;
+};
+
+export const deleteHoliday = async (id) => {
+  const res = await apiClient.delete(`/leaves/holidays/${id}`);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// REPORTS & DATA EXPORTS
+// ─────────────────────────────────────────────
+
+export const getAttendanceReport = async (params = {}) => {
+  const isCsv = params.format === 'csv';
+  const res = await apiClient.get('/reports/attendance', {
+    params,
+    ...(isCsv && { responseType: 'blob' })
+  });
+  return res.data;
+};
+
+export const getLeaveReport = async (params = {}) => {
+  const isCsv = params.format === 'csv';
+  const res = await apiClient.get('/reports/leave', {
+    params,
+    ...(isCsv && { responseType: 'blob' })
+  });
+  return res.data;
+};
+
+export const getEmployeeSummaryReport = async (params = {}) => {
+  const isCsv = params.format === 'csv';
+  const res = await apiClient.get('/reports/employee-summary', {
+    params,
+    ...(isCsv && { responseType: 'blob' })
+  });
   return res.data;
 };
 
@@ -125,8 +224,18 @@ export const markAllNotificationsRead = async () => {
   return res.data;
 };
 
+export const broadcastAnnouncement = async (payload) => {
+  const res = await apiClient.post('/notifications/broadcast', payload);
+  return res.data;
+};
+
+export const sendDirectNotification = async (userId, payload) => {
+  const res = await apiClient.post(`/notifications/user/${userId}`, payload);
+  return res.data;
+};
+
 // ─────────────────────────────────────────────
-// PROFILE
+// PROFILE & EMPLOYEE DETAILS
 // ─────────────────────────────────────────────
 
 export const getMyProfile = async () => {

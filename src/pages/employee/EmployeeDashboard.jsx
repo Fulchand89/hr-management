@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Clock,
   Calendar,
@@ -15,11 +15,13 @@ import {
   ShieldCheck,
   UserCheck,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { getDashboard } from '../../services/employeeService';
 
 export const EmployeeDashboard = ({
-  attendanceStatus = 'WORKING',
-  punchInTime = '09:12 AM',
-  workingHours = '03:18:42',
+  attendanceStatus = 'NOT_PUNCHED_IN',
+  punchInTime = null,
+  workingHours = '00:00:00',
   breakHours = '00:00:00',
   timeline = [],
   onPunchIn,
@@ -32,21 +34,76 @@ export const EmployeeDashboard = ({
   onOpenApplyLeave,
   onSelectAttendanceRecord,
 }) => {
-  // Recent 5 attendance logs
-  const recentLogs = [
-    { date: '12 Aug 2026', day: 'Monday', in: '09:12 AM', out: '05:47 PM', duration: '08h 02m', status: 'Present' },
-    { date: '10 Aug 2026', day: 'Saturday', in: '--:--', out: '--:--', duration: '--', status: 'Absent' },
-    { date: '09 Aug 2026', day: 'Friday', in: '09:05 AM', out: '06:12 PM', duration: '08h 35m', status: 'Present' },
-    { date: '08 Aug 2026', day: 'Thursday', in: '09:15 AM', out: '01:30 PM', duration: '04h 15m', status: 'Half Day' },
-    { date: '07 Aug 2026', day: 'Wednesday', in: '09:00 AM', out: '05:45 PM', duration: '08h 15m', status: 'Present' },
-  ];
+  const { user, token } = useAuth();
+  const userName = user?.firstName
+    ? `${user.firstName} ${user.lastName || ''}`.trim()
+    : (user?.name || user?.email?.split('@')[0] || 'Employee');
+
+  const today = new Date();
+  const todayFormatted = today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  // Recent attendance logs state (dynamically populated from backend)
+  const [recentLogs, setRecentLogs] = useState([]);
+
+  // Attendance summary metrics (dynamically populated from backend)
+  const [attendanceSummary, setAttendanceSummary] = useState({
+    presentDays: 0,
+    averageHoursPerDay: 0,
+    lateDays: 0,
+    totalRecordedDays: 0
+  });
 
   // Upcoming holidays
-  const upcomingHolidays = [
-    { title: 'Independence Day', date: '15 Aug 2026', type: 'Public Holiday', daysLeft: 'In 3 days' },
-    { title: 'Raksha Bandhan', date: '29 Aug 2026', type: 'Regional Holiday', daysLeft: 'In 17 days' },
-    { title: 'Janmashtami', date: '04 Sep 2026', type: 'Public Holiday', daysLeft: 'In 23 days' },
-  ];
+  const [upcomingHolidays, setUpcomingHolidays] = useState([]);
+  const [availableLeaveDays, setAvailableLeaveDays] = useState(0);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchDashboard = async () => {
+      try {
+        const res = await getDashboard();
+        const data = res?.data ?? res ?? {};
+
+        if (data?.recentLogs && Array.isArray(data.recentLogs)) {
+          setRecentLogs(data.recentLogs);
+        }
+
+        if (data?.attendanceSummary) {
+          setAttendanceSummary(data.attendanceSummary);
+        }
+
+        if (data?.upcomingHolidays && data.upcomingHolidays.length > 0) {
+          const formatted = data.upcomingHolidays.map((h) => {
+            const hDate = new Date(h.date);
+            return {
+              title: h.title,
+              date: hDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              type: h.type || 'Holiday',
+              daysLeft: h.daysLeft
+            };
+          });
+          setUpcomingHolidays(formatted);
+        }
+
+        if (data?.leaveBalances && data.leaveBalances.length > 0) {
+          const totalRemaining = data.leaveBalances.reduce(
+            (sum, b) => sum + (parseFloat(b.remainingDays ?? b.remaining) || 0),
+            0
+          );
+          setAvailableLeaveDays(totalRemaining);
+        }
+      } catch (err) {
+        console.error('Failed to load dashboard:', err?.message);
+      }
+    };
+    fetchDashboard();
+  }, [token]);
 
   return (
     <div className="space-y-6">
@@ -60,7 +117,7 @@ export const EmployeeDashboard = ({
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-rose-200 backdrop-blur-xs">
-                Monday, 12 Aug 2026
+                {todayFormatted}
               </span>
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -68,10 +125,10 @@ export const EmployeeDashboard = ({
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Good morning, Ankit Parte!
+              Good morning, {userName}!
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
-              Welcome back to your employee dashboard. Your scheduled shift is 09:00 AM &ndash; 06:00 PM. Have a productive day ahead!
+              Welcome back to your employee dashboard. {user?.shift ? `Your assigned shift is ${user.shift}.` : ''} Have a productive day ahead!
             </p>
           </div>
 
@@ -107,11 +164,15 @@ export const EmployeeDashboard = ({
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">22</span>
-            <span className="text-xs text-slate-400 font-medium">/ 26 days</span>
+            <span className="text-2xl font-black text-slate-900">{attendanceSummary.presentDays || 0}</span>
+            <span className="text-xs text-slate-400 font-medium">/ {attendanceSummary.totalRecordedDays || 0} days</span>
           </div>
           <div className="mt-2 text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" /> 84.6% attendance this month
+            <TrendingUp className="w-3 h-3" />{' '}
+            {attendanceSummary.totalRecordedDays > 0
+              ? `${((attendanceSummary.presentDays / attendanceSummary.totalRecordedDays) * 100).toFixed(1)}%`
+              : '0%'}{' '}
+            attendance this month
           </div>
         </div>
 
@@ -124,7 +185,9 @@ export const EmployeeDashboard = ({
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">08h 02m</span>
+            <span className="text-2xl font-black text-slate-900">
+              {attendanceSummary.averageHoursPerDay ? `${attendanceSummary.averageHoursPerDay}h` : '0h'}
+            </span>
             <span className="text-xs text-slate-400 font-medium">/ 8h goal</span>
           </div>
           <div className="mt-2 text-[11px] font-semibold text-blue-600 flex items-center gap-1">
@@ -141,11 +204,11 @@ export const EmployeeDashboard = ({
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">14.0</span>
-            <span className="text-xs text-slate-400 font-medium">Days total</span>
+            <span className="text-2xl font-black text-slate-900">{availableLeaveDays}</span>
+            <span className="text-xs text-slate-400 font-medium">Days remaining</span>
           </div>
           <div className="mt-2 text-[11px] font-semibold text-slate-500">
-            Casual: 8 &bull; Sick: 4 &bull; Privilege: 10
+            Available annual quota
           </div>
         </div>
 
@@ -158,11 +221,15 @@ export const EmployeeDashboard = ({
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">96.2%</span>
-            <span className="text-xs text-emerald-600 font-semibold">&uarr; +2.4%</span>
+            <span className="text-2xl font-black text-slate-900">
+              {attendanceSummary.totalRecordedDays > 0
+                ? `${Math.max(0, Math.round(((attendanceSummary.presentDays - (attendanceSummary.lateDays || 0)) / attendanceSummary.totalRecordedDays) * 100))}%`
+                : '100%'}
+            </span>
+            <span className="text-xs text-emerald-600 font-semibold">&uarr; On track</span>
           </div>
           <div className="mt-2 text-[11px] font-semibold text-amber-600 flex items-center gap-1">
-            <ShieldCheck className="w-3 h-3" /> Excellent punctuality record
+            <ShieldCheck className="w-3 h-3" /> Punctuality record
           </div>
         </div>
       </div>
@@ -180,34 +247,32 @@ export const EmployeeDashboard = ({
 
               <div className="flex items-center gap-2">
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                    attendanceStatus === 'WORKING'
+                  className={`px-3 py-1 rounded-full text-xs font-bold border ${attendanceStatus === 'WORKING'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : attendanceStatus === 'ON_BREAK'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : attendanceStatus === 'PUNCHED_OUT'
-                      ? 'bg-slate-100 text-slate-700 border-slate-300'
-                      : 'bg-rose-50 text-rose-700 border-rose-200'
-                  }`}
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : attendanceStatus === 'PUNCHED_OUT'
+                          ? 'bg-slate-100 text-slate-700 border-slate-300'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                    }`}
                 >
                   <span
-                    className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
-                      attendanceStatus === 'WORKING'
+                    className={`inline-block w-2 h-2 rounded-full mr-1.5 ${attendanceStatus === 'WORKING'
                         ? 'bg-emerald-500 animate-ping'
                         : attendanceStatus === 'ON_BREAK'
-                        ? 'bg-amber-500 animate-ping'
-                        : attendanceStatus === 'PUNCHED_OUT'
-                        ? 'bg-slate-400'
-                        : 'bg-rose-500'
-                    }`}
+                          ? 'bg-amber-500 animate-ping'
+                          : attendanceStatus === 'PUNCHED_OUT'
+                            ? 'bg-slate-400'
+                            : 'bg-rose-500'
+                      }`}
                   />
                   {attendanceStatus === 'WORKING'
                     ? 'Currently Working'
                     : attendanceStatus === 'ON_BREAK'
-                    ? 'On Lunch / Tea Break'
-                    : attendanceStatus === 'PUNCHED_OUT'
-                    ? 'Day Completed'
-                    : 'Not Punched In Yet'}
+                      ? 'On Lunch / Tea Break'
+                      : attendanceStatus === 'PUNCHED_OUT'
+                        ? 'Day Completed'
+                        : 'Not Punched In Yet'}
                 </span>
               </div>
             </div>
@@ -220,7 +285,9 @@ export const EmployeeDashboard = ({
                 <span className="text-xl font-black text-slate-900 font-mono mt-1 block">
                   {punchInTime || '--:--'}
                 </span>
-                <span className="text-[11px] text-slate-500 mt-1 block">Scheduled: 09:00 AM</span>
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  {attendanceStatus !== 'NOT_PUNCHED_IN' ? 'Punch Recorded' : 'Not Clocked In'}
+                </span>
               </div>
 
               {/* Live Working Hours */}
@@ -229,16 +296,16 @@ export const EmployeeDashboard = ({
                 <span className="text-xl font-black text-[#8B1D2C] font-mono mt-1 block tracking-wider">
                   {workingHours}
                 </span>
-                <span className="text-[11px] text-slate-500 mt-1 block">Target: 08:00:00 hrs</span>
+                <span className="text-[11px] text-slate-500 mt-1 block">Target: 8h Standard</span>
               </div>
 
               {/* Break Duration */}
               <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-100">
                 <span className="text-xs text-amber-800 font-semibold block">Break Taken</span>
                 <span className="text-xl font-black text-amber-700 font-mono mt-1 block">
-                  {breakHours || '00:35:00'}
+                  {breakHours || '00:00:00'}
                 </span>
-                <span className="text-[11px] text-slate-500 mt-1 block">Allowed: 01:00:00 hr</span>
+                <span className="text-[11px] text-slate-500 mt-1 block">Break Allocation</span>
               </div>
             </div>
 
@@ -306,9 +373,9 @@ export const EmployeeDashboard = ({
           {/* Location Verification Note */}
           <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-              <ShieldCheck className="w-4 h-4" /> Office WiFi Geofenced (Bangalore Tech Park)
+              <ShieldCheck className="w-4 h-4" /> {user?.branchDetails?.name ? `${user.branchDetails.name} Network` : 'Authorized Network Access'}
             </span>
-            <span className="text-slate-400">IP: 192.168.1.104 &bull; Verified Device</span>
+            <span className="text-slate-400">Authenticated Session &bull; Secure Portal</span>
           </div>
         </div>
 
@@ -353,32 +420,40 @@ export const EmployeeDashboard = ({
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 Upcoming Holidays
               </h3>
-              <span className="text-[11px] font-semibold text-[#8B1D2C]">August 2026</span>
+              <span className="text-[11px] font-semibold text-[#8B1D2C]">
+                {today.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </span>
             </div>
 
             <div className="space-y-2.5">
-              {upcomingHolidays.map((holiday, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold text-xs flex flex-col items-center justify-center leading-tight">
-                      <span>{holiday.date.split(' ')[0]}</span>
-                      <span className="text-[8px] text-slate-400 uppercase font-semibold">
-                        {holiday.date.split(' ')[1]}
-                      </span>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">{holiday.title}</h4>
-                      <p className="text-[10px] text-slate-400">{holiday.type}</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/60 text-slate-600">
-                    {holiday.daysLeft}
-                  </span>
+              {upcomingHolidays.length === 0 ? (
+                <div className="py-6 text-center text-slate-400 text-xs">
+                  No upcoming public holidays this month.
                 </div>
-              ))}
+              ) : (
+                upcomingHolidays.map((holiday, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold text-xs flex flex-col items-center justify-center leading-tight">
+                        <span>{holiday.date.split(' ')[0]}</span>
+                        <span className="text-[8px] text-slate-400 uppercase font-semibold">
+                          {holiday.date.split(' ')[1]}
+                        </span>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-800">{holiday.title}</h4>
+                        <p className="text-[10px] text-slate-400">{holiday.type}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200/60 text-slate-600">
+                      {holiday.daysLeft}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -413,48 +488,56 @@ export const EmployeeDashboard = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {recentLogs.map((log, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-slate-900">{log.date}</div>
-                    <div className="text-[11px] text-slate-400">{log.day}</div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                        log.status === 'Present'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : log.status === 'Absent'
-                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}
-                    >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          log.status === 'Present'
-                            ? 'bg-emerald-500'
-                            : log.status === 'Absent'
-                            ? 'bg-rose-500'
-                            : 'bg-amber-500'
-                        }`}
-                      />
-                      {log.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 font-mono font-medium text-slate-700">{log.in}</td>
-                  <td className="py-3 px-4 font-mono font-medium text-slate-700">{log.out}</td>
-                  <td className="py-3 px-4 font-bold text-slate-800">{log.duration}</td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onSelectAttendanceRecord(log.date)}
-                      className="px-3 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer"
-                    >
-                      View Details &rarr;
-                    </button>
+              {recentLogs.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="py-8 text-center text-slate-400 font-medium">
+                    No recent attendance records found. Punch in to create your first log!
                   </td>
                 </tr>
-              ))}
+              ) : (
+                recentLogs.map((log, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-slate-900">{log.date}</div>
+                      <div className="text-[11px] text-slate-400">{log.day}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                          log.status === 'Present'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : log.status === 'Absent'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            log.status === 'Present'
+                              ? 'bg-emerald-500'
+                              : log.status === 'Absent'
+                              ? 'bg-rose-500'
+                              : 'bg-amber-500'
+                          }`}
+                        />
+                        {log.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono font-medium text-slate-700">{log.in}</td>
+                    <td className="py-3 px-4 font-mono font-medium text-slate-700">{log.out}</td>
+                    <td className="py-3 px-4 font-bold text-slate-800">{log.duration}</td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => onSelectAttendanceRecord(log)}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer"
+                      >
+                        View Details &rarr;
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

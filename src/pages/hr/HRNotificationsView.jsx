@@ -14,9 +14,9 @@ import {
   getMyNotifications,
   markNotificationRead,
   markAllNotificationsRead
-} from '../../services/employeeService';
+} from '../../services/hrService';
 
-export const NotificationsView = ({ onBack }) => {
+export const HRNotificationsView = ({ onBack }) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -24,21 +24,28 @@ export const NotificationsView = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
-
-
   const loadNotifications = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await getMyNotifications(currentPage, 10, activeCategory);
       const data = res?.data ?? res ?? {};
-      if (data?.notifications && data.notifications.length > 0) {
-        const formatted = data.notifications.map((n) => {
+      const rawList = Array.isArray(data)
+        ? data
+        : (Array.isArray(data?.notifications) ? data.notifications : []);
+
+      if (rawList.length > 0) {
+        const formatted = rawList.map((n) => {
           let category = 'Company';
           if (n.type?.toLowerCase().includes('leave')) category = 'Leaves';
           else if (n.type?.toLowerCase().includes('attendance')) category = 'Attendance';
 
           const timeAgo = n.createdAt
-            ? new Date(n.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+            ? new Date(n.createdAt).toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
             : 'Recently';
 
           return {
@@ -51,8 +58,8 @@ export const NotificationsView = ({ onBack }) => {
           };
         });
         setNotifications(formatted);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalCount(data.pagination?.totalCount || data.pagination?.total || formatted.length);
+        setTotalPages(data?.pagination?.totalPages || 1);
+        setTotalCount(data?.pagination?.totalCount || data?.pagination?.total || formatted.length);
       } else {
         setNotifications([]);
         setTotalCount(0);
@@ -283,4 +290,4 @@ export const NotificationsView = ({ onBack }) => {
   );
 };
 
-export default NotificationsView;
+export default HRNotificationsView;

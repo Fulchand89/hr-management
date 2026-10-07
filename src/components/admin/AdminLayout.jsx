@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminNavbar from './AdminNavbar';
 
 export const AdminLayout = ({
   children,
-  activeTab,
-  setActiveTab,
   employeeCount,
   departmentCount,
   designationCount,
@@ -15,21 +14,30 @@ export const AdminLayout = ({
   onOpenAddEmployee,
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  const currentTab = location.pathname.replace(/^\/admin\/?/, '').split('/')[0] || 'dashboard';
 
   const tabTitles = {
     dashboard: 'HR Admin Dashboard',
     employees: 'Employee Staff Directory',
     departments: 'Departments Management',
-    designations: 'Designations & Titles',
+    designations: 'Designations & Job Titles',
     roles: 'Roles & Access Control',
+    attendance: 'Daily Attendance Roster',
+    leaves: 'Leave & Time-Off Management',
+    payroll: 'Payroll & Compensation',
+    assets: 'Company Hardware Assets',
+    documents: 'Document Vault',
+    announcements: 'Company Announcements',
+    'activity-logs': 'Security Audit Trail',
+    settings: 'Enterprise Settings'
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
       <AdminSidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         employeeCount={employeeCount}
         departmentCount={departmentCount}
         designationCount={designationCount}
@@ -45,7 +53,7 @@ export const AdminLayout = ({
           setSearchQuery={setSearchQuery}
           onOpenAddEmployee={onOpenAddEmployee}
           setMobileOpen={setMobileOpen}
-          activeTabTitle={tabTitles[activeTab] || 'HR Management'}
+          activeTabTitle={tabTitles[currentTab] || 'HR Management'}
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">

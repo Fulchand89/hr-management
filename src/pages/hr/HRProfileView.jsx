@@ -38,9 +38,9 @@ import {
   changePassword as apiChangePassword,
   uploadAvatar as apiUploadAvatar,
   getLeaveBalance
-} from '../../services/employeeService';
+} from '../../services/hrService';
 
-export const ProfileView = ({ onLogout }) => {
+export const HRProfileView = ({ onLogout }) => {
   const [profile, setProfile] = useState({
     name: '',
     empId: '',
@@ -1314,4 +1314,4 @@ export const ProfileView = ({ onLogout }) => {
   );
 };
 
-export default ProfileView;
+export default HRProfileView;

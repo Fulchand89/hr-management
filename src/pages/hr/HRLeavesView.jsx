@@ -13,15 +13,15 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react';
-import ApplyLeaveModal from './ApplyLeaveModal';
-import LeaveDetailModal from './LeaveDetailModal';
+import HRApplyLeaveModal from './HRApplyLeaveModal';
+import HRLeaveDetailModal from './HRLeaveDetailModal';
 import {
   getMyLeaves,
   getLeaveBalance,
   cancelLeave as apiCancelLeave
-} from '../../services/employeeService';
+} from '../../services/hrService';
 
-export const LeavesView = ({ onBack }) => {
+export const HRLeavesView = ({ onBack }) => {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -375,6 +375,21 @@ export const LeavesView = ({ onBack }) => {
                 <span>Prev</span>
               </button>
 
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    currentPage === pageNum
+                      ? 'bg-[#8B1D2C] text-white shadow-xs'
+                      : 'border border-slate-200 text-slate-700 hover:bg-slate-50 bg-white'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
               <button
                 type="button"
                 onClick={() => handlePageChange(currentPage + 1)}
@@ -394,7 +409,7 @@ export const LeavesView = ({ onBack }) => {
       </div>
 
       {/* Apply Leave Modal */}
-      <ApplyLeaveModal
+      <HRApplyLeaveModal
         isOpen={isApplyModalOpen}
         onClose={() => setIsApplyModalOpen(false)}
         onSubmitLeave={async () => {
@@ -405,7 +420,7 @@ export const LeavesView = ({ onBack }) => {
       />
 
       {/* Leave Detail Modal */}
-      <LeaveDetailModal
+      <HRLeaveDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         leave={selectedLeave}
@@ -415,4 +430,4 @@ export const LeavesView = ({ onBack }) => {
   );
 };
 
-export default LeavesView;
+export default HRLeavesView;
