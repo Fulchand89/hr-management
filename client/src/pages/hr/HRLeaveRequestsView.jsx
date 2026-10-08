@@ -48,6 +48,7 @@ export const HRLeaveRequestsView = () => {
 
         return {
           id: r.id,
+          userId: r.userId,
           employeeName: applicantName,
           employeeId: r.applicant?.employeeCode || `EMP-${r.userId || 'N/A'}`,
           designation: r.applicant?.designation?.name || r.applicant?.designation || 'Staff',
@@ -251,9 +252,16 @@ export const HRLeaveRequestsView = () => {
                         {req.avatarInitial}
                       </div>
                       <div>
-                        <span className="font-bold text-slate-900 block text-xs group-hover:text-[#8B1D2C] transition-colors">
-                          {req.employeeName}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-900 block text-xs group-hover:text-[#8B1D2C] transition-colors">
+                            {req.employeeName}
+                          </span>
+                          {req.userId && user?.id && req.userId === user.id && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                              Self
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] font-mono text-slate-400">
                           {req.employeeId} &bull; {req.designation}
                         </span>

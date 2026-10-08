@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { User } = require('../models');
+const { User, LeaveType, LeaveBalance } = require('../models');
 const env = require('../config/env');
 const {
   BadRequestError,
@@ -23,10 +23,37 @@ const register = async (userData) => {
     throw new ConflictError('An account with this email address already exists');
   }
 
+  // Generate employeeCode if not set
+  let employeeCode = userData.employeeCode;
+  if (!employeeCode) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    employeeCode = `EMP-${randomSuffix}`;
+  }
+
   const user = await User.create({
     ...userData,
-    email: userData.email.toLowerCase()
+    email: userData.email.toLowerCase(),
+    employeeCode
   });
+
+  // Auto-allocate initial leave balances for current calendar year
+  try {
+    const leaveTypes = await LeaveType.findAll();
+    if (leaveTypes && leaveTypes.length > 0) {
+      const currentYear = new Date().getFullYear();
+      const balancesToInsert = leaveTypes.map((lt) => ({
+        userId: user.id,
+        leaveTypeId: lt.id,
+        year: currentYear,
+        allocated: lt.daysPerYear || 12,
+        used: 0,
+        remaining: lt.daysPerYear || 12
+      }));
+      await LeaveBalance.bulkCreate(balancesToInsert);
+    }
+  } catch (err) {
+    logger.warn('Initial leave balance allocation warning:', err.message);
+  }
 
   const accessToken = user.generateAccessToken();
   const refreshToken = user.generateRefreshToken();

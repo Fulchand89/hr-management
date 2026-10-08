@@ -170,7 +170,9 @@ export const actionLeaveRequest = async (id, payload) => {
 // ─────────────────────────────────────────────
 
 export const getHolidays = async (year) => {
-  const res = await apiClient.get('/leaves/holidays', { params: { year } });
+  const res = await apiClient.get('/leaves/holidays', {
+    params: year ? { year } : {}
+  });
   return res.data;
 };
 
@@ -262,6 +264,46 @@ export const getMyProfile = async () => {
 
 export const getAllEmployees = async (params = {}) => {
   const res = await apiClient.get('/employees', { params });
+  return res.data;
+};
+
+export const getEmployeeById = async (id) => {
+  const res = await apiClient.get(`/employees/${id}`);
+  return res.data;
+};
+
+export const createEmployee = async (payload) => {
+  const res = await apiClient.post('/employees', payload);
+  return res.data;
+};
+
+export const updateEmployee = async (id, payload) => {
+  const res = await apiClient.put(`/employees/${id}`, payload);
+  return res.data;
+};
+
+export const changeEmployeeStatus = async (id, payload) => {
+  const res = await apiClient.patch(`/employees/${id}/status`, payload);
+  return res.data;
+};
+
+export const updateEmployeeSalary = async (id, payload) => {
+  const res = await apiClient.put(`/employees/${id}/salary`, payload);
+  return res.data;
+};
+
+export const getEmployeeRealTimeStatus = async (id) => {
+  const res = await apiClient.get(`/employees/${id}/status`);
+  return res.data;
+};
+
+export const getDepartments = async (params = {}) => {
+  const res = await apiClient.get('/departments', { params });
+  return res.data;
+};
+
+export const getDesignations = async (params = {}) => {
+  const res = await apiClient.get('/designations', { params });
   return res.data;
 };
 

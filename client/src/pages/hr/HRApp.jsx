@@ -21,6 +21,11 @@ import HRAttendanceCorrectionDetailView from './HRAttendanceCorrectionDetailView
 import HRHolidayManagementView from './HRHolidayManagementView';
 import HRReportsView from './HRReportsView';
 import HRStaffAttendance from './HRStaffAttendance';
+import HREmployeeManagementView from './HREmployeeManagementView';
+import HRAddEmployeeView from './HRAddEmployeeView';
+import HREmployeeProfileDetailView from './HREmployeeProfileDetailView';
+import HREmployeeSalaryView from './HREmployeeSalaryView';
+import HREmployeeStatusView from './HREmployeeStatusView';
 
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -284,6 +289,44 @@ export const HRApp = () => {
         <Route
           path="staff-attendance"
           element={<HRStaffAttendance />}
+        />
+
+        {/* Employee Lifecycle Management */}
+        <Route
+          path="employees"
+          element={<HREmployeeManagementView />}
+        />
+        <Route
+          path="employees/add"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employees/create"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employees/new"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employees/:id"
+          element={<HREmployeeProfileDetailView />}
+        />
+        <Route
+          path="employees/:id/edit"
+          element={<HRAddEmployeeView isEdit={true} />}
+        />
+        <Route
+          path="employees/:id/salary"
+          element={<HREmployeeSalaryView />}
+        />
+        <Route
+          path="employees/:id/status"
+          element={<HREmployeeStatusView />}
+        />
+        <Route
+          path="employee-management"
+          element={<HREmployeeManagementView />}
         />
 
         {/* Leaves & Requests View */}

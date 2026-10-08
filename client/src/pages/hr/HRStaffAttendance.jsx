@@ -132,6 +132,15 @@ const HRStaffAttendance = () => {
     }
   }, [viewMode, date, startDate, endDate, selectedEmployeeId]);
 
+  // Live Auto-Polling: Refresh daily staff attendance every 30 seconds for real-time updates
+  useEffect(() => {
+    if (viewMode !== 'daily') return;
+    const timer = setInterval(() => {
+      fetchDailyAttendance(date, selectedEmployeeId);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [viewMode, date, selectedEmployeeId]);
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);

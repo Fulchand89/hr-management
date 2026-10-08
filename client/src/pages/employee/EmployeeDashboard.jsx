@@ -47,6 +47,13 @@ export const EmployeeDashboard = ({
     year: 'numeric'
   });
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   // Recent attendance logs state (dynamically populated from backend)
   const [recentLogs, setRecentLogs] = useState([]);
 
@@ -125,7 +132,7 @@ export const EmployeeDashboard = ({
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Good morning, {userName}!
+              {getGreeting()}, {userName}!
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
               Welcome back to your employee dashboard. {user?.shift ? `Your assigned shift is ${user.shift}.` : ''} Have a productive day ahead!

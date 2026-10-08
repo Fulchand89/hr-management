@@ -75,6 +75,46 @@ const initCronJobs = () => {
   });
   scheduledTasks.push(cleanupJob);
 
+  // 4. Midnight Attendance Auto-Close & Anomaly Detection (Daily at 23:59)
+  const autoCloseJob = cron.schedule('59 23 * * *', async () => {
+    logger.info('[CRON] Running midnight unpunched attendance auto-close job...');
+    try {
+      const { Attendance, Notification } = require('../models');
+      const { Op } = require('sequelize');
+      const today = new Date().toISOString().split('T')[0];
+
+      // Find any shifts punched in today that were never clocked out
+      const unclosed = await Attendance.findAll({
+        where: {
+          date: today,
+          clockOut: null,
+          status: { [Op.in]: ['working', 'WORKING', 'on_break', 'ON_BREAK'] }
+        }
+      });
+
+      for (const record of unclosed) {
+        await record.update({
+          status: 'half_day',
+          notes: (record.notes ? record.notes + ' | ' : '') + 'Auto-closed at midnight due to missing clock out.'
+        });
+
+        await Notification.create({
+          userId: record.userId,
+          title: 'Missing Punch Out Detected',
+          message: `Your shift for ${today} was not clocked out. Please raise an Attendance Correction if needed.`,
+          type: 'ATTENDANCE_CORRECTION_REQUIRED'
+        }).catch(() => {});
+      }
+
+      if (unclosed.length > 0) {
+        logger.info(`[CRON] Auto-closed ${unclosed.length} open shift(s) at midnight.`);
+      }
+    } catch (err) {
+      logger.error('[CRON] Midnight attendance auto-close error:', err.message);
+    }
+  });
+  scheduledTasks.push(autoCloseJob);
+
   logger.success(`Scheduled ${scheduledTasks.length} cron background tasks.`);
 };
 

@@ -18,11 +18,15 @@ export const ProtectedRoute = ({ allowedRoles = [], children }) => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center mb-4 animate-pulse">
-          <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+        <div className="w-14 h-14 rounded-2xl bg-white p-2 border border-slate-700 flex items-center justify-center mb-4 shadow-xl">
+          <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
         </div>
-        <p className="text-sm font-semibold tracking-wide text-slate-300">
-          WorkPulse HRMS &bull; Verifying Security Clearance...
+        <div className="flex items-center gap-2 mb-2 text-rose-300">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-xs font-mono font-medium">Authenticating Session...</span>
+        </div>
+        <p className="text-sm font-bold tracking-wide text-white">
+          Gupta Tech Web HRMS &bull; Verifying Security Clearance...
         </p>
       </div>
     );

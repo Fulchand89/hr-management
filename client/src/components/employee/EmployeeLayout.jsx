@@ -108,15 +108,15 @@ export const EmployeeLayout = ({
 
             <div
               onClick={() => onSelectTab('dashboard')}
-              className="flex items-center gap-2.5 cursor-pointer select-none group"
+              className="flex items-center gap-3 cursor-pointer select-none group"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8B1D2C] to-[#5C101B] flex items-center justify-center text-white shadow-md shadow-[#8B1D2C]/20 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5 text-rose-200" />
+              <div className="w-10 h-10 rounded-xl bg-white p-1 border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-base tracking-tight text-slate-900 group-hover:text-[#8B1D2C] transition-colors">
-                    WorkPulse
+                    Gupta Tech Web
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8B1D2C]/10 text-[#8B1D2C]">
                     HRMS
@@ -189,16 +189,6 @@ export const EmployeeLayout = ({
 
           {/* Right Action Tools: Notifications & Profile */}
           <div className="flex items-center gap-2.5">
-            {/* Quick Switch to HR Portal */}
-            <button
-              type="button"
-              onClick={onSwitchToHR || (() => (window.location.href = '/hr/dashboard'))}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#8B1D2C] border border-rose-200 text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-              title="Open HR Operations Hub"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-[#8B1D2C]" />
-              <span>HR Hub</span>
-            </button>
 
             {/* Notification Bell */}
             <div className="relative">
@@ -414,11 +404,11 @@ export const EmployeeLayout = ({
             <div className="relative w-72 bg-white h-full p-5 flex flex-col justify-between z-10 shadow-2xl">
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#8B1D2C] flex items-center justify-center text-white font-bold">
-                      W
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-white p-0.5 border border-slate-200 flex items-center justify-center shrink-0">
+                      <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
                     </div>
-                    <span className="font-extrabold text-slate-900">WorkPulse</span>
+                    <span className="font-extrabold text-slate-900">Gupta Tech Web</span>
                   </div>
                   <button
                     type="button"

@@ -12,6 +12,7 @@ const {
   createEmployeeSchema,
   updateEmployeeSchema,
   updateEmployeeStatusSchema,
+  updateSalaryStructureSchema,
   employeeQuerySchema
 } = require('../validators/employee.validator');
 
@@ -98,6 +99,14 @@ router.put(
   authorize(ROLES.ADMIN, ROLES.HR),
   validate(updateEmployeeSchema, 'body'),
   employeeController.updateEmployee
+);
+
+// 7. PUT /api/v1/employees/:id/salary - Configure / revise employee salary structure
+router.put(
+  '/:id/salary',
+  authorize(ROLES.ADMIN, ROLES.HR),
+  validate(updateSalaryStructureSchema, 'body'),
+  employeeController.updateEmployeeSalary
 );
 
 module.exports = router;

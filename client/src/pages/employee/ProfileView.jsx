@@ -293,8 +293,11 @@ export const ProfileView = ({ onLogout }) => {
   };
 
   // Resolve avatar URL
+  const apiBase = import.meta.env.VITE_API_URL 
+    ? import.meta.env.VITE_API_URL.replace(/\/api\/v1\/?$/, '') 
+    : 'http://localhost:5000';
   const resolvedAvatar = profile.avatar
-    ? (profile.avatar.startsWith('http') ? profile.avatar : `http://localhost:5000${profile.avatar}`)
+    ? (profile.avatar.startsWith('http') ? profile.avatar : `${apiBase}${profile.avatar.startsWith('/') ? '' : '/'}${profile.avatar}`)
     : null;
 
   // Manager details formatting
@@ -349,6 +352,144 @@ export const ProfileView = ({ onLogout }) => {
       </div>
     );
   }
+
+  const renderLeaveQuotas = () => (
+    <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center font-bold">
+            <CalendarDays className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Leave Quota Balances</h3>
+            <p className="text-[11px] text-slate-400">Available annual allocations</p>
+          </div>
+        </div>
+        <span className="text-xs font-bold text-[#8B1D2C]">Year {new Date().getFullYear()}</span>
+      </div>
+
+      <div className="space-y-3">
+        {Object.keys(profile.leaves).length === 0 ? (
+          <div className="py-8 text-center text-slate-400 text-xs">
+            No leave quotas allocated yet.
+          </div>
+        ) : (
+          Object.entries(profile.leaves).map(([key, val]) => {
+            const left = val.left ?? 0;
+            const total = val.total ?? 0;
+            const used = val.used ?? Math.max(0, total - left);
+            const pct = total > 0 ? Math.round((left / total) * 100) : 0;
+            return (
+              <div key={key} className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-slate-200 transition-all">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                      {val.code || 'LV'}
+                    </span>
+                    <span className="font-bold text-slate-800 capitalize">
+                      {val.name || key}
+                    </span>
+                  </div>
+                  <span className="font-black text-[#8B1D2C] text-sm">
+                    {left} <span className="text-xs font-normal text-slate-500">/ {total}d</span>
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full h-2 bg-slate-200 rounded-full mt-2.5 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#8B1D2C] to-rose-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, Math.max(total > 0 ? 5 : 0, pct))}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 font-medium">
+                  <span>{used} days consumed</span>
+                  <span>{pct}% balance remaining</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+
+  const renderBankDetails = () => (
+    <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+            <CreditCard className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Bank Details</h3>
+            <p className="text-[11px] text-slate-400">Direct salary deposit account</p>
+          </div>
+        </div>
+        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+          <ShieldCheck className="w-3 h-3" /> Encrypted
+        </span>
+      </div>
+
+      <div className="space-y-2.5 text-xs text-slate-600">
+        {/* Salary Bank */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100">
+          <span className="text-slate-400 font-medium">Salary Bank</span>
+          <span className="font-bold text-slate-900">{profile.bankName}</span>
+        </div>
+
+        {/* Account Number with Mask/Unmask & Copy */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100">
+          <span className="text-slate-400 font-medium">Account Number</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold font-mono text-slate-900">
+              {showFullAccountNo ? profile.accountNoRaw || profile.accountNo : profile.accountNo}
+            </span>
+            {profile.accountNoRaw && (
+              <button
+                type="button"
+                onClick={() => setShowFullAccountNo(!showFullAccountNo)}
+                title={showFullAccountNo ? 'Mask Account' : 'Show Full Account'}
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                {showFullAccountNo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleCopy(profile.accountNoRaw || profile.accountNo, 'accNo')}
+              title="Copy Account Number"
+              className="text-slate-400 hover:text-[#8B1D2C] transition-colors cursor-pointer"
+            >
+              {copiedKey === 'accNo' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* IFSC Code with Copy */}
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100">
+          <span className="text-slate-400 font-medium">IFSC Code</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold font-mono text-slate-900">{profile.ifsc}</span>
+            <button
+              type="button"
+              onClick={() => handleCopy(profile.ifsc, 'ifsc')}
+              title="Copy IFSC"
+              className="text-slate-400 hover:text-[#8B1D2C] transition-colors cursor-pointer"
+            >
+              {copiedKey === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <p className="text-[10px] text-slate-400 text-center pt-2">
+        Bank records are strictly managed by Finance & Accounts. Contact payroll for modifications.
+      </p>
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto font-sans pb-10">
@@ -804,150 +945,20 @@ export const ProfileView = ({ onLogout }) => {
               </div>
             </div>
           )}
+          {/* Section: Annual Leave Quota Balances (When Leaves Tab is Selected) */}
+          {activeTab === 'leaves' && renderLeaveQuotas()}
+
+          {/* Section: Bank Details (When Bank Details Tab is Selected) */}
+          {activeTab === 'financial' && renderBankDetails()}
         </div>
 
-        {/* Right Column (1 Col): Leave Quota Balances & Statutory / Financial */}
-        <div className="space-y-6">
-          {/* Section: Annual Leave Quota Balances */}
-          {(activeTab === 'all' || activeTab === 'leaves') && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center font-bold">
-                    <CalendarDays className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">Leave Quota Balances</h3>
-                    <p className="text-[11px] text-slate-400">Available annual allocations</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-[#8B1D2C]">Year {new Date().getFullYear()}</span>
-              </div>
-
-              <div className="space-y-3">
-                {Object.keys(profile.leaves).length === 0 ? (
-                  <div className="py-8 text-center text-slate-400 text-xs">
-                    No leave quotas allocated yet.
-                  </div>
-                ) : (
-                  Object.entries(profile.leaves).map(([key, val]) => {
-                    const left = val.left ?? 0;
-                    const total = val.total ?? 0;
-                    const used = val.used ?? Math.max(0, total - left);
-                    const pct = total > 0 ? Math.round((left / total) * 100) : 0;
-                    return (
-                      <div key={key} className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-100 hover:border-slate-200 transition-all">
-                        <div className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
-                              {val.code || 'LV'}
-                            </span>
-                            <span className="font-bold text-slate-800 capitalize">
-                              {val.name || key}
-                            </span>
-                          </div>
-                          <span className="font-black text-[#8B1D2C] text-sm">
-                            {left} <span className="text-xs font-normal text-slate-500">/ {total}d</span>
-                          </span>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full h-2 bg-slate-200 rounded-full mt-2.5 overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-[#8B1D2C] to-rose-500 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(100, Math.max(total > 0 ? 5 : 0, pct))}%` }}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 font-medium">
-                          <span>{used} days consumed</span>
-                          <span>{pct}% balance remaining</span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Section: Bank Details */}
-          {(activeTab === 'all' || activeTab === 'financial') && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">Bank Details</h3>
-                    <p className="text-[11px] text-slate-400">Direct salary deposit account</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> Encrypted
-                </span>
-              </div>
-
-              <div className="space-y-2.5 text-xs text-slate-600">
-                {/* Salary Bank */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100">
-                  <span className="text-slate-400 font-medium">Salary Bank</span>
-                  <span className="font-bold text-slate-900">{profile.bankName}</span>
-                </div>
-
-                {/* Account Number with Mask/Unmask & Copy */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100">
-                  <span className="text-slate-400 font-medium">Account Number</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold font-mono text-slate-900">
-                      {showFullAccountNo ? profile.accountNoRaw || profile.accountNo : profile.accountNo}
-                    </span>
-                    {profile.accountNoRaw && (
-                      <button
-                        type="button"
-                        onClick={() => setShowFullAccountNo(!showFullAccountNo)}
-                        title={showFullAccountNo ? 'Mask Account' : 'Show Full Account'}
-                        className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                      >
-                        {showFullAccountNo ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(profile.accountNoRaw || profile.accountNo, 'accNo')}
-                      title="Copy Account Number"
-                      className="text-slate-400 hover:text-[#8B1D2C] transition-colors cursor-pointer"
-                    >
-                      {copiedKey === 'accNo' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* IFSC Code with Copy */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-100">
-                  <span className="text-slate-400 font-medium">IFSC Code</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold font-mono text-slate-900">{profile.ifsc}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(profile.ifsc, 'ifsc')}
-                      title="Copy IFSC"
-                      className="text-slate-400 hover:text-[#8B1D2C] transition-colors cursor-pointer"
-                    >
-                      {copiedKey === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Disclaimer */}
-              <p className="text-[10px] text-slate-400 text-center pt-2">
-                Bank records are strictly managed by Finance & Accounts. Contact payroll for modifications.
-              </p>
-            </div>
-          )}
-        </div>
+        {/* Right Column (1 Col): Shown in All Information view */}
+        {activeTab === 'all' && (
+          <div className="space-y-6">
+            {renderLeaveQuotas()}
+            {renderBankDetails()}
+          </div>
+        )}
       </div>
 
       {/* ─────────────────────────────────────────────────────────────

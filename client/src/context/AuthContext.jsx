@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { login as loginApi, logout as logoutApi } from '../services/employeeService';
+import { login as loginApi, register as registerApi, logout as logoutApi, getMyProfile } from '../services/employeeService';
 
 const AuthContext = createContext(null);
 
@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
 
   // Restore session from localStorage on initial page load (No auto-logins)
   useEffect(() => {
-    const initAuth = () => {
+    const initAuth = async () => {
       try {
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
@@ -26,6 +26,18 @@ export const AuthProvider = ({ children }) => {
           const parsed = JSON.parse(storedUser);
           setToken(storedToken);
           setUser(parsed);
+
+          // Fetch fresh profile from API in background to ensure role & permissions are synchronized with database
+          try {
+            const profileRes = await getMyProfile();
+            const freshUser = profileRes?.data || profileRes;
+            if (freshUser && freshUser.id) {
+              localStorage.setItem('user', JSON.stringify(freshUser));
+              setUser(freshUser);
+            }
+          } catch {
+            // Keep parsed user if background fetch fails
+          }
         } else {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -62,6 +74,23 @@ export const AuthProvider = ({ children }) => {
     return userData;
   }, []);
 
+  // Register action
+  const register = useCallback(async (formData) => {
+    const res = await registerApi(formData);
+    const newToken = res?.data?.accessToken || res?.token || res?.accessToken || res?.data?.token;
+    const userData = res?.data?.user || res?.data || res?.user;
+
+    if (newToken) {
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+    }
+    if (userData) {
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+    }
+    return userData;
+  }, []);
+
   // Secure Logout action
   const logout = useCallback(async () => {
     try {
@@ -79,7 +108,7 @@ export const AuthProvider = ({ children }) => {
   const isLoggedIn = Boolean(token && user);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoggedIn, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoggedIn, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

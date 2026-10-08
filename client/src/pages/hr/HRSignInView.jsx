@@ -26,6 +26,7 @@ export const HRSignInView = ({ onSignIn }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDemoAccounts, setShowDemoAccounts] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,12 +66,12 @@ export const HRSignInView = ({ onSignIn }) => {
 
       {/* Top Portal Switcher Bar */}
       <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8B1D2C] to-[#5C101B] text-white flex items-center justify-center font-black text-sm shadow-md shadow-[#8B1D2C]/30">
-            WP
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
+            <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
           </div>
           <div>
-            <span className="text-sm font-bold text-white tracking-tight">WorkPulse HRMS</span>
+            <span className="text-sm font-bold text-white tracking-tight">Gupta Tech Web HRMS</span>
             <span className="text-[10px] text-rose-300 font-semibold block">People Operations Console</span>
           </div>
         </div>
@@ -140,15 +141,15 @@ export const HRSignInView = ({ onSignIn }) => {
 
           {/* Footer Note */}
           <div className="relative z-10 text-[11px] text-slate-400 font-medium">
-            &copy; 2026 WorkPulse Systems. Secure Multi-Role HRMS.
+            &copy; 2026 Gupta Tech Web. Secure Multi-Role HRMS.
           </div>
         </div>
 
         {/* Right Side: Web Sign In Form */}
         <div className="p-8 sm:p-10 flex flex-col justify-center bg-white">
           <div className="mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center mb-4 font-bold shadow-2xs">
-              <Building2 className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-white p-1.5 border border-slate-200 flex items-center justify-center mb-4 shadow-2xs">
+              <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
             </div>
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
               Sign in to HR Portal
@@ -178,7 +179,7 @@ export const HRSignInView = ({ onSignIn }) => {
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="e.g. hr@hrmanagement.com or EMP-002"
+                  placeholder="e.g. hr@guptatechweb.com or EMP-002"
                   className="w-full pl-10 pr-3.5 py-3 text-xs border border-slate-200 rounded-2xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C] transition-all"
                 />
               </div>
@@ -189,7 +190,6 @@ export const HRSignInView = ({ onSignIn }) => {
                 <label className="block text-xs font-bold text-slate-700">
                   Password <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[11px] text-slate-400 font-medium">Default: HRPassword@123</span>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
@@ -197,7 +197,7 @@ export const HRSignInView = ({ onSignIn }) => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="Enter your corporate password"
                   className="w-full pl-10 pr-10 py-3 text-xs border border-slate-200 rounded-2xl bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C] transition-all"
                 />
                 <button
@@ -229,30 +229,44 @@ export const HRSignInView = ({ onSignIn }) => {
             </button>
           </form>
 
-          {/* Quick Demo Credentials */}
-          <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400 font-medium">Quick Fill:</span>
-            <div className="flex gap-2">
+          {/* Security Notice & Discreet Staging Quick Fill */}
+          <div className="mt-6 pt-5 border-t border-slate-100 space-y-3">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                Audited RBAC Access
+              </span>
+              <span>&bull;</span>
+              <span className="text-slate-400">Gupta Tech Web</span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+              Authorized HR Operations personnel only. All access attempts are logged with security audit trails.
+            </p>
+
+            <div className="text-center pt-1">
               <button
                 type="button"
-                onClick={() => {
-                  setIdentifier('hr@hrmanagement.com');
-                  setPassword('HRPassword@123');
-                }}
-                className="px-2.5 py-1 rounded-xl bg-rose-50 text-[#8B1D2C] hover:bg-rose-100 font-bold text-[11px] transition-colors cursor-pointer"
+                onClick={() => setShowDemoAccounts(!showDemoAccounts)}
+                className="text-[10px] font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
-                HR Lead Demo
+                {showDemoAccounts ? '▲ Hide Staging Credentials' : '▼ Staging Quick Fill'}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier('manager@hrmanagement.com');
-                  setPassword('ManagerPassword@123');
-                }}
-                className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-[11px] transition-colors cursor-pointer"
-              >
-                Manager Demo
-              </button>
+
+              {showDemoAccounts && (
+                <div className="mt-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200 flex justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('hr@hrmanagement.com');
+                      setPassword('HrPassword@123');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-rose-50 text-[#8B1D2C] hover:bg-rose-100 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    💼 Fill HR Lead
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

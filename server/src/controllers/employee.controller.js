@@ -186,6 +186,21 @@ const uploadMyAvatar = async (req, res, next) => {
   }
 };
 
+/**
+ * 11. PUT /api/v1/employees/:id/salary - Configure / revise employee salary structure
+ */
+const updateEmployeeSalary = async (req, res, next) => {
+  try {
+    const updatedStructure = await employeeService.updateEmployeeSalaryStructure(req.params.id, req.body, req.user);
+    return ApiResponse.success(res, {
+      message: 'Employee salary structure configured successfully',
+      data: updatedStructure
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createEmployee,
   getAllEmployees,
@@ -196,5 +211,6 @@ module.exports = {
   getMyProfile,
   updateMyProfile,
   changeMyPassword,
-  uploadMyAvatar
+  uploadMyAvatar,
+  updateEmployeeSalary
 };

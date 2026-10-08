@@ -33,7 +33,7 @@ apiClient.interceptors.response.use(
         
         // Prevent infinite page-reload blinking loop (lap-chap)
         if (!window.location.pathname.includes('/signin')) {
-          window.location.href = '/employee/signin';
+          window.location.href = '/signin';
         }
       }
     }

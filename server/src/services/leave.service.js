@@ -573,11 +573,28 @@ const getLeaveRequestById = async (id, user) => {
     throw new ForbiddenError('You do not have permission to view this leave request');
   }
 
-  return leave;
+  const year = new Date(leave.startDate).getFullYear();
+  const balances = await LeaveBalance.findAll({
+    where: { userId: leave.userId, year },
+    include: [{ model: LeaveType, as: 'leaveType', attributes: ['name', 'code'] }]
+  });
+
+  const leaveJson = leave.toJSON();
+  leaveJson.applicantBalances = balances.map((b) => ({
+    name: b.leaveType ? b.leaveType.name : 'Leave',
+    code: b.leaveType ? b.leaveType.code : 'LV',
+    allocated: Number(b.allocated),
+    used: Number(b.used),
+    remaining: Number(b.remaining),
+    total: Number(b.allocated)
+  }));
+
+  return leaveJson;
 };
 
 const actionLeaveRequest = async (id, payload, reviewer, ipAddress) => {
-  const { status, actionReason } = payload;
+  const status = payload.status;
+  const actionReason = payload.actionReason || payload.rejectionReason;
 
   const leave = await LeaveRequest.findByPk(id, {
     include: [
@@ -592,6 +609,13 @@ const actionLeaveRequest = async (id, payload, reviewer, ipAddress) => {
 
   if (leave.status !== 'pending') {
     throw new BadRequestError(`Cannot action this leave application because it is already marked as ${leave.status}`);
+  }
+
+  // Conflict of Interest Prevention: HR/Managers cannot approve their own leaves
+  if (leave.userId === reviewer.id && reviewer.role !== 'admin') {
+    throw new ForbiddenError(
+      'Conflict of Interest: You cannot approve or reject your own leave application. It must be reviewed by an Administrator.'
+    );
   }
 
   const year = new Date(leave.startDate).getFullYear();

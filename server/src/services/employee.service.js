@@ -137,6 +137,32 @@ const createEmployee = async (payload, actor = null) => {
       await LeaveBalance.bulkCreate(balancesToInsert, { transaction: t });
     }
 
+    // Initialize initial SalaryStructure if salary/CTC is specified
+    if (payload.salary && Number(payload.salary) > 0) {
+      const ctcVal = Number(payload.salary);
+      const monthlyGross = ctcVal / 12;
+      const basicVal = Math.round(monthlyGross * 0.5);
+      const hraVal = Math.round(monthlyGross * 0.2);
+      const allowanceVal = Math.max(0, Math.round(monthlyGross - basicVal - hraVal));
+      const pfVal = Math.round(basicVal * 0.12);
+      const netVal = Math.max(0, monthlyGross - pfVal);
+
+      await SalaryStructure.create(
+        {
+          userId: newEmployee.id,
+          ctc: ctcVal,
+          basicSalary: basicVal,
+          hra: hraVal,
+          specialAllowance: allowanceVal,
+          pfDeduction: pfVal,
+          esiDeduction: 0,
+          taxDeduction: 0,
+          netSalary: netVal
+        },
+        { transaction: t }
+      ).catch((err) => logger.warn('Initial salary structure warning:', err.message));
+    }
+
     // Log creation in ActivityLog
     await ActivityLog.create(
       {
@@ -678,6 +704,97 @@ const updateMyProfile = async (userId, payload) => {
   return getMyProfile(userId);
 };
 
+/**
+ * 9. Update / Upsert employee salary structure
+ */
+const updateEmployeeSalaryStructure = async (id, payload, actor = null) => {
+  const employee = await User.findByPk(id);
+  if (!employee) {
+    throw new NotFoundError(`Employee not found with ID ${id}`);
+  }
+
+  const ctc = parseFloat(payload.ctc || 0);
+  const monthlyGross = ctc > 0 ? ctc / 12 : 0;
+  const basicSalary = payload.basicSalary !== undefined && payload.basicSalary !== null
+    ? parseFloat(payload.basicSalary)
+    : Math.round(monthlyGross * 0.5);
+  const hra = payload.hra !== undefined && payload.hra !== null
+    ? parseFloat(payload.hra)
+    : Math.round(monthlyGross * 0.2);
+  const specialAllowance = payload.specialAllowance !== undefined && payload.specialAllowance !== null
+    ? parseFloat(payload.specialAllowance)
+    : Math.max(0, Math.round(monthlyGross - basicSalary - hra));
+  const pfDeduction = payload.pfDeduction !== undefined && payload.pfDeduction !== null
+    ? parseFloat(payload.pfDeduction)
+    : Math.round(basicSalary * 0.12);
+  const esiDeduction = payload.esiDeduction !== undefined && payload.esiDeduction !== null
+    ? parseFloat(payload.esiDeduction)
+    : 0;
+  const taxDeduction = payload.taxDeduction !== undefined && payload.taxDeduction !== null
+    ? parseFloat(payload.taxDeduction)
+    : 0;
+  const calculatedNet = Math.max(0, Math.round((basicSalary + hra + specialAllowance) - (pfDeduction + esiDeduction + taxDeduction)));
+  const netSalary = payload.netSalary !== undefined && payload.netSalary !== null
+    ? parseFloat(payload.netSalary)
+    : calculatedNet;
+
+  const result = await sequelize.transaction(async (t) => {
+    // 1. Sync User salary
+    employee.salary = ctc;
+    await employee.save({ transaction: t });
+
+    // 2. Find or create SalaryStructure
+    const [structure, created] = await SalaryStructure.findOrCreate({
+      where: { userId: id },
+      defaults: {
+        userId: id,
+        ctc,
+        basicSalary,
+        hra,
+        specialAllowance,
+        pfDeduction,
+        esiDeduction,
+        taxDeduction,
+        netSalary
+      },
+      transaction: t
+    });
+
+    if (!created) {
+      await structure.update(
+        {
+          ctc,
+          basicSalary,
+          hra,
+          specialAllowance,
+          pfDeduction,
+          esiDeduction,
+          taxDeduction,
+          netSalary
+        },
+        { transaction: t }
+      );
+    }
+
+    // 3. Log Activity
+    await ActivityLog.create(
+      {
+        userId: actor ? actor.id : employee.id,
+        action: 'UPDATE_SALARY_STRUCTURE',
+        module: 'PAYROLL',
+        targetId: employee.id,
+        ipAddress: 'INTERNAL',
+        details: `Updated salary structure for ${employee.firstName} ${employee.lastName}: CTC ₹${ctc.toLocaleString()}, Net ₹${netSalary.toLocaleString()}/mo`
+      },
+      { transaction: t }
+    ).catch(() => {});
+
+    return structure;
+  });
+
+  return result;
+};
+
 module.exports = {
   createEmployee,
   getAllEmployees,
@@ -686,5 +803,6 @@ module.exports = {
   changeEmployeeStatus,
   getEmployeeRealTimeStatus,
   getMyProfile,
-  updateMyProfile
+  updateMyProfile,
+  updateEmployeeSalaryStructure
 };

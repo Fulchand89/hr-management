@@ -135,6 +135,23 @@ const updateEmployeeStatusSchema = Joi.object({
 });
 
 /**
+ * Validation schema for configuring / revising employee salary structure
+ */
+const updateSalaryStructureSchema = Joi.object({
+  ctc: Joi.number().min(0).precision(2).required().messages({
+    'any.required': 'Annual CTC is required',
+    'number.base': 'Annual CTC must be a valid number'
+  }),
+  basicSalary: Joi.number().min(0).precision(2).allow(null).optional(),
+  hra: Joi.number().min(0).precision(2).allow(null).optional(),
+  specialAllowance: Joi.number().min(0).precision(2).allow(null).optional(),
+  pfDeduction: Joi.number().min(0).precision(2).allow(null).optional(),
+  esiDeduction: Joi.number().min(0).precision(2).allow(null).optional(),
+  taxDeduction: Joi.number().min(0).precision(2).allow(null).optional(),
+  netSalary: Joi.number().min(0).precision(2).allow(null).optional()
+});
+
+/**
  * Validation schema for employee query filters and pagination
  */
 const employeeQuerySchema = Joi.object({
@@ -158,5 +175,6 @@ module.exports = {
   createEmployeeSchema,
   updateEmployeeSchema,
   updateEmployeeStatusSchema,
+  updateSalaryStructureSchema,
   employeeQuerySchema
 };
