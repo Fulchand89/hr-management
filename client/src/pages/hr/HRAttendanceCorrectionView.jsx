@@ -41,6 +41,17 @@ export const HRAttendanceCorrectionView = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Lock body scroll when review modal is active
+  useEffect(() => {
+    if (selectedItem) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow || 'unset';
+      };
+    }
+  }, [selectedItem]);
+
   // Live Requests List from backend
   const [correctionRequests, setCorrectionRequests] = useState([]);
 

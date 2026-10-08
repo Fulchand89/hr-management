@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CalendarDays,
   CheckCircle2,
@@ -22,6 +22,17 @@ export const LeaveManagementPage = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [actionReason, setActionReason] = useState('');
   const [actionType, setActionType] = useState(null); // 'approved' | 'rejected'
+
+  // Lock body scroll when modal is active
+  useEffect(() => {
+    if (selectedRequest && actionType) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow || 'unset';
+      };
+    }
+  }, [selectedRequest, actionType]);
 
   // Sample data for Leave Requests
   const [requests, setRequests] = useState([
