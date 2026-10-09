@@ -26,7 +26,11 @@ import {
   BarChart3,
   FileSpreadsheet,
   ChevronRight,
-  Home
+  Home,
+  Wallet,
+  TrendingUp,
+  UserMinus,
+  Gift
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -40,6 +44,7 @@ export const HRLayout = ({
   onEndBreak: propEndBreak,
   onPunchOut: propPunchOut,
   unreadNotifications: propUnread,
+  pendingQueueCount: propPendingQueue,
   onApplyLeaveClick,
   onLogout: propLogout,
 }) => {
@@ -151,10 +156,15 @@ export const HRLayout = ({
   const isMyAttendance = currentPath.startsWith('/hr/my-attendance') || currentPath.startsWith('/hr/myattendance');
   const isStaffAttendance = currentPath.startsWith('/hr/staff-attendance');
   const isEmployees = currentPath.startsWith('/hr/employees') || currentPath.startsWith('/hr/employee-management');
+  const isPayroll = currentPath.startsWith('/hr/payroll');
   const isPersonalLeaves = currentPath.startsWith('/hr/leaves');
   const isAttendanceCorrection = currentPath.startsWith('/hr/attendance-correction');
   const isStaffLeaves = (currentPath.startsWith('/hr/leave-requests') || currentPath.startsWith('/hr/leave-detail')) && !currentPath.includes('LEV-101');
   const isHolidayManagement = currentPath.startsWith('/hr/holiday') || currentPath.startsWith('/hr/holidays');
+  const isPolicies = currentPath.startsWith('/hr/policies');
+  const isAppraisals = currentPath.startsWith('/hr/appraisals');
+  const isExit = currentPath.startsWith('/hr/exit');
+  const isReferrals = currentPath.startsWith('/hr/referrals');
   const isReports = currentPath.startsWith('/hr/reports');
   const isNotifications = currentPath.startsWith('/hr/notifications');
   const isProfile = currentPath.startsWith('/hr/profile');
@@ -211,6 +221,13 @@ export const HRLayout = ({
       isActive: isEmployees,
     },
     {
+      id: 'payroll',
+      label: 'Payroll & Salary',
+      icon: Wallet,
+      path: '/hr/payroll',
+      isActive: isPayroll,
+    },
+    {
       id: 'leave-requests',
       label: 'Staff Leave Approvals',
       icon: CalendarDays,
@@ -223,6 +240,34 @@ export const HRLayout = ({
       icon: Calendar,
       path: '/hr/holiday-management',
       isActive: isHolidayManagement,
+    },
+    {
+      id: 'policies',
+      label: 'HR Policies & SOPs',
+      icon: FileText,
+      path: '/hr/policies',
+      isActive: isPolicies,
+    },
+    {
+      id: 'appraisals',
+      label: 'Appraisals & Reviews',
+      icon: TrendingUp,
+      path: '/hr/appraisals',
+      isActive: isAppraisals,
+    },
+    {
+      id: 'exit-management',
+      label: 'Exit & Offboarding',
+      icon: UserMinus,
+      path: '/hr/exit-management',
+      isActive: isExit,
+    },
+    {
+      id: 'referrals-rewards',
+      label: 'Referrals & Rewards',
+      icon: Gift,
+      path: '/hr/referrals-rewards',
+      isActive: isReferrals,
     },
     {
       id: 'reports',
@@ -303,7 +348,7 @@ export const HRLayout = ({
               ) : attendanceStatus === 'PUNCHED_OUT' ? (
                 <span>Total: {workingTimeFormatted}</span>
               ) : (
-                <span className="text-slate-400">Shift: 09:00 AM - 06:00 PM</span>
+                <span className="text-slate-400">Shift: 10:00 AM - 07:00 PM (1h Break)</span>
               )}
             </div>
 
@@ -348,15 +393,19 @@ export const HRLayout = ({
             )}
 
             {/* HR Approvals Queue Indicator */}
-            <div className="h-4 w-px bg-slate-200" />
-            <button
-              type="button"
-              onClick={() => navigate('/hr/leave-requests')}
-              className="text-xs font-bold text-[#8B1D2C] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>Queue: 4 Pending</span>
-            </button>
+            {propPendingQueue !== undefined && propPendingQueue > 0 && (
+              <>
+                <div className="h-4 w-px bg-slate-200" />
+                <button
+                  type="button"
+                  onClick={() => navigate('/hr/leave-requests')}
+                  className="text-xs font-bold text-[#8B1D2C] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span>Queue: {propPendingQueue} Pending</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Right Action Tools: Notifications & Profile matching EmployeeLayout */}
@@ -546,11 +595,15 @@ export const HRLayout = ({
             <div className="text-slate-600 space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 whitespace-nowrap">Timing:</span>
-                <span className="font-semibold text-slate-700 whitespace-nowrap">09:00 AM - 06:00 PM</span>
+                <span className="font-semibold text-slate-700 whitespace-nowrap">10:00 AM - 07:00 PM</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400 whitespace-nowrap">Break Allowance:</span>
+                <span className="font-semibold text-emerald-700 whitespace-nowrap">1 Hour (60 Min)</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 whitespace-nowrap">Grace Period:</span>
-                <span className="font-semibold text-slate-700 whitespace-nowrap">15 Minutes</span>
+                <span className="font-semibold text-slate-700 whitespace-nowrap">15 Min (till 10:15)</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 whitespace-nowrap">Location:</span>
@@ -759,6 +812,24 @@ export const HRLayout = ({
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
               </button>
 
+              {/* Payroll & Salary */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  navigate('/hr/payroll');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  <span>Payroll & Salary</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
               {/* Holiday Management */}
               <button
                 type="button"
@@ -773,6 +844,60 @@ export const HRLayout = ({
                     <Calendar className="w-4 h-4" />
                   </div>
                   <span>Holiday Management</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Appraisals & Reviews */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  navigate('/hr/appraisals');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <span>Appraisals & Reviews</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Exit Management */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  navigate('/hr/exit-management');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <UserMinus className="w-4 h-4" />
+                  </div>
+                  <span>Exit & Offboarding</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Referrals & Rewards */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  navigate('/hr/referrals-rewards');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Gift className="w-4 h-4" />
+                  </div>
+                  <span>Referrals & Rewards</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
               </button>

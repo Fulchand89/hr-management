@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   User,
   Mail,
@@ -25,7 +26,8 @@ import {
   EyeOff,
   RefreshCw,
   Heart,
-  Sparkles
+  Sparkles,
+  Wallet
 } from 'lucide-react';
 import {
   getMyProfile,
@@ -36,6 +38,7 @@ import {
 } from '../../services/employeeService';
 
 export const ProfileView = ({ onLogout }) => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState({
     name: '',
     empId: '',
@@ -484,9 +487,21 @@ export const ProfileView = ({ onLogout }) => {
         </div>
       </div>
 
+      {/* Link to Salary & Payslips View */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={() => navigate('/employee/salary')}
+          className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-rose-50 to-orange-50 hover:from-rose-100 hover:to-orange-100 text-[#8B1D2C] border border-rose-200/80 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99]"
+        >
+          <Wallet className="w-4 h-4" />
+          <span>View Salary Structure & Payslips &rarr;</span>
+        </button>
+      </div>
+
       {/* Disclaimer */}
-      <p className="text-[10px] text-slate-400 text-center pt-2">
-        Bank records are strictly managed by Finance & Accounts. Contact payroll for modifications.
+      <p className="text-[10px] text-slate-400 text-center pt-1">
+        Bank records and salary grades are managed strictly by HR & Finance. Contact payroll for modifications.
       </p>
     </div>
   );

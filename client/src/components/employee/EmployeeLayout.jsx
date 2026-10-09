@@ -17,6 +17,8 @@ import {
   Play,
   Square,
   Sparkles,
+  Wallet,
+  BookOpen,
 } from 'lucide-react';
 
 export const EmployeeLayout = ({
@@ -55,6 +57,8 @@ export const EmployeeLayout = ({
     { id: 'attendance', label: 'Live Punch & Timer', icon: Clock },
     { id: 'my-attendance', label: 'My Attendance', icon: CalendarCheck },
     { id: 'leaves', label: 'Leaves & Requests', icon: CalendarDays },
+    { id: 'salary', label: 'Salary & Compensation', icon: Wallet },
+    { id: 'policies', label: 'Company Policies', icon: BookOpen },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'profile', label: 'My Profile', icon: User },
   ];
@@ -142,7 +146,7 @@ export const EmployeeLayout = ({
               ) : attendanceStatus === 'PUNCHED_OUT' ? (
                 <span>Total: {workingTime}</span>
               ) : (
-                <span className="text-slate-400">Shift: 09:00 AM - 06:00 PM</span>
+                <span className="text-slate-400">Shift: 10:00 AM - 07:00 PM (1h Break)</span>
               )}
             </div>
 
@@ -275,6 +279,28 @@ export const EmployeeLayout = ({
                     <CalendarDays className="w-4 h-4 text-slate-400" /> Apply Leaves
                   </button>
 
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      onSelectTab('salary');
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Wallet className="w-4 h-4 text-slate-400" /> Salary & Payslips
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      onSelectTab('policies');
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4 text-slate-400" /> Company Policies
+                  </button>
+
                   <div className="my-1 border-t border-slate-100" />
 
                   <button
@@ -380,11 +406,15 @@ export const EmployeeLayout = ({
             <div className="text-slate-600 space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 whitespace-nowrap">Timing:</span>
-                <span className="font-semibold text-slate-700 whitespace-nowrap">09:00 AM - 06:00 PM</span>
+                <span className="font-semibold text-slate-700 whitespace-nowrap">10:00 AM - 07:00 PM</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400 whitespace-nowrap">Break Allowance:</span>
+                <span className="font-semibold text-emerald-700 whitespace-nowrap">1 Hour (60 Min)</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 whitespace-nowrap">Grace Period:</span>
-                <span className="font-semibold text-slate-700 whitespace-nowrap">15 Minutes</span>
+                <span className="font-semibold text-slate-700 whitespace-nowrap">15 Min (till 10:15)</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 whitespace-nowrap">Location:</span>

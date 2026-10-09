@@ -64,8 +64,8 @@ const env = {
   // Cron
   CRON: {
     ENABLED: process.env.CRON_ENABLED !== 'false',
-    ATTENDANCE_SCHEDULE: process.env.CRON_ATTENDANCE_SCHEDULE || '0 9 * * 1-5',
-    LEAVE_ALERT_SCHEDULE: process.env.CRON_LEAVE_ALERT_SCHEDULE || '0 18 * * 1-5',
+    ATTENDANCE_SCHEDULE: process.env.CRON_ATTENDANCE_SCHEDULE || '0 10 * * 1-5',
+    LEAVE_ALERT_SCHEDULE: process.env.CRON_LEAVE_ALERT_SCHEDULE || '0 19 * * 1-5',
     CLEANUP_SCHEDULE: process.env.CRON_CLEANUP_SCHEDULE || '0 0 * * 0'
   },
 

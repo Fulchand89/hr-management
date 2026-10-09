@@ -64,6 +64,11 @@ const computeLiveMetrics = (attendance, shift = null) => {
       totalWorkingHours: '00:00:00',
       netWorkingHours: '00:00:00',
       breakDuration: '00:00:00',
+      maxBreakMinutes: shift?.breakAllowedMinutes ? Number(shift.breakAllowedMinutes) : 60,
+      breakAllowanceFormatted: `${shift?.breakAllowedMinutes ? Number(shift.breakAllowedMinutes) : 60} Mins (1h)`,
+      breakExceededMinutes: 0,
+      breakRemainingMinutes: shift?.breakAllowedMinutes ? Number(shift.breakAllowedMinutes) : 60,
+      isBreakExceeded: false,
       progress: 0,
       sinceText: 'Not clocked in yet',
       timeString: '00:00:00',
@@ -175,6 +180,11 @@ const computeLiveMetrics = (attendance, shift = null) => {
   const netWorkingHoursStr = formatSecondsToHMS(workingSec);
   const breakDurationStr = formatSecondsToHMS(cumulativeBreakSec);
 
+  const maxBreakMinutes = shift?.breakAllowedMinutes ? Number(shift.breakAllowedMinutes) : 60;
+  const maxBreakSec = maxBreakMinutes * 60;
+  const breakExceededSec = Math.max(0, cumulativeBreakSec - maxBreakSec);
+  const breakRemainingSec = Math.max(0, maxBreakSec - cumulativeBreakSec);
+
   return {
     status: currentStatus,
     clockInTime: attendance.clockIn,
@@ -186,6 +196,11 @@ const computeLiveMetrics = (attendance, shift = null) => {
     totalWorkingHours: netWorkingHoursStr, // Net Effective Hours
     netWorkingHours: netWorkingHoursStr,
     breakDuration: breakDurationStr,
+    maxBreakMinutes,
+    breakAllowanceFormatted: `${maxBreakMinutes} Mins (1h)`,
+    breakExceededMinutes: Math.floor(breakExceededSec / 60),
+    breakRemainingMinutes: Math.floor(breakRemainingSec / 60),
+    isBreakExceeded: cumulativeBreakSec > maxBreakSec,
     progress: progressPercent,
     sinceText,
     timeString: netWorkingHoursStr,
@@ -201,10 +216,15 @@ const getTodayStatus = async (userId) => {
 
   const attendance = await Attendance.findOne({
     where: { userId, date: today },
-    include: [{ model: Shift, as: 'shift', attributes: ['id', 'name', 'startTime', 'endTime', 'graceMinutes'] }]
+    include: [{ model: Shift, as: 'shift', attributes: ['id', 'name', 'startTime', 'endTime', 'graceMinutes', 'breakAllowedMinutes'] }]
   });
 
-  const live = computeLiveMetrics(attendance, attendance ? attendance.shift : null);
+  let shiftRecord = attendance?.shift;
+  if (!shiftRecord) {
+    shiftRecord = await Shift.findOne({ where: { status: 'active', name: 'General Shift' } }).catch(() => null);
+  }
+
+  const live = computeLiveMetrics(attendance, shiftRecord);
 
   return {
     date: today,
@@ -227,19 +247,28 @@ const getTodayStatus = async (userId) => {
     breakDuration: live.breakDuration,
     workingSeconds: live.workingSeconds,
     breakSeconds: live.breakSeconds,
-    shift: attendance && attendance.shift
+    maxBreakMinutes: live.maxBreakMinutes,
+    breakAllowanceFormatted: live.breakAllowanceFormatted,
+    breakExceededMinutes: live.breakExceededMinutes,
+    breakRemainingMinutes: live.breakRemainingMinutes,
+    isBreakExceeded: live.isBreakExceeded,
+    shift: shiftRecord
       ? {
-          id: attendance.shift.id,
-          name: attendance.shift.name,
-          startTime: attendance.shift.startTime,
-          endTime: attendance.shift.endTime,
-          display: `${attendance.shift.name} (${attendance.shift.startTime} - ${attendance.shift.endTime})`
+          id: shiftRecord.id,
+          name: shiftRecord.name,
+          startTime: shiftRecord.startTime,
+          endTime: shiftRecord.endTime,
+          graceMinutes: shiftRecord.graceMinutes || 15,
+          breakAllowedMinutes: shiftRecord.breakAllowedMinutes || 60,
+          display: `${shiftRecord.name} (${shiftRecord.startTime} - ${shiftRecord.endTime})`
         }
       : {
           name: 'General Shift',
-          startTime: '09:00',
-          endTime: '18:00',
-          display: 'Shift: 09:00 AM - 06:00 PM (9h)'
+          startTime: '10:00',
+          endTime: '19:00',
+          graceMinutes: 15,
+          breakAllowedMinutes: 60,
+          display: 'Shift: 10:00 AM - 07:00 PM (9h • 1h Break)'
         },
     raw: attendance || null
   };

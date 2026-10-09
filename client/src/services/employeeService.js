@@ -155,3 +155,20 @@ export const uploadAvatar = async (formData) => {
   });
   return res.data;
 };
+
+// ─────────────────────────────────────────────
+// SALARY & PAYSLIPS (READ-ONLY)
+// ─────────────────────────────────────────────
+
+export const getMyPayslips = async (year) => {
+  const params = {};
+  if (year && year !== 'all') params.year = year;
+  const res = await apiClient.get('/payroll/my-payslips', { params });
+  return res.data;
+};
+
+export const getMyPayslipDetail = async (id) => {
+  const res = await apiClient.get(`/payroll/${id}/payslip`);
+  return res.data;
+};
+

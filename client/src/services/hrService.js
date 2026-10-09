@@ -323,3 +323,61 @@ export const uploadAvatar = async (formData) => {
   });
   return res.data;
 };
+
+// ─────────────────────────────────────────────
+// PAYROLL MANAGEMENT & COMPENSATION
+// ─────────────────────────────────────────────
+
+export const generateMonthlyPayroll = async (payload) => {
+  const res = await apiClient.post('/payroll/generate', payload);
+  return res.data;
+};
+
+export const getPayrollDirectory = async (params = {}) => {
+  const res = await apiClient.get('/payroll', { params });
+  return res.data;
+};
+
+export const getPayrollSummary = async (params = {}) => {
+  const res = await apiClient.get('/payroll/summary', { params });
+  return res.data;
+};
+
+export const getPayrollById = async (id) => {
+  const res = await apiClient.get(`/payroll/${id}`);
+  return res.data;
+};
+
+export const adjustPayroll = async (id, payload) => {
+  const res = await apiClient.put(`/payroll/${id}/adjust`, payload);
+  return res.data;
+};
+
+export const updatePayrollStatus = async (id, payload) => {
+  const res = await apiClient.patch(`/payroll/${id}/status`, payload);
+  return res.data;
+};
+
+export const bulkDisbursePayroll = async (payload) => {
+  const res = await apiClient.post('/payroll/bulk-disburse', payload);
+  return res.data;
+};
+
+export const exportBankPayoutSheet = async (params = {}) => {
+  const res = await apiClient.get('/payroll/export-bank-sheet', {
+    params,
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+export const getMyPayslips = async () => {
+  const res = await apiClient.get('/payroll/my-payslips');
+  return res.data;
+};
+
+export const getPayslipDetails = async (id) => {
+  const res = await apiClient.get(`/payroll/${id}/payslip`);
+  return res.data;
+};
+

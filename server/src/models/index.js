@@ -23,6 +23,8 @@ const { initCompanyAssetModel } = require('./CompanyAsset');
 const { initNotificationModel } = require('./Notification');
 const { initActivityLogModel } = require('./ActivityLog');
 const { initAttendanceCorrectionModel } = require('./AttendanceCorrection');
+const { initCompanyPolicyModel } = require('./CompanyPolicy');
+const { initPolicyAcknowledgmentModel } = require('./PolicyAcknowledgment');
 
 // 1. Initialize all models
 const Role = initRoleModel(sequelize);
@@ -46,6 +48,8 @@ const EmployeeDocument = initEmployeeDocumentModel(sequelize);
 const CompanyAsset = initCompanyAssetModel(sequelize);
 const Notification = initNotificationModel(sequelize);
 const ActivityLog = initActivityLogModel(sequelize);
+const CompanyPolicy = initCompanyPolicyModel(sequelize);
+const PolicyAcknowledgment = initPolicyAcknowledgmentModel(sequelize);
 
 // 2. Define Associations
 
@@ -156,6 +160,16 @@ Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 User.hasMany(ActivityLog, { foreignKey: 'userId', as: 'activityLogs' });
 ActivityLog.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// M. Company Policies & Acknowledgments
+CompanyPolicy.hasMany(PolicyAcknowledgment, { foreignKey: 'policyId', as: 'acknowledgments', onDelete: 'CASCADE' });
+PolicyAcknowledgment.belongsTo(CompanyPolicy, { foreignKey: 'policyId', as: 'policy' });
+
+User.hasMany(PolicyAcknowledgment, { foreignKey: 'userId', as: 'policyAcknowledgments', onDelete: 'CASCADE' });
+PolicyAcknowledgment.belongsTo(User, { foreignKey: 'userId', as: 'employee' });
+
+CompanyPolicy.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+CompanyPolicy.belongsTo(Department, { foreignKey: 'targetDepartmentId', as: 'targetDepartment' });
+
 // Model registry
 const db = {
   sequelize,
@@ -180,7 +194,9 @@ const db = {
   EmployeeDocument,
   CompanyAsset,
   Notification,
-  ActivityLog
+  ActivityLog,
+  CompanyPolicy,
+  PolicyAcknowledgment
 };
 
 module.exports = db;

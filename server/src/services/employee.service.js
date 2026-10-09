@@ -665,6 +665,7 @@ const getMyProfile = async (userId) => {
       { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
       { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] },
       { model: Branch, as: 'branchDetails', attributes: ['id', 'name', 'city'] },
+      { model: SalaryStructure, as: 'salaryStructure' },
       {
         model: User,
         as: 'manager',

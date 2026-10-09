@@ -32,7 +32,7 @@ const startServer = async () => {
     initCronJobs();
 
     // 4. Start HTTP & WebSocket Server
-    server.listen(env.PORT, () => {
+    server.listen(env.PORT, '0.0.0.0', () => {
       logger.success(`Server is running at: http://localhost:${env.PORT}`);
       logger.info(`API Base URL: http://localhost:${env.PORT}/api/v1`);
       logger.info(`Health check: http://localhost:${env.PORT}/api/v1/health`);

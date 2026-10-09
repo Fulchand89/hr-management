@@ -13,7 +13,9 @@ import {
   Users,
   Clock,
   CalendarDays,
-  Sparkles
+  Sparkles,
+  Phone,
+  MapPin
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
@@ -135,6 +137,43 @@ export const HRSignInView = ({ onSignIn }) => {
               <div>
                 <h4 className="text-xs font-bold text-white">Leave Requests</h4>
                 <p className="text-[11px] text-slate-300">One-click approval and rejection with reason audit trail</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Corporate Contact Us Section */}
+          <div className="relative z-10 p-4 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 text-white space-y-2 mb-6">
+            <h5 className="text-[11px] font-black uppercase tracking-wider text-rose-300">
+              CONTACT US
+            </h5>
+            <div className="space-y-2 text-xs">
+              <a
+                href="tel:+917400554294"
+                className="flex items-center gap-2.5 text-slate-200 hover:text-white transition-colors"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#8B1D2C] text-white flex items-center justify-center shrink-0">
+                  <Phone className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-semibold">+91 7400554294</span>
+              </a>
+
+              <a
+                href="mailto:sales@guptatechweb.com"
+                className="flex items-center gap-2.5 text-slate-200 hover:text-white transition-colors"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#8B1D2C] text-white flex items-center justify-center shrink-0">
+                  <Mail className="w-3.5 h-3.5" />
+                </div>
+                <span className="font-semibold">sales@guptatechweb.com</span>
+              </a>
+
+              <div className="flex items-start gap-2.5 text-slate-200">
+                <div className="w-6 h-6 rounded-lg bg-[#8B1D2C] text-white flex items-center justify-center shrink-0 mt-0.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-[11px] leading-snug">
+                  410, Shagun Tower, Vijay Nagar, Indore, MP, India
+                </span>
               </div>
             </div>
           </div>

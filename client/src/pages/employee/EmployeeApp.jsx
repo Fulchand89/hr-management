@@ -11,6 +11,11 @@ import ApplyLeaveModal from './ApplyLeaveModal';
 import AttendanceDetailModal from './AttendanceDetailModal';
 import NotificationsView from './NotificationsView';
 import ProfileView from './ProfileView';
+import EmployeeSalaryView from './EmployeeSalaryView';
+import EmployeePoliciesView from './EmployeePoliciesView';
+import EmployeePolicyDetailView from './EmployeePolicyDetailView';
+import EmployeeHandbookView from './EmployeeHandbookView';
+import EmployeePolicyDocumentsView from './EmployeePolicyDocumentsView';
 import SignInView from './SignInView';
 
 import { useAuth } from '../../context/AuthContext';
@@ -167,6 +172,8 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     if (path.includes('/my-attendance') || path.includes('/myattendance')) return 'my-attendance';
     if (path.includes('/attendance')) return 'attendance';
     if (path.includes('/leaves')) return 'leaves';
+    if (path.includes('/salary') || path.includes('/payslips')) return 'salary';
+    if (path.includes('/policies')) return 'policies';
     if (path.includes('/notifications')) return 'notifications';
     if (path.includes('/profile')) return 'profile';
     return 'dashboard';
@@ -314,6 +321,34 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
               onLogout={handleLogout}
             />
           }
+        />
+
+        {/* Salary & Compensation (Strictly Read-Only) */}
+        <Route
+          path="salary"
+          element={<EmployeeSalaryView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="payslips"
+          element={<EmployeeSalaryView onBack={() => navigate('/employee/dashboard')} />}
+        />
+
+        {/* Company Policies & Handbook Dedicated Sub-routes */}
+        <Route
+          path="policies"
+          element={<EmployeePoliciesView />}
+        />
+        <Route
+          path="policies/handbook"
+          element={<EmployeeHandbookView />}
+        />
+        <Route
+          path="policies/documents"
+          element={<EmployeePolicyDocumentsView />}
+        />
+        <Route
+          path="policies/:id"
+          element={<EmployeePolicyDetailView />}
         />
 
         {/* Fallback */}

@@ -19,7 +19,9 @@ import {
   Copy,
   HelpCircle,
   X,
-  Send
+  Send,
+  Phone,
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -209,24 +211,24 @@ export const SignInView = ({ initialMode = 'signin' }) => {
   };
 
   return (
-    <div className="h-screen max-h-screen w-screen overflow-hidden bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans relative">
+    <div className="min-h-screen w-full bg-slate-950 flex flex-col items-center justify-center py-6 px-4 sm:px-6 font-sans relative overflow-y-auto">
       {/* Background Subtle Ambient Glows */}
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#8B1D2C]/15 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-rose-600/10 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Main Split Authentication Card */}
-      <div className="relative w-full max-w-4xl lg:max-w-5xl bg-white rounded-3xl sm:rounded-[32px] shadow-2xl border border-slate-200/80 overflow-hidden z-10 grid grid-cols-1 md:grid-cols-2">
+      <div className="relative w-full max-w-4xl lg:max-w-5xl bg-white rounded-3xl sm:rounded-[32px] shadow-2xl border border-slate-200/80 overflow-hidden z-10 grid grid-cols-1 md:grid-cols-2 my-auto">
         
         {/* Left Side: Brand Visual & Security / Support Section */}
-        <div className="bg-gradient-to-br from-[#8B1D2C] via-[#66131F] to-slate-950 p-6 sm:p-8 lg:p-9 text-white flex flex-col justify-between relative overflow-hidden">
+        <div className="bg-gradient-to-br from-[#8B1D2C] via-[#66131F] to-slate-950 p-6 sm:p-7 lg:p-8 text-white flex flex-col justify-between relative overflow-hidden">
           {/* Decorative Glow Elements */}
           <div className="absolute -top-16 -left-16 w-56 h-56 rounded-full bg-rose-500/20 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-16 -right-16 w-56 h-56 rounded-full bg-amber-500/20 blur-3xl pointer-events-none" />
 
-          <div className="relative z-10">
+          <div className="relative z-10 flex flex-col gap-3">
             {/* Top Brand Identity */}
-            <div className="flex items-center gap-3.5 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-white p-2 flex items-center justify-center shadow-lg shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-lg shrink-0">
                 <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
               </div>
               <div>
@@ -238,62 +240,106 @@ export const SignInView = ({ initialMode = 'signin' }) => {
             </div>
 
             {/* Enterprise Security Badges List */}
-            <div className="space-y-3 mb-5">
-              <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
+            <div className="space-y-2">
+              <div className="px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white">256-Bit SSL Encrypted</h4>
-                  <p className="text-[11px] sm:text-xs text-rose-100/75">Enterprise banking-grade encryption</p>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-300 flex items-center justify-center shrink-0">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white">RBAC Security</h4>
-                  <p className="text-[11px] sm:text-xs text-rose-100/75">Role-based access protection</p>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-white leading-tight">256-Bit SSL Encrypted</h4>
+                  <p className="text-[10px] text-rose-100/75 truncate">Enterprise banking-grade encryption</p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-5 h-5" />
+              <div className="px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-300 flex items-center justify-center shrink-0">
+                  <Lock className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white">ISO Compliant</h4>
-                  <p className="text-[11px] sm:text-xs text-rose-100/75">Standard security & data compliance</p>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-white leading-tight">RBAC Security</h4>
+                  <p className="text-[10px] text-rose-100/75 truncate">Role-based access protection</p>
+                </div>
+              </div>
+
+              <div className="px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-white leading-tight">ISO Compliant</h4>
+                  <p className="text-[10px] text-rose-100/75 truncate">Standard security & data compliance</p>
                 </div>
               </div>
             </div>
 
-            {/* IT Support Box */}
-            <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-center">
-              <p className="text-xs sm:text-sm text-rose-100 leading-relaxed">
-                Need help or experiencing login issues?{' '}
+            {/* Corporate Contact Us Section */}
+            <div className="p-3 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 text-white space-y-1.5">
+              <h5 className="text-[10px] font-black uppercase tracking-wider text-rose-300">
+                CONTACT US
+              </h5>
+              <div className="space-y-1.5 text-xs">
                 <a
-                  href="mailto:support@guptatechweb.com"
-                  className="text-white font-extrabold underline hover:text-rose-200 transition-colors ml-1"
+                  href="tel:+917400554294"
+                  className="flex items-center gap-2 text-slate-200 hover:text-white transition-colors"
                 >
-                  Contact IT Support
+                  <div className="w-5 h-5 rounded bg-[#8B1D2C] text-white flex items-center justify-center shrink-0">
+                    <Phone className="w-3 h-3" />
+                  </div>
+                  <span className="font-semibold text-[11px]">+91 7400554294</span>
                 </a>
-              </p>
+
+                <a
+                  href="mailto:sales@guptatechweb.com"
+                  className="flex items-center gap-2 text-slate-200 hover:text-white transition-colors"
+                >
+                  <div className="w-5 h-5 rounded bg-[#8B1D2C] text-white flex items-center justify-center shrink-0">
+                    <Mail className="w-3 h-3" />
+                  </div>
+                  <span className="font-semibold text-[11px]">sales@guptatechweb.com</span>
+                </a>
+
+                <div className="flex items-center gap-2 text-slate-200">
+                  <div className="w-5 h-5 rounded bg-[#8B1D2C] text-white flex items-center justify-center shrink-0">
+                    <MapPin className="w-3 h-3" />
+                  </div>
+                  <span className="text-[11px] leading-tight truncate">
+                    410, Shagun Tower, Vijay Nagar, Indore, MP
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* IT Support Box - Clearly visible with icon and prompt */}
+            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-white text-[#8B1D2C] flex items-center justify-center shrink-0 shadow-xs font-bold">
+                  <HelpCircle className="w-4 h-4 text-[#8B1D2C]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] sm:text-xs text-rose-100 font-medium leading-snug">
+                    Need help or experiencing login issues?
+                  </p>
+                  <a
+                    href="mailto:support@guptatechweb.com"
+                    className="text-white text-xs font-extrabold underline hover:text-rose-200 transition-colors inline-block mt-0.5"
+                  >
+                    Contact IT Support &rarr;
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="relative z-10 pt-5 border-t border-white/10 flex items-center justify-between text-xs text-rose-200">
+          <div className="relative z-10 pt-3 mt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-rose-200/80">
             <span className="flex items-center gap-1.5 font-medium">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Enterprise RBAC Security
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Enterprise RBAC Security
             </span>
             <span className="font-semibold">v2.4 Production</span>
           </div>
         </div>
 
         {/* Right Side: Authentication Form */}
-        <div className="p-6 sm:p-8 lg:p-9 flex flex-col justify-between bg-white">
+        <div className="p-6 sm:p-7 lg:p-8 flex flex-col justify-between bg-white">
           <div>
             {/* Mode Switcher Tabs (Sign In / Sign Up) */}
             <div className="flex p-1 bg-slate-100 rounded-xl mb-4 shrink-0">

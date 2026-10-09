@@ -28,14 +28,84 @@ const initPayrollModel = (sequelize) => {
         type: DataTypes.INTEGER,
         allowNull: false
       },
-      workingDays: {
+      totalDays: {
         type: DataTypes.INTEGER,
         defaultValue: 30,
         allowNull: false
       },
+      workingDays: {
+        type: DataTypes.INTEGER,
+        defaultValue: 26,
+        allowNull: false
+      },
       presentDays: {
         type: DataTypes.DECIMAL(5, 2),
-        defaultValue: 30.0,
+        defaultValue: 0.0,
+        allowNull: false
+      },
+      paidLeaves: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0.0,
+        allowNull: false
+      },
+      lopDays: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0.0,
+        allowNull: false
+      },
+      baseCtc: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      monthlyGross: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      basicSalary: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      hra: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      specialAllowance: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      bonus: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      pfDeduction: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      esiDeduction: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      taxDeduction: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      lopDeduction: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      otherDeductions: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
         allowNull: false
       },
       grossSalary: {
@@ -52,9 +122,13 @@ const initPayrollModel = (sequelize) => {
         allowNull: false
       },
       paymentStatus: {
-        type: DataTypes.ENUM('pending', 'processed', 'paid', 'failed'),
+        type: DataTypes.ENUM('pending', 'processed', 'paid', 'failed', 'cancelled'),
         defaultValue: 'pending',
         allowNull: false
+      },
+      paymentMode: {
+        type: DataTypes.STRING(50),
+        allowNull: true
       },
       paidAt: {
         type: DataTypes.DATE,
@@ -62,6 +136,10 @@ const initPayrollModel = (sequelize) => {
       },
       transactionReference: {
         type: DataTypes.STRING(100),
+        allowNull: true
+      },
+      remarks: {
+        type: DataTypes.TEXT,
         allowNull: true
       }
     },

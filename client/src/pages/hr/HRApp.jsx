@@ -26,6 +26,17 @@ import HRAddEmployeeView from './HRAddEmployeeView';
 import HREmployeeProfileDetailView from './HREmployeeProfileDetailView';
 import HREmployeeSalaryView from './HREmployeeSalaryView';
 import HREmployeeStatusView from './HREmployeeStatusView';
+import HRPayrollView from './HRPayrollView';
+import HRPayrollProcessView from './HRPayrollProcessView';
+import HRPayslipDetailView from './HRPayslipDetailView';
+import HRPayrollAdjustView from './HRPayrollAdjustView';
+import HRPolicyManagementView from './HRPolicyManagementView';
+import HRAddPolicyView from './HRAddPolicyView';
+import HRUploadPolicyDocumentView from './HRUploadPolicyDocumentView';
+import HREditPolicyView from './HREditPolicyView';
+import HRAppraisalManagementView from './HRAppraisalManagementView';
+import HRExitManagementView from './HRExitManagementView';
+import HRReferralsRewardsView from './HRReferralsRewardsView';
 
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -34,7 +45,8 @@ import {
   startBreak as apiStartBreak,
   endBreak as apiEndBreak,
   punchOut as apiPunchOut,
-  getUnreadCount
+  getUnreadCount,
+  getHRDashboard
 } from '../../services/hrService';
 
 export const HRApp = () => {
@@ -76,6 +88,8 @@ export const HRApp = () => {
     }
   }, []);
 
+  const [pendingQueueCount, setPendingQueueCount] = useState(0);
+
   // Load unread notification count
   const loadUnreadCount = useCallback(async () => {
     try {
@@ -86,11 +100,25 @@ export const HRApp = () => {
     }
   }, []);
 
+  // Load live approvals queue count
+  const loadPendingCount = useCallback(async () => {
+    try {
+      const res = await getHRDashboard();
+      const hrData = res?.data ?? res ?? {};
+      const pendingLeaves = hrData?.stats?.pendingLeaves || 0;
+      const pendingCorrections = hrData?.stats?.pendingCorrectionRequests || 0;
+      setPendingQueueCount(pendingLeaves + pendingCorrections);
+    } catch {
+      setPendingQueueCount(0);
+    }
+  }, []);
+
   useEffect(() => {
     if (!token) return;
     loadTodayAttendance();
     loadUnreadCount();
-  }, [token, loadTodayAttendance, loadUnreadCount]);
+    loadPendingCount();
+  }, [token, loadTodayAttendance, loadUnreadCount, loadPendingCount]);
 
   // Live Timer Interval Effect
   useEffect(() => {
@@ -192,6 +220,7 @@ export const HRApp = () => {
       onEndBreak={handleEndBreak}
       onPunchOut={handlePunchOut}
       unreadNotifications={unreadCount}
+      pendingQueueCount={pendingQueueCount}
       onApplyLeaveClick={() => setIsApplyLeaveModalOpen(true)}
       onLogout={handleLogout}
     >
@@ -329,6 +358,12 @@ export const HRApp = () => {
           element={<HREmployeeManagementView />}
         />
 
+        {/* Payroll & Compensation */}
+        <Route path="payroll" element={<HRPayrollView />} />
+        <Route path="payroll/process" element={<HRPayrollProcessView />} />
+        <Route path="payroll/:id/payslip" element={<HRPayslipDetailView />} />
+        <Route path="payroll/:id/adjust" element={<HRPayrollAdjustView />} />
+
         {/* Leaves & Requests View */}
         <Route
           path="leaves"
@@ -366,6 +401,42 @@ export const HRApp = () => {
               onLogout={handleLogout}
             />
           }
+        />
+
+        {/* HR Policies & SOPs Administration */}
+        <Route
+          path="policies"
+          element={<HRPolicyManagementView />}
+        />
+        <Route
+          path="policies/add"
+          element={<HRAddPolicyView />}
+        />
+        <Route
+          path="policies/upload"
+          element={<HRUploadPolicyDocumentView />}
+        />
+        <Route
+          path="policies/edit/:id"
+          element={<HREditPolicyView />}
+        />
+
+        {/* Appraisal & Increment Cycles */}
+        <Route
+          path="appraisals"
+          element={<HRAppraisalManagementView />}
+        />
+
+        {/* Resignation, Notice & Exit Clearance */}
+        <Route
+          path="exit-management"
+          element={<HRExitManagementView />}
+        />
+
+        {/* Candidate Referrals & Spot Rewards */}
+        <Route
+          path="referrals-rewards"
+          element={<HRReferralsRewardsView />}
         />
 
         {/* Fallback */}

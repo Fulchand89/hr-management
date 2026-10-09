@@ -105,7 +105,7 @@ const seedDatabase = async () => {
     // 3. SEED BRANCHES
     // ==========================================
     const branchDefs = [
-      { name: 'Headquarters - Noida', code: 'HQ-NOIDA', city: 'Noida', state: 'Uttar Pradesh', country: 'India', address: 'Sector 62, Electronic City, Noida' },
+      { name: 'Headquarters - Indore', code: 'HQ-INDORE', city: 'Indore', state: 'Madhya Pradesh', country: 'India', address: '410, Shagun Tower, Vijay Nagar, Indore, MP, India' },
       { name: 'Tech Hub - Bengaluru', code: 'TECH-BLR', city: 'Bengaluru', state: 'Karnataka', country: 'India', address: 'Whitefield, IT Park, Bengaluru' },
       { name: 'Remote Global', code: 'REMOTE-GL', city: 'Virtual', state: 'All', country: 'Global', address: 'Work From Anywhere' }
     ];
@@ -304,9 +304,9 @@ const seedDatabase = async () => {
     // 7. SEED SHIFTS
     // ==========================================
     const shiftDefs = [
-      { name: 'General Shift', startTime: '09:00', endTime: '18:00', graceMinutes: 15, halfDayThresholdHours: 4.5, fullDayThresholdHours: 8.0 },
-      { name: 'Morning Shift', startTime: '07:00', endTime: '15:30', graceMinutes: 10, halfDayThresholdHours: 4.0, fullDayThresholdHours: 7.5 },
-      { name: 'Night Shift', startTime: '21:00', endTime: '05:30', graceMinutes: 15, halfDayThresholdHours: 4.0, fullDayThresholdHours: 7.5 }
+      { name: 'General Shift', startTime: '10:00', endTime: '19:00', graceMinutes: 15, breakAllowedMinutes: 60, halfDayThresholdHours: 4.5, fullDayThresholdHours: 8.0 },
+      { name: 'Morning Shift', startTime: '07:00', endTime: '15:30', graceMinutes: 10, breakAllowedMinutes: 45, halfDayThresholdHours: 4.0, fullDayThresholdHours: 7.5 },
+      { name: 'Night Shift', startTime: '21:00', endTime: '05:30', graceMinutes: 15, breakAllowedMinutes: 45, halfDayThresholdHours: 4.0, fullDayThresholdHours: 7.5 }
     ];
     let generalShift = await Shift.findOne({ where: { name: 'General Shift' } });
     if (!generalShift) {
@@ -500,6 +500,13 @@ const seedDatabase = async () => {
         status: 'pending'
       }
     });
+
+    // ==========================================
+    // 17. SEED OFFICIAL GUPTA TECH WEB POLICIES
+    // ==========================================
+    const { ensureDefaultPolicies } = require('./src/services/policy.service');
+    await ensureDefaultPolicies();
+    logger.success('Gupta Tech Web official policies seeded successfully!');
 
     await ActivityLog.create({
       userId: admin.id,

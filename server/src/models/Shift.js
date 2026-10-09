@@ -17,16 +17,21 @@ const initShiftModel = (sequelize) => {
       startTime: {
         type: DataTypes.STRING(10),
         allowNull: false,
-        defaultValue: '09:00'
+        defaultValue: '10:00'
       },
       endTime: {
         type: DataTypes.STRING(10),
         allowNull: false,
-        defaultValue: '18:00'
+        defaultValue: '19:00'
       },
       graceMinutes: {
         type: DataTypes.INTEGER,
         defaultValue: 15,
+        allowNull: false
+      },
+      breakAllowedMinutes: {
+        type: DataTypes.INTEGER,
+        defaultValue: 60,
         allowNull: false
       },
       halfDayThresholdHours: {

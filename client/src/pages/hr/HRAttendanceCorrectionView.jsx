@@ -1,25 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
-  SlidersHorizontal,
   Clock,
-  Calendar,
   CheckCircle2,
   XCircle,
   AlertCircle,
   Check,
   X,
-  User,
-  MoreVertical,
-  ArrowRight,
-  ShieldCheck,
-  Building2,
   Eye,
-  FileSpreadsheet,
-  RefreshCw,
-  TrendingUp,
-  ChevronRight
+  RefreshCw
 } from 'lucide-react';
 
 import {
@@ -36,26 +26,13 @@ export const HRAttendanceCorrectionView = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'approved' | 'rejected'
 
-  // Modal / Detail state
-  const [selectedItem, setSelectedItem] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Lock body scroll when review modal is active
-  useEffect(() => {
-    if (selectedItem) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = originalOverflow || 'unset';
-      };
-    }
-  }, [selectedItem]);
 
   // Live Requests List from backend
   const [correctionRequests, setCorrectionRequests] = useState([]);
 
-  const loadCorrections = async () => {
+  const loadCorrections = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await getAdminAttendanceCorrections();
@@ -67,6 +44,7 @@ export const HRAttendanceCorrectionView = () => {
         let correctionType = 'Check In Time';
         if (r.punchType === 'check_out') correctionType = 'Check Out Time';
         else if (r.punchType === 'break') correctionType = 'Break Time';
+        else if (r.punchType) correctionType = r.punchType;
 
         const d = new Date(r.date);
         const dateFormatted = !isNaN(d.getTime())
@@ -105,14 +83,14 @@ export const HRAttendanceCorrectionView = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!token) return;
     loadCorrections();
-  }, [token, user?.role]);
+  }, [token, user?.role, loadCorrections]);
 
-  // Counts
+  // Dynamic Counts based on real data
   const counts = useMemo(() => ({
     all: correctionRequests.length,
     pending: correctionRequests.filter((r) => r.status === 'pending').length,
@@ -124,11 +102,14 @@ export const HRAttendanceCorrectionView = () => {
   const filteredList = useMemo(() => {
     return correctionRequests.filter((item) => {
       const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        item.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.correctionType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.date.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        item.employeeName.toLowerCase().includes(q) ||
+        item.employeeId.toLowerCase().includes(q) ||
+        item.correctionType.toLowerCase().includes(q) ||
+        item.date.toLowerCase().includes(q) ||
+        (item.reason && item.reason.toLowerCase().includes(q));
       return matchesStatus && matchesSearch;
     });
   }, [correctionRequests, statusFilter, searchQuery]);
@@ -137,7 +118,6 @@ export const HRAttendanceCorrectionView = () => {
     try {
       await actionAttendanceCorrection(id, { status: 'approved' });
       showToast('Attendance correction request approved successfully!');
-      setSelectedItem(null);
       loadCorrections();
     } catch (err) {
       showToast(err?.response?.data?.message || 'Failed to approve request');
@@ -148,7 +128,6 @@ export const HRAttendanceCorrectionView = () => {
     try {
       await actionAttendanceCorrection(id, { status: 'rejected' });
       showToast('Attendance correction request rejected.');
-      setSelectedItem(null);
       loadCorrections();
     } catch (err) {
       showToast(err?.response?.data?.message || 'Failed to reject request');
@@ -170,96 +149,119 @@ export const HRAttendanceCorrectionView = () => {
         </div>
       )}
 
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            Attendance Corrections
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Review and sanction employee punch timing adjustment requests
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={loadCorrections}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 disabled:opacity-50 transition-colors cursor-pointer shadow-2xs self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isLoading ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </button>
+      </div>
 
-      {/* 4 Stat Overview Cards matching Employee Layout */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        {/* Total Requests */}
+      {/* 4 Clean Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total */}
         <div
           onClick={() => setStatusFilter('all')}
-          className={`bg-white rounded-2xl p-5 border transition-all cursor-pointer shadow-2xs hover:border-slate-300 ${statusFilter === 'all' ? 'border-[#8B1D2C] ring-2 ring-[#8B1D2C]/15' : 'border-slate-200/80'
-            }`}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-2xs ${
+            statusFilter === 'all'
+              ? 'border-[#8B1D2C] ring-2 ring-[#8B1D2C]/10'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total Adjustments</span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
-              <FileSpreadsheet className="w-4 h-4" />
+            <span className="text-xs font-semibold text-slate-500">Total Requests</span>
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+              <Clock className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
+          <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{counts.all}</span>
-            <span className="text-xs text-slate-400 font-medium">Logged</span>
           </div>
-          <div className="mt-2 text-[11px] font-semibold text-slate-500 flex items-center gap-1">
-            All timestamp requests
-          </div>
+          <p className="mt-1 text-[11px] text-slate-400 font-medium">All recorded applications</p>
         </div>
 
         {/* Pending */}
         <div
           onClick={() => setStatusFilter('pending')}
-          className={`bg-white rounded-2xl p-5 border transition-all cursor-pointer shadow-2xs hover:border-amber-300 ${statusFilter === 'pending' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-slate-200/80'
-            }`}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-2xs ${
+            statusFilter === 'pending'
+              ? 'border-amber-500 ring-2 ring-amber-500/10'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Awaiting Action</span>
+            <span className="text-xs font-semibold text-slate-500">Pending Review</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
+              <AlertCircle className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900">{counts.pending}</span>
-            <span className="text-xs text-amber-700 font-medium">Needs Review</span>
+            {counts.pending > 0 && (
+              <span className="text-[11px] font-bold text-amber-600">Action Required</span>
+            )}
           </div>
-          <div className="mt-2 text-[11px] font-semibold text-amber-600 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /> Pending HR decision
-          </div>
+          <p className="mt-1 text-[11px] text-slate-400 font-medium">Awaiting HR decision</p>
         </div>
 
         {/* Approved */}
         <div
           onClick={() => setStatusFilter('approved')}
-          className={`bg-white rounded-2xl p-5 border transition-all cursor-pointer shadow-2xs hover:border-emerald-300 ${statusFilter === 'approved' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200/80'
-            }`}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-2xs ${
+            statusFilter === 'approved'
+              ? 'border-emerald-500 ring-2 ring-emerald-500/10'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Sanctioned</span>
+            <span className="text-xs font-semibold text-slate-500">Approved</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
+          <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{counts.approved}</span>
-            <span className="text-xs text-emerald-600 font-medium">Approved</span>
           </div>
-          <div className="mt-2 text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" /> Synced to attendance roster
-          </div>
+          <p className="mt-1 text-[11px] text-slate-400 font-medium">Synced with attendance</p>
         </div>
 
-        {/* Declined */}
+        {/* Rejected */}
         <div
           onClick={() => setStatusFilter('rejected')}
-          className={`bg-white rounded-2xl p-5 border transition-all cursor-pointer shadow-2xs hover:border-rose-300 ${statusFilter === 'rejected' ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200/80'
-            }`}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-2xs ${
+            statusFilter === 'rejected'
+              ? 'border-rose-500 ring-2 ring-rose-500/10'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Declined</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500">Rejected</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
               <XCircle className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
+          <div className="mt-3">
             <span className="text-2xl font-black text-slate-900">{counts.rejected}</span>
-            <span className="text-xs text-rose-600 font-medium">Rejected</span>
           </div>
-          <div className="mt-2 text-[11px] font-semibold text-rose-700 flex items-center gap-1">
-            Disapproved requests
-          </div>
+          <p className="mt-1 text-[11px] text-slate-400 font-medium">Declined applications</p>
         </div>
       </div>
 
       {/* Search & Filter Toolbar */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
         {/* Search */}
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
@@ -267,63 +269,87 @@ export const HRAttendanceCorrectionView = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, ID or punch type..."
-            className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C] transition-all"
+            placeholder="Search employee, ID, punch type..."
+            className="w-full pl-10 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C] transition-all"
           />
         </div>
 
         {/* Status Filter Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-none">
-          {['all', 'pending', 'approved', 'rejected'].map((st) => (
+          {[
+            { key: 'all', label: 'All', count: counts.all },
+            { key: 'pending', label: 'Pending', count: counts.pending },
+            { key: 'approved', label: 'Approved', count: counts.approved },
+            { key: 'rejected', label: 'Rejected', count: counts.rejected }
+          ].map((tab) => (
             <button
-              key={st}
+              key={tab.key}
               type="button"
-              onClick={() => setStatusFilter(st)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all capitalize cursor-pointer whitespace-nowrap ${statusFilter === st
+              onClick={() => setStatusFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                statusFilter === tab.key
                   ? 'bg-[#8B1D2C] text-white shadow-xs'
                   : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
+              }`}
             >
-              {st} ({counts[st]})
+              <span>{tab.label}</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                  statusFilter === tab.key ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-600'
+                }`}
+              >
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Main Desktop Data Table */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        {filteredList.length === 0 ? (
+      {/* Main Table */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+        {isLoading ? (
           <div className="p-16 text-center text-slate-400 text-xs">
-            <Clock className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-            No attendance correction requests match your query.
+            <RefreshCw className="w-8 h-8 mx-auto mb-2 text-[#8B1D2C] animate-spin" />
+            Loading attendance correction requests...
+          </div>
+        ) : filteredList.length === 0 ? (
+          <div className="p-16 text-center text-slate-400 text-xs space-y-2">
+            <Clock className="w-10 h-10 mx-auto text-slate-300" />
+            <p className="font-semibold text-slate-700">No correction requests found</p>
+            <p className="text-slate-400">
+              {searchQuery || statusFilter !== 'all'
+                ? 'Try adjusting your search query or filter settings.'
+                : 'No employee has submitted an attendance correction request.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-3.5 px-5">Employee</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Punch Type</th>
-                  <th className="py-3.5 px-4">Recorded &bull; Requested Time</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-5 text-right">Actions</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-4">Employee</th>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Punch Type</th>
+                  <th className="py-3 px-4">Adjustment</th>
+                  <th className="py-3 px-4">Reason</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredList.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/60 transition-colors group">
+                  <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
                     {/* Employee Profile */}
-                    <td className="py-3.5 px-5">
+                    <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                        <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] font-bold text-xs flex items-center justify-center shrink-0">
                           {item.avatarInitial}
                         </div>
                         <div>
-                          <span className="font-bold text-slate-900 block text-xs group-hover:text-[#8B1D2C] transition-colors">
+                          <span className="font-bold text-slate-900 block text-xs">
                             {item.employeeName}
                           </span>
-                          <span className="text-[10px] font-mono text-slate-400">
+                          <span className="text-[10px] text-slate-500">
                             {item.employeeId} &bull; {item.designation}
                           </span>
                         </div>
@@ -331,19 +357,19 @@ export const HRAttendanceCorrectionView = () => {
                     </td>
 
                     {/* Date */}
-                    <td className="py-3.5 px-4 font-mono font-semibold text-slate-700">
+                    <td className="py-3.5 px-4 font-semibold text-slate-700 whitespace-nowrap">
                       {item.date}
                     </td>
 
-                    {/* Correction Type */}
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-[11px]">
+                    {/* Punch Type */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-[11px]">
                         {item.correctionType}
                       </span>
                     </td>
 
-                    {/* Recorded vs Requested */}
-                    <td className="py-3.5 px-4 font-mono">
+                    {/* Original -> Requested */}
+                    <td className="py-3.5 px-4 font-mono whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <span className="line-through text-slate-400">{item.originalTime}</span>
                         <span className="text-slate-300">&rarr;</span>
@@ -351,22 +377,27 @@ export const HRAttendanceCorrectionView = () => {
                       </div>
                     </td>
 
+                    {/* Reason */}
+                    <td className="py-3.5 px-4 max-w-[220px] truncate text-slate-600" title={item.reason}>
+                      {item.reason || <span className="text-slate-300 italic">No reason provided</span>}
+                    </td>
+
                     {/* Status Badge */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       {item.status === 'pending' && (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600 border border-amber-200 inline-flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                           Pending
                         </span>
                       )}
                       {item.status === 'approved' && (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
                           <Check className="w-3 h-3 text-emerald-600" />
                           Approved
                         </span>
                       )}
                       {item.status === 'rejected' && (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1">
                           <X className="w-3 h-3 text-rose-600" />
                           Rejected
                         </span>
@@ -374,15 +405,15 @@ export const HRAttendanceCorrectionView = () => {
                     </td>
 
                     {/* Actions */}
-                    <td className="py-3.5 px-5 text-right">
+                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() => navigate(`/hr/attendance-correction/${item.id}`)}
                           title="View Details"
-                          className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer border border-slate-200"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5" />
                         </button>
                         {item.status === 'pending' && (
                           <>
@@ -390,7 +421,7 @@ export const HRAttendanceCorrectionView = () => {
                               type="button"
                               onClick={() => handleApprove(item.id)}
                               title="Approve Request"
-                              className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1"
+                              className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition-colors cursor-pointer flex items-center gap-1"
                             >
                               <Check className="w-3 h-3" /> Approve
                             </button>
@@ -398,7 +429,7 @@ export const HRAttendanceCorrectionView = () => {
                               type="button"
                               onClick={() => handleReject(item.id)}
                               title="Reject Request"
-                              className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] border border-rose-200 transition-colors cursor-pointer flex items-center gap-1"
+                              className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] border border-rose-200 transition-colors cursor-pointer flex items-center gap-1"
                             >
                               <X className="w-3 h-3" /> Reject
                             </button>
@@ -413,104 +444,6 @@ export const HRAttendanceCorrectionView = () => {
           </div>
         )}
       </div>
-
-      {/* Review Modal */}
-      {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
-            onClick={() => setSelectedItem(null)}
-          />
-
-          <div className="relative bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 z-10 animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center font-bold">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Correction Request #{selectedItem.id}</h3>
-                  <p className="text-xs text-slate-400">Submitted {selectedItem.requestedAt}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedItem(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Employee Card */}
-            <div className="flex items-center gap-3.5 my-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-              <div className="w-11 h-11 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-sm shrink-0">
-                {selectedItem.avatarInitial}
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-900 text-sm">{selectedItem.employeeName}</h4>
-                <p className="text-xs text-slate-500 font-medium">{selectedItem.designation} &bull; {selectedItem.employeeId}</p>
-              </div>
-            </div>
-
-            {/* Spec Table */}
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="text-slate-400">Date of Incident</span>
-                <span className="font-bold text-slate-800">{selectedItem.date}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="text-slate-400">Adjustment Type</span>
-                <span className="font-bold text-slate-800">{selectedItem.correctionType}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="text-slate-400">System Recorded Time</span>
-                <span className="font-mono text-slate-500 line-through">{selectedItem.originalTime}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-100">
-                <span className="text-slate-400">Employee Requested Time</span>
-                <span className="font-mono font-bold text-[#8B1D2C]">{selectedItem.requestedTime}</span>
-              </div>
-              <div className="py-2">
-                <span className="text-slate-400 block mb-1">Employee Explanation:</span>
-                <p className="p-3 rounded-xl bg-slate-50 text-xs text-slate-700 font-medium leading-relaxed border border-slate-100">
-                  "{selectedItem.reason}"
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            {selectedItem.status === 'pending' ? (
-              <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => handleReject(selectedItem.id)}
-                  className="px-5 py-2.5 rounded-xl border border-[#8B1D2C] text-[#8B1D2C] hover:bg-rose-50 text-xs font-bold transition-all cursor-pointer"
-                >
-                  Reject Adjustment
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApprove(selectedItem.id)}
-                  className="px-6 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/25 transition-all cursor-pointer"
-                >
-                  Approve Adjustment
-                </button>
-              </div>
-            ) : (
-              <div className="mt-4 pt-3 border-t border-slate-100 text-center">
-                <span className="text-xs text-slate-400 font-semibold">
-                  This request has already been{' '}
-                  <strong className={selectedItem.status === 'approved' ? 'text-emerald-600' : 'text-rose-600'}>
-                    {selectedItem.status}
-                  </strong>.
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

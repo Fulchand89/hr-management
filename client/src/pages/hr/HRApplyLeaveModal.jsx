@@ -222,7 +222,7 @@ export const HRApplyLeaveModal = ({ isOpen, onClose, onSubmitLeave }) => {
 
           {isHalfDay && (
             <div className="grid grid-cols-2 gap-2 animate-in fade-in duration-150">
-              {['First Half (09:00 - 01:30)', 'Second Half (01:30 - 06:00)'].map((session) => (
+              {['First Half (10:00 - 02:30)', 'Second Half (02:30 - 07:00)'].map((session) => (
                 <button
                   key={session}
                   type="button"

@@ -13,7 +13,7 @@ const initCronJobs = () => {
     return;
   }
 
-  // 1. Daily Attendance Reminder (Mon-Fri 09:00 AM)
+  // 1. Daily Attendance Reminder (Mon-Fri 10:00 AM)
   const attendanceJob = cron.schedule(env.CRON.ATTENDANCE_SCHEDULE, () => {
     logger.info('[CRON] Running daily attendance reminder job...');
     try {
@@ -31,7 +31,7 @@ const initCronJobs = () => {
   });
   scheduledTasks.push(attendanceJob);
 
-  // 2. Daily Leave & Activity Summary for HR (Mon-Fri 06:00 PM)
+  // 2. Daily Leave & Activity Summary for HR (Mon-Fri 07:00 PM)
   const leaveAlertJob = cron.schedule(env.CRON.LEAVE_ALERT_SCHEDULE, () => {
     logger.info('[CRON] Running end-of-day HR leave alert & summary job...');
     try {
