@@ -14,7 +14,7 @@ import {
   CreditCard,
   User
 } from 'lucide-react';
-import { getPayslipDetails } from '../../services/hrService';
+import { getPayslipDetails, downloadPayslipPDF } from '../../services/hrService';
 
 export const HRPayslipDetailView = () => {
   const { id } = useParams();
@@ -22,6 +22,7 @@ export const HRPayslipDetailView = () => {
 
   const [payslip, setPayslip] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
@@ -51,6 +52,26 @@ export const HRPayslipDetailView = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!id) return;
+    setIsDownloading(true);
+    try {
+      const blob = await downloadPayslipPDF(id);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Payslip_${payslip?.employee?.employeeCode || id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+      alert('Could not download payslip PDF');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -88,12 +109,22 @@ export const HRPayslipDetailView = () => {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             type="button"
+            onClick={handleDownloadPDF}
+            disabled={loading || !payslip || isDownloading}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            <span>Download Official PDF</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handlePrint}
             disabled={loading || !payslip}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
           >
             <Printer className="w-4 h-4" />
-            <span>Print / Save PDF</span>
+            <span>Print View</span>
           </button>
 
           <button

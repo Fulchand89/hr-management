@@ -25,7 +25,7 @@ import {
   FileCheck,
   HelpCircle
 } from 'lucide-react';
-import { getAllEmployees, updateEmployeeSalary } from '../../services/hrService';
+import { getAllEmployees, updateEmployeeSalary, createAppraisalReview, getAllAppraisals } from '../../services/hrService';
 import { useAuth } from '../../context/AuthContext';
 
 export const HRAppraisalManagementView = () => {
@@ -178,12 +178,21 @@ export const HRAppraisalManagementView = () => {
       const incrementAmount = Math.round((currentSalary * incrementPercent) / 100);
       const newSalary = currentSalary + incrementAmount;
 
-      // Update Salary Structure in backend API
-      await updateEmployeeSalary(selectedEmp.id, {
-        basicSalary: Math.round(newSalary * 0.5),
-        hra: Math.round(newSalary * 0.25),
-        specialAllowance: Math.round(newSalary * 0.25),
-        ctc: newSalary * 12
+      // Persist full review in backend appraisal_reviews table and apply increment
+      await createAppraisalReview({
+        userId: selectedEmp.id,
+        cycleName: selectedEmp.isElevenMonthCycle ? '11-Month Appraisal Cycle' : 'Annual Performance Review',
+        reviewPeriodStart: selectedEmp.joiningDate || new Date().toISOString().split('T')[0],
+        reviewPeriodEnd: new Date().toISOString().split('T')[0],
+        technicalScore: ratings.delivery,
+        productivityScore: ratings.quality,
+        teamworkScore: ratings.dedication,
+        leadershipScore: ratings.discipline,
+        newSalary: newSalary * 12,
+        hikePercentage: incrementPercent,
+        comments: reviewNotes,
+        effectiveDate,
+        applyToSalary: true
       });
 
       showToast(`Appraisal completed! New salary ₹${newSalary.toLocaleString('en-IN')} updated for ${selectedEmp.firstName}`);

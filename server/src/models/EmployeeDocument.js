@@ -44,6 +44,22 @@ const initEmployeeDocumentModel = (sequelize) => {
         type: DataTypes.ENUM('pending', 'verified', 'rejected'),
         defaultValue: 'pending',
         allowNull: false
+      },
+      verifiedBy: {
+        type: DataTypes.UUID,
+        allowNull: true,
+        references: {
+          model: 'users',
+          key: 'id'
+        }
+      },
+      verifiedAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      remarks: {
+        type: DataTypes.TEXT,
+        allowNull: true
       }
     },
     {

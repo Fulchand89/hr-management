@@ -10,6 +10,8 @@ const {
   Holiday
 } = require('../models');
 const { NotFoundError, BadRequestError, ForbiddenError } = require('../utils/apiError');
+const { generatePayslipPDFBuffer } = require('./pdf.service');
+const { sendPayslipEmail } = require('./email.service');
 const logger = require('../config/logger');
 
 /**
@@ -77,6 +79,16 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
     };
   }
 
+  // Pre-load holidays in the month for sandwich rule analysis
+  const holidays = await Holiday.findAll({
+    where: {
+      date: { [Op.between]: [startDate, endDate] }
+    }
+  });
+  const holidayDateSet = new Set(
+    holidays.map((h) => (typeof h.date === 'string' ? h.date : h.date.toISOString().split('T')[0]))
+  );
+
   const results = [];
 
   for (const emp of employees) {
@@ -89,13 +101,23 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
     });
 
     let presentDays = 0;
+    let lateCount = 0;
+    const attMap = {};
     for (const att of attendances) {
-      if (att.status === 'present' || att.status === 'late') {
+      const dStr = typeof att.date === 'string' ? att.date : att.date.toISOString().split('T')[0];
+      attMap[dStr] = att.status;
+      if (att.status === 'present') {
         presentDays += 1;
+      } else if (att.status === 'late') {
+        presentDays += 1;
+        lateCount += 1;
       } else if (att.status === 'half_day') {
         presentDays += 0.5;
       }
     }
+
+    // Automated Late Mark Rule: 3 late marks = 0.5 Day LOP deduction
+    const lateLopDays = Math.floor(lateCount / 3) * 0.5;
 
     // 2. Query Approved Leaves in Month
     const leaves = await LeaveRequest.findAll({
@@ -109,25 +131,58 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
       }
     });
 
+    const leaveDateSet = new Set();
     let paidLeaveDays = 0;
     for (const lev of leaves) {
       paidLeaveDays += Number(lev.totalDays || 1);
+      const startD = new Date(lev.startDate);
+      const endD = new Date(lev.endDate);
+      for (let cur = new Date(startD); cur <= endD; cur.setDate(cur.getDate() + 1)) {
+        leaveDateSet.add(cur.toISOString().split('T')[0]);
+      }
     }
 
     // Standard working days (approx 26 if 6-day week or 22 if 5-day week, default 26)
     const standardWorkingDays = Math.min(26, daysInMonth);
 
-    // If attendance records exist in DB, calculate actual LOP
-    let lopDays = 0;
+    // Automated Sandwich Rule: Friday absent + Monday absent = Weekend Saturday & Sunday deducted as LOP
+    let sandwichLopDays = 0;
     if (attendances.length > 0) {
-      // Any missing day from standard working schedule minus paid leaves is LOP
-      const totalAccountedDays = presentDays + paidLeaveDays;
-      lopDays = Math.max(0, standardWorkingDays - totalAccountedDays);
-    } else {
-      // Default: If attendance records haven't been seeded yet for future/current test month, assume full attendance
-      presentDays = standardWorkingDays;
-      lopDays = 0;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const curDate = new Date(y, m - 1, day);
+        if (curDate.getDay() === 5) { // Friday
+          const friStr = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const monDate = new Date(y, m - 1, day + 3);
+          const monStr = `${monDate.getFullYear()}-${String(monDate.getMonth() + 1).padStart(2, '0')}-${String(monDate.getDate()).padStart(2, '0')}`;
+
+          const isFriExcused =
+            ['present', 'late', 'half_day'].includes(attMap[friStr]) ||
+            leaveDateSet.has(friStr) ||
+            holidayDateSet.has(friStr);
+          const isMonExcused =
+            ['present', 'late', 'half_day'].includes(attMap[monStr]) ||
+            leaveDateSet.has(monStr) ||
+            holidayDateSet.has(monStr);
+
+          if (!isFriExcused && !isMonExcused) {
+            if (day + 1 <= daysInMonth) sandwichLopDays += 1;
+            if (day + 2 <= daysInMonth) sandwichLopDays += 1;
+          }
+        }
+      }
     }
+
+    // Standard absence LOP days
+    let standardLopDays = 0;
+    if (attendances.length > 0) {
+      const totalAccountedDays = presentDays + paidLeaveDays;
+      standardLopDays = Math.max(0, standardWorkingDays - totalAccountedDays);
+    } else {
+      presentDays = standardWorkingDays;
+      standardLopDays = 0;
+    }
+
+    const totalLopDays = parseFloat((standardLopDays + lateLopDays + sandwichLopDays).toFixed(2));
 
     // 3. Salary Structure Breakdown
     let baseCtc = 0;
@@ -163,7 +218,7 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
 
     // 4. LOP Prorated Calculation
     const perDayRate = daysInMonth > 0 ? monthlyGross / daysInMonth : 0;
-    const lopDeduction = Math.round(perDayRate * lopDays);
+    const lopDeduction = Math.round(perDayRate * totalLopDays);
     const earnedGross = Math.max(0, monthlyGross - lopDeduction);
 
     const totalDeductions = Math.round(pfDeduction + esiDeduction + taxDeduction);
@@ -178,7 +233,10 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
       workingDays: standardWorkingDays,
       presentDays,
       paidLeaves: paidLeaveDays,
-      lopDays,
+      lopDays: totalLopDays,
+      lateCount,
+      lateLopDays,
+      sandwichLopDays,
       baseCtc,
       monthlyGross,
       basicSalary,
@@ -194,7 +252,7 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
       totalDeductions,
       netSalary,
       paymentStatus: 'pending',
-      remarks: `Automated payroll cycle for ${m}/${y}`
+      remarks: `Automated payroll cycle for ${m}/${y} (Lates: ${lateCount}, Sandwich LOP: ${sandwichLopDays}d)`
     });
 
     results.push(record);
@@ -461,6 +519,26 @@ const updatePayrollStatus = async (
     if (!payroll.paymentMode) {
       payroll.paymentMode = 'bank_transfer';
     }
+
+    // Automated Payslip Email Dispatch with PDF attachment
+    (async () => {
+      try {
+        const fullRecord = await getPayrollById(id);
+        if (fullRecord && fullRecord.user && fullRecord.user.email) {
+          const pdfBuf = await generatePayslipPDFBuffer(fullRecord);
+          await sendPayslipEmail({
+            to: fullRecord.user.email,
+            name: `${fullRecord.user.firstName} ${fullRecord.user.lastName}`.trim(),
+            month: fullRecord.month,
+            year: fullRecord.year,
+            netSalary: fullRecord.netSalary,
+            pdfBuffer: pdfBuf
+          });
+        }
+      } catch (err) {
+        logger.warn(`Could not dispatch payslip email for payroll ${id}: ${err.message}`);
+      }
+    })();
   }
 
   await payroll.save();
@@ -497,10 +575,66 @@ const bulkDisburse = async ({
     { where }
   );
 
+  // Asynchronously dispatch payslip emails with PDFs for all disbursed records
+  (async () => {
+    try {
+      const disbursedList = await Payroll.findAll({
+        where,
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: [
+              'id', 'firstName', 'lastName', 'email', 'employeeCode',
+              'bankName', 'bankAccountNumber', 'bankIfsc', 'department', 'designation'
+            ],
+            include: [
+              { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
+              { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
+            ]
+          }
+        ]
+      });
+
+      for (const p of disbursedList) {
+        if (p.user && p.user.email) {
+          try {
+            const pdfBuf = await generatePayslipPDFBuffer(p);
+            await sendPayslipEmail({
+              to: p.user.email,
+              name: `${p.user.firstName} ${p.user.lastName}`.trim(),
+              month: p.month,
+              year: p.year,
+              netSalary: p.netSalary,
+              pdfBuffer: pdfBuf
+            });
+          } catch (e) {
+            logger.warn(`Bulk payslip email error for payroll ${p.id}: ${e.message}`);
+          }
+        }
+      }
+    } catch (err) {
+      logger.error('Error during bulk payslip email dispatch:', err);
+    }
+  })();
+
   return {
     updatedCount,
     message: `Successfully marked ${updatedCount} payroll record(s) as Paid.`
   };
+};
+
+/**
+ * Download Payslip Binary PDF
+ */
+const downloadPayslipPDF = async (id, user) => {
+  const payroll = await getPayrollById(id);
+  if (user.role !== 'admin' && user.role !== 'hr' && user.role !== 'manager') {
+    if (payroll.userId !== user.id) {
+      throw new ForbiddenError('You are not authorized to download this payslip');
+    }
+  }
+  return await generatePayslipPDFBuffer(payroll);
 };
 
 /**
@@ -669,5 +803,6 @@ module.exports = {
   bulkDisburse,
   exportBankSheet,
   getMyPayslips,
-  getPayslipDetails
+  getPayslipDetails,
+  downloadPayslipPDF
 };

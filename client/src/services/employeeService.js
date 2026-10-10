@@ -71,6 +71,20 @@ export const getMyAttendanceHistory = async (month, year) => {
 };
 
 // ─────────────────────────────────────────────
+// ATTENDANCE CORRECTIONS
+// ─────────────────────────────────────────────
+
+export const createAttendanceCorrection = async (payload) => {
+  const res = await apiClient.post('/attendance/corrections', payload);
+  return res.data;
+};
+
+export const getMyAttendanceCorrections = async (params = {}) => {
+  const res = await apiClient.get('/attendance/corrections/mine', { params });
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
 // LEAVES
 // ─────────────────────────────────────────────
 
@@ -169,6 +183,78 @@ export const getMyPayslips = async (year) => {
 
 export const getMyPayslipDetail = async (id) => {
   const res = await apiClient.get(`/payroll/${id}/payslip`);
+  return res.data;
+};
+
+export const downloadMyPayslipPDF = async (id) => {
+  const res = await apiClient.get(`/payroll/${id}/download-pdf`, {
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// EMPLOYEE RESIGNATION & EXIT
+// ─────────────────────────────────────────────
+
+export const getMyResignation = async () => {
+  const res = await apiClient.get('/resignations/mine');
+  return res.data;
+};
+
+export const submitResignation = async (payload) => {
+  const res = await apiClient.post('/resignations/submit', payload);
+  return res.data;
+};
+
+export const withdrawResignation = async (id) => {
+  const res = await apiClient.post(`/resignations/${id}/withdraw`);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// EMPLOYEE REFERRALS
+// ─────────────────────────────────────────────
+
+export const getMyReferrals = async () => {
+  const res = await apiClient.get('/referrals/mine');
+  return res.data;
+};
+
+export const submitReferral = async (formData) => {
+  const res = await apiClient.post('/referrals/submit', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// PERFORMANCE & APPRAISAL
+// ─────────────────────────────────────────────
+
+export const getMyPerformanceAppraisals = async () => {
+  const res = await apiClient.get('/appraisals/mine');
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// KYC DOCUMENTS
+// ─────────────────────────────────────────────
+
+export const getMyDocuments = async () => {
+  const res = await apiClient.get('/employees/me/documents');
+  return res.data;
+};
+
+export const uploadMyDocument = async (formData) => {
+  const res = await apiClient.post('/employees/me/documents', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return res.data;
+};
+
+export const deleteMyDocument = async (docId) => {
+  const res = await apiClient.delete(`/employees/me/documents/${docId}`);
   return res.data;
 };
 

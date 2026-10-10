@@ -8,9 +8,10 @@ import {
   EyeOff,
   Copy,
   Check,
-  Loader2
+  Loader2,
+  Download
 } from 'lucide-react';
-import { getMyProfile, getMyPayslips } from '../../services/employeeService';
+import { getMyProfile, getMyPayslips, downloadMyPayslipPDF } from '../../services/employeeService';
 import HRPayslipModal from '../hr/HRPayslipModal';
 
 const MONTH_NAMES = [
@@ -28,6 +29,7 @@ export const EmployeeSalaryView = ({ onBack }) => {
 
   // Payslip preview modal
   const [selectedPayslipId, setSelectedPayslipId] = useState(null);
+  const [downloadingSlipId, setDownloadingSlipId] = useState(null);
 
   // Masking & copy state
   const [showFullAccount, setShowFullAccount] = useState(false);
@@ -38,6 +40,26 @@ export const EmployeeSalaryView = ({ onBack }) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleDownloadPDF = async (slip) => {
+    try {
+      setDownloadingSlipId(slip.id);
+      const blob = await downloadMyPayslipPDF(slip.id);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Payslip_${MONTH_NAMES[slip.month] || slip.month}_${slip.year}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download PDF payslip:', err);
+      alert('Failed to download payslip PDF. Please try again.');
+    } finally {
+      setDownloadingSlipId(null);
+    }
   };
 
   const loadData = useCallback(async () => {
@@ -325,6 +347,16 @@ export const EmployeeSalaryView = ({ onBack }) => {
                       <td className="py-3 px-3.5 font-mono text-slate-700">
                         <span className="font-semibold text-emerald-700">{Number(slip.presentDays || 0)}</span>
                         <span className="text-slate-400"> / {slip.workingDays || 26}d</span>
+                        {Number(slip.lateMarksCount) > 0 && (
+                          <div className="text-[10px] text-amber-600 font-sans">
+                            {slip.lateMarksCount} Late Mark(s)
+                          </div>
+                        )}
+                        {Number(slip.sandwichLopDays) > 0 && (
+                          <div className="text-[10px] text-purple-600 font-sans">
+                            {slip.sandwichLopDays}d Sandwich LOP
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3 px-3.5 font-mono text-slate-800">
@@ -333,6 +365,12 @@ export const EmployeeSalaryView = ({ onBack }) => {
 
                       <td className="py-3 px-3.5 font-mono text-rose-700">
                         -₹{Math.round(Number(slip.totalDeductions || 0)).toLocaleString('en-IN')}
+                        {(Number(slip.lateDeduction) > 0 || Number(slip.sandwichLopDeduction) > 0) && (
+                          <div className="text-[10px] text-slate-500 font-sans">
+                            {Number(slip.lateDeduction) > 0 ? `Late: -₹${Math.round(slip.lateDeduction)} ` : ''}
+                            {Number(slip.sandwichLopDeduction) > 0 ? `Sandwich: -₹${Math.round(slip.sandwichLopDeduction)}` : ''}
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-3 px-3.5 font-mono font-bold text-slate-900">
@@ -352,14 +390,30 @@ export const EmployeeSalaryView = ({ onBack }) => {
                       </td>
 
                       <td className="py-3 px-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPayslipId(slip.id)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          <Printer className="w-3 h-3" />
-                          <span>View Slip</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPayslipId(slip.id)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-3 h-3" />
+                            <span>View</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={downloadingSlipId === slip.id}
+                            onClick={() => handleDownloadPDF(slip)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#8B1D2C]/10 hover:bg-[#8B1D2C]/20 text-[#8B1D2C] text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                            title="Download Official PDF"
+                          >
+                            {downloadingSlipId === slip.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Download className="w-3 h-3" />
+                            )}
+                            <span>PDF</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

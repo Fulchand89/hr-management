@@ -25,6 +25,10 @@ const { initActivityLogModel } = require('./ActivityLog');
 const { initAttendanceCorrectionModel } = require('./AttendanceCorrection');
 const { initCompanyPolicyModel } = require('./CompanyPolicy');
 const { initPolicyAcknowledgmentModel } = require('./PolicyAcknowledgment');
+const { initResignationRequestModel } = require('./ResignationRequest');
+const { initExitClearanceModel } = require('./ExitClearance');
+const { initEmployeeReferralModel } = require('./EmployeeReferral');
+const { initAppraisalReviewModel } = require('./AppraisalReview');
 
 // 1. Initialize all models
 const Role = initRoleModel(sequelize);
@@ -50,6 +54,10 @@ const Notification = initNotificationModel(sequelize);
 const ActivityLog = initActivityLogModel(sequelize);
 const CompanyPolicy = initCompanyPolicyModel(sequelize);
 const PolicyAcknowledgment = initPolicyAcknowledgmentModel(sequelize);
+const ResignationRequest = initResignationRequestModel(sequelize);
+const ExitClearance = initExitClearanceModel(sequelize);
+const EmployeeReferral = initEmployeeReferralModel(sequelize);
+const AppraisalReview = initAppraisalReviewModel(sequelize);
 
 // 2. Define Associations
 
@@ -170,6 +178,29 @@ PolicyAcknowledgment.belongsTo(User, { foreignKey: 'userId', as: 'employee' });
 CompanyPolicy.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 CompanyPolicy.belongsTo(Department, { foreignKey: 'targetDepartmentId', as: 'targetDepartment' });
 
+// N. Resignations & Exit Clearances
+User.hasMany(ResignationRequest, { foreignKey: 'userId', as: 'resignations' });
+ResignationRequest.belongsTo(User, { foreignKey: 'userId', as: 'employee' });
+ResignationRequest.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
+
+ResignationRequest.hasMany(ExitClearance, { foreignKey: 'resignationId', as: 'clearances', onDelete: 'CASCADE' });
+ExitClearance.belongsTo(ResignationRequest, { foreignKey: 'resignationId', as: 'resignation' });
+ExitClearance.belongsTo(User, { foreignKey: 'clearedBy', as: 'clearedByUser' });
+
+// O. Employee Referrals
+User.hasMany(EmployeeReferral, { foreignKey: 'referrerId', as: 'referrals' });
+EmployeeReferral.belongsTo(User, { foreignKey: 'referrerId', as: 'referrer' });
+EmployeeReferral.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
+
+// P. Appraisal & Performance Reviews
+User.hasMany(AppraisalReview, { foreignKey: 'userId', as: 'appraisals' });
+AppraisalReview.belongsTo(User, { foreignKey: 'userId', as: 'employee' });
+AppraisalReview.belongsTo(User, { foreignKey: 'reviewerId', as: 'reviewer' });
+AppraisalReview.belongsTo(Designation, { foreignKey: 'promotionDesignationId', as: 'promotedDesignation' });
+
+// Q. Employee Documents Verification
+EmployeeDocument.belongsTo(User, { foreignKey: 'verifiedBy', as: 'verifiedByUser' });
+
 // Model registry
 const db = {
   sequelize,
@@ -196,7 +227,11 @@ const db = {
   Notification,
   ActivityLog,
   CompanyPolicy,
-  PolicyAcknowledgment
+  PolicyAcknowledgment,
+  ResignationRequest,
+  ExitClearance,
+  EmployeeReferral,
+  AppraisalReview
 };
 
 module.exports = db;

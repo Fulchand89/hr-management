@@ -233,7 +233,7 @@ export const HRAttendanceView = ({
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Grace Period:</strong> You can punch in until 09:15 AM without being marked late.
+                  <strong>Grace Period:</strong> You can punch in until 10:15 AM without being marked late (15-minute grace).
                 </span>
               </div>
               <div className="flex items-start gap-2.5">
@@ -245,7 +245,7 @@ export const HRAttendanceView = ({
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Minimum Hours:</strong> At least 4.5 hours required for Half-Day and 8 hours for Full-Day credit.
+                  <strong>Minimum Hours:</strong> At least 4 hours required for Half-Day and 8 hours for Full-Day credit.
                 </span>
               </div>
             </div>

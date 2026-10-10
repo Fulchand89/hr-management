@@ -201,6 +201,81 @@ const updateEmployeeSalary = async (req, res, next) => {
   }
 };
 
+/**
+ * KYC Documents Controllers
+ */
+const uploadMyDocument = async (req, res, next) => {
+  try {
+    const doc = await employeeService.uploadEmployeeDocument(req.user.id, req.body, req.file);
+    return ApiResponse.created(res, {
+      message: 'Document uploaded successfully',
+      data: doc
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMyDocuments = async (req, res, next) => {
+  try {
+    const docs = await employeeService.getMyDocuments(req.user.id);
+    return ApiResponse.success(res, {
+      message: 'My documents retrieved successfully',
+      data: docs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getEmployeeDocuments = async (req, res, next) => {
+  try {
+    const docs = await employeeService.getEmployeeDocuments(req.params.id);
+    return ApiResponse.success(res, {
+      message: 'Employee documents retrieved successfully',
+      data: docs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getAllDocuments = async (req, res, next) => {
+  try {
+    const docs = await employeeService.getAllDocuments(req.query);
+    return ApiResponse.success(res, {
+      message: 'All employee documents retrieved successfully',
+      data: docs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyDocument = async (req, res, next) => {
+  try {
+    const doc = await employeeService.verifyDocument(req.params.docId, req.body, req.user);
+    return ApiResponse.success(res, {
+      message: 'Document verification updated successfully',
+      data: doc
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteDocument = async (req, res, next) => {
+  try {
+    const result = await employeeService.deleteEmployeeDocument(req.params.docId, req.user);
+    return ApiResponse.success(res, {
+      message: 'Document deleted successfully',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createEmployee,
   getAllEmployees,
@@ -212,5 +287,11 @@ module.exports = {
   updateMyProfile,
   changeMyPassword,
   uploadMyAvatar,
-  updateEmployeeSalary
+  updateEmployeeSalary,
+  uploadMyDocument,
+  getMyDocuments,
+  getEmployeeDocuments,
+  getAllDocuments,
+  verifyDocument,
+  deleteDocument
 };

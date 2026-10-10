@@ -17,6 +17,9 @@ router.get('/my-payslips', payrollController.getMyPayslips);
 // Formatted Payslip for print/download (HR/Admin or own record)
 router.get('/:id/payslip', payrollController.getPayslipDetails);
 
+// Binary PDF Payslip direct stream download
+router.get('/:id/download-pdf', payrollController.downloadPayslipPDF);
+
 // ─────────────────────────────────────────────
 // HR / ADMIN MANAGEMENT ROUTES
 // ─────────────────────────────────────────────

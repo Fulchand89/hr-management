@@ -796,6 +796,168 @@ const updateEmployeeSalaryStructure = async (id, payload, actor = null) => {
   return result;
 };
 
+/**
+ * ========================================================
+ * EMPLOYEE KYC DOCUMENTS MANAGEMENT
+ * ========================================================
+ */
+
+const uploadEmployeeDocument = async (userId, payload, file) => {
+  if (!file) {
+    throw new BadRequestError('Document file is required');
+  }
+
+  const { title, documentType } = payload;
+  if (!title) {
+    throw new BadRequestError('Document title is required');
+  }
+
+  const doc = await EmployeeDocument.create({
+    userId,
+    title: title.trim(),
+    documentType: documentType || 'id_proof',
+    fileUrl: `/uploads/${file.filename}`,
+    fileSize: file.size,
+    mimeType: file.mimetype,
+    verificationStatus: 'pending'
+  });
+
+  await ActivityLog.create({
+    userId,
+    action: 'UPLOAD_DOCUMENT',
+    module: 'DOCUMENTS',
+    targetId: doc.id,
+    ipAddress: 'INTERNAL',
+    details: `Uploaded KYC document: ${title} (${documentType})`
+  }).catch(() => {});
+
+  return doc;
+};
+
+const getMyDocuments = async (userId) => {
+  return await EmployeeDocument.findAll({
+    where: { userId },
+    order: [['createdAt', 'DESC']],
+    include: [
+      {
+        model: User,
+        as: 'verifiedByUser',
+        attributes: ['id', 'firstName', 'lastName']
+      }
+    ]
+  });
+};
+
+const getEmployeeDocuments = async (employeeId) => {
+  return await EmployeeDocument.findAll({
+    where: { userId: employeeId },
+    order: [['createdAt', 'DESC']],
+    include: [
+      {
+        model: User,
+        as: 'verifiedByUser',
+        attributes: ['id', 'firstName', 'lastName']
+      }
+    ]
+  });
+};
+
+const getAllDocuments = async (query = {}) => {
+  const { status, documentType, search } = query;
+  const where = {};
+
+  if (status && status !== 'all') {
+    where.verificationStatus = status;
+  }
+  if (documentType && documentType !== 'all') {
+    where.documentType = documentType;
+  }
+
+  const userWhere = {};
+  if (search) {
+    userWhere[Op.or] = [
+      { firstName: { [Op.like]: `%${search}%` } },
+      { lastName: { [Op.like]: `%${search}%` } },
+      { email: { [Op.like]: `%${search}%` } },
+      { employeeId: { [Op.like]: `%${search}%` } }
+    ];
+  }
+
+  return await EmployeeDocument.findAll({
+    where,
+    order: [['createdAt', 'DESC']],
+    include: [
+      {
+        model: User,
+        as: 'user',
+        where: Object.keys(userWhere).length > 0 ? userWhere : undefined,
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeId'],
+        include: [
+          { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
+          { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
+        ]
+      },
+      {
+        model: User,
+        as: 'verifiedByUser',
+        attributes: ['id', 'firstName', 'lastName']
+      }
+    ]
+  });
+};
+
+const verifyDocument = async (documentId, payload, actor) => {
+  const doc = await EmployeeDocument.findByPk(documentId, {
+    include: [{ model: User, as: 'user', attributes: ['id', 'firstName', 'lastName', 'email'] }]
+  });
+
+  if (!doc) {
+    throw new NotFoundError('Document not found');
+  }
+
+  const { status, remarks } = payload;
+  if (!['verified', 'rejected', 'pending'].includes(status)) {
+    throw new BadRequestError('Invalid verification status');
+  }
+
+  await doc.update({
+    verificationStatus: status,
+    remarks: remarks !== undefined ? remarks : doc.remarks,
+    verifiedBy: actor.id,
+    verifiedAt: new Date()
+  });
+
+  await Notification.create({
+    userId: doc.userId,
+    title: `Document ${status === 'verified' ? 'Approved' : 'Rejected'}: ${doc.title}`,
+    message: `Your document '${doc.title}' has been marked as ${status}. ${remarks ? 'Note: ' + remarks : ''}`,
+    type: 'document',
+    actionUrl: '/employee/profile'
+  }).catch(() => {});
+
+  return doc;
+};
+
+const deleteEmployeeDocument = async (documentId, user) => {
+  const doc = await EmployeeDocument.findByPk(documentId);
+  if (!doc) {
+    throw new NotFoundError('Document not found');
+  }
+
+  // Allow employee to delete only their own pending or rejected document; admin can delete any
+  if (user.role !== 'admin' && user.role !== 'hr') {
+    if (doc.userId !== user.id) {
+      throw new BadRequestError('You cannot delete another employee\'s document');
+    }
+    if (doc.verificationStatus === 'verified') {
+      throw new BadRequestError('Verified documents cannot be removed without HR approval');
+    }
+  }
+
+  await doc.destroy();
+  return { id: documentId, message: 'Document deleted successfully' };
+};
+
 module.exports = {
   createEmployee,
   getAllEmployees,
@@ -805,5 +967,11 @@ module.exports = {
   getEmployeeRealTimeStatus,
   getMyProfile,
   updateMyProfile,
-  updateEmployeeSalaryStructure
+  updateEmployeeSalaryStructure,
+  uploadEmployeeDocument,
+  getMyDocuments,
+  getEmployeeDocuments,
+  getAllDocuments,
+  verifyDocument,
+  deleteEmployeeDocument
 };

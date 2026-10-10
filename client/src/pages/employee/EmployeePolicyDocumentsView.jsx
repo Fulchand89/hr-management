@@ -2,35 +2,34 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  FolderOpen,
   Download,
   Search,
   FileText,
-  FileCheck,
   CheckCircle2,
   AlertCircle,
-  Lock,
   Loader2,
-  ExternalLink,
   ChevronRight,
-  ShieldCheck,
-  Building2,
-  Calendar
+  BookOpen,
+  Paperclip,
+  FolderOpen
 } from 'lucide-react';
 import { getPolicies } from '../../services/policyService';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Documents' },
-  { id: 'attendance_shifts', label: 'Attendance & Timings' },
-  { id: 'leave_holidays', label: 'Leaves & Holidays' },
-  { id: 'salary_appraisal', label: 'Salary & Compensation' },
-  { id: 'exit_notice_period', label: 'Notice & Exit' },
-  { id: 'joining_documents', label: 'Joining & Verification' },
-  { id: 'code_of_conduct', label: 'Code of Conduct & NDA' },
-  { id: 'general', label: 'Corporate Guidelines' }
+  { id: 'general', label: 'Overview' },
+  { id: 'attendance_shifts', label: 'Attendance' },
+  { id: 'leave_holidays', label: 'Leaves' },
+  { id: 'salary_appraisal', label: 'Salary' },
+  { id: 'exit_notice_period', label: 'Exit & Notice' },
+  { id: 'joining_documents', label: 'Joining' },
+  { id: 'code_of_conduct', label: 'Conduct & NDA' },
+  { id: 'project_management', label: 'Projects' },
+  { id: 'recreation_fun', label: 'Recreation' }
 ];
 
 const CATEGORY_NAMES = {
+  general: 'Company Overview & Objectives',
   attendance_shifts: 'Attendance & Work Hours',
   leave_holidays: 'Leave Policy & Deductions',
   salary_appraisal: 'Salary & Appraisals',
@@ -38,8 +37,7 @@ const CATEGORY_NAMES = {
   joining_documents: 'Joining Documents',
   code_of_conduct: 'Code of Conduct & Etiquette',
   project_management: 'Project Management & Referral',
-  recreation_fun: 'Fun Friday & Recreation',
-  general: 'General Guidelines'
+  recreation_fun: 'Fun Friday & Recreation'
 };
 
 export const EmployeePolicyDocumentsView = () => {
@@ -54,10 +52,10 @@ export const EmployeePolicyDocumentsView = () => {
     try {
       const res = await getPolicies();
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      // Filter only policies that have an attachment
-      setPolicies(list.filter((p) => Boolean(p.attachmentUrl)));
+      setPolicies(list);
     } catch (err) {
       console.error('Failed to load policy documents:', err);
+      setPolicies([]);
     } finally {
       setIsLoading(false);
     }
@@ -70,34 +68,34 @@ export const EmployeePolicyDocumentsView = () => {
   // Client-side filtering
   const filteredDocs = policies.filter((p) => {
     const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+    const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
-      !searchQuery.trim() ||
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.policyCode && p.policyCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.summary && p.summary.toLowerCase().includes(searchQuery.toLowerCase()));
+      !q ||
+      p.title?.toLowerCase().includes(q) ||
+      p.policyCode?.toLowerCase().includes(q) ||
+      p.summary?.toLowerCase().includes(q);
     return matchesCategory && matchesSearch;
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto font-sans pb-16">
-      {/* ── Simple Top Header ────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+    <div className="space-y-5 max-w-7xl mx-auto font-sans pb-12">
+      {/* ── Top Header ────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/employee/policies')}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+            className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            title="Back to Policies"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Policies</span>
           </button>
-
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Policy Documents & SOPs
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Download official company handbook files, PDF circulars, and verified guidelines ({policies.length} Files)
+              Official company policy guidelines, downloadable files, and verified SOP circulars
             </p>
           </div>
         </div>
@@ -112,19 +110,21 @@ export const EmployeePolicyDocumentsView = () => {
         </button>
       </div>
 
-      {/* ── Search & Filter Toolbar ─────────────────────────────────────── */}
+      {/* ── Search & Category Filter Toolbar ──────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="relative w-full md:w-72">
+        {/* Search */}
+        <div className="relative w-full md:w-80">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search documents by title or code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#8B1D2C]"
+            className="w-full pl-8.5 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-[#8B1D2C] shadow-2xs"
           />
         </div>
 
+        {/* Category Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto no-scrollbar pb-1 md:pb-0">
           {CATEGORIES.map((cat) => {
             const isActive = selectedCategory === cat.id;
@@ -135,8 +135,8 @@ export const EmployeePolicyDocumentsView = () => {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
+                    ? 'bg-[#8B1D2C] text-white shadow-2xs'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
                 {cat.label}
@@ -146,109 +146,141 @@ export const EmployeePolicyDocumentsView = () => {
         </div>
       </div>
 
-      {/* ── Documents Grid ──────────────────────────────────────────────── */}
-      {isLoading ? (
-        <div className="p-16 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200/80">
-          <Loader2 className="w-7 h-7 animate-spin text-[#8B1D2C]" />
-          <p className="text-xs font-semibold text-slate-500">Loading policy documents...</p>
-        </div>
-      ) : filteredDocs.length === 0 ? (
-        <div className="p-16 text-center bg-white rounded-2xl border border-slate-200/80 space-y-3">
-          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-            <FolderOpen className="w-6 h-6" />
+      {/* ── Clean Document Table ───────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+        {isLoading ? (
+          <div className="p-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+            <Loader2 className="w-6 h-6 animate-spin text-[#8B1D2C]" />
+            <span>Loading policy documents...</span>
           </div>
-          <p className="text-sm font-bold text-slate-700">No Documents Found</p>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            No attached document files matched your current filter criteria.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDocs.map((doc) => {
-            const isSigned = doc.isAcknowledged;
-            const isMandatoryPending = doc.isMandatory && !isSigned;
-            const isPdf = doc.attachmentUrl?.toLowerCase().endsWith('.pdf');
-            const fileType = isPdf ? 'PDF' : 'DOC';
-            const fileName = doc.attachmentUrl?.split('/').pop() || `${doc.policyCode || 'Policy'}.pdf`;
+        ) : filteredDocs.length === 0 ? (
+          <div className="p-16 text-center space-y-2">
+            <FolderOpen className="w-8 h-8 mx-auto text-slate-300" />
+            <p className="text-xs font-semibold text-slate-700">No documents found</p>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              No policy documents match your current filter criteria.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-4">Document / Policy</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">Type</th>
+                  <th className="py-3 px-4">Effective Date</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredDocs.map((doc) => {
+                  const isSigned = doc.isAcknowledged;
+                  const isMandatoryPending = doc.isMandatory && !isSigned;
+                  const hasAttachment = Boolean(doc.attachmentUrl);
+                  const isPdf = doc.attachmentUrl?.toLowerCase().endsWith('.pdf');
+                  const fileName = doc.attachmentUrl?.split('/').pop();
 
-            return (
-              <div
-                key={doc.id}
-                className={`bg-white rounded-xl p-4 sm:p-5 border transition-all flex flex-col justify-between space-y-3 ${
-                  isMandatoryPending
-                    ? 'border-rose-300'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="space-y-2">
-                  {/* Top Bar */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                      {doc.policyCode}
-                    </span>
+                  return (
+                    <tr key={doc.id} className="hover:bg-slate-50/60 transition-colors">
+                      {/* Document info */}
+                      <td className="py-3.5 px-4 max-w-xs">
+                        <div className="flex items-start gap-2.5">
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0 mt-0.5">
+                            {doc.policyCode}
+                          </span>
+                          <div>
+                            <span className="font-bold text-slate-900 block leading-tight">
+                              {doc.title}
+                            </span>
+                            <span className="text-[11px] text-slate-400 line-clamp-1 mt-0.5" title={doc.summary}>
+                              {doc.summary || 'Official company operating guidelines.'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
 
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-[#8B1D2C]">
-                        {fileType}
-                      </span>
-                      {isSigned ? (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Signed
-                        </span>
-                      ) : doc.isMandatory ? (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-50 text-[#8B1D2C] flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" /> Sign-off Req
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-500">
-                          Informational
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                      {/* Category */}
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-600 font-medium">
+                        {CATEGORY_NAMES[doc.category] || doc.category}
+                      </td>
 
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-1" title={doc.title}>
-                      {doc.title}
-                    </h3>
-                    <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
-                      {CATEGORY_NAMES[doc.category] || doc.category} &bull; v{doc.currentVersion}
-                    </span>
-                  </div>
+                      {/* Format / Type */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {hasAttachment ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-[#8B1D2C] border border-rose-200">
+                            <Paperclip className="w-3 h-3" />
+                            <span>{isPdf ? 'PDF File' : 'Document File'}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600">
+                            <FileText className="w-3 h-3" />
+                            <span>Official SOP</span>
+                          </span>
+                        )}
+                      </td>
 
-                  <p className="text-xs text-slate-500 line-clamp-1 font-mono truncate" title={fileName}>
-                    {fileName}
-                  </p>
-                </div>
+                      {/* Effective Date & Version */}
+                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-500 font-mono text-[11px]">
+                        {doc.effectiveDate || '2026'} &bull; v{doc.currentVersion || '1.0'}
+                      </td>
 
-                {/* Actions */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <a
-                    href={doc.attachmentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                    title="Download File"
-                  >
-                    <Download className="w-3 h-3" />
-                    <span>Download</span>
-                  </a>
+                      {/* Status */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {isSigned ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Signed
+                          </span>
+                        ) : doc.isMandatory ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-[#8B1D2C] border border-rose-200">
+                            <AlertCircle className="w-3 h-3 text-[#8B1D2C]" />
+                            Sign-off Req
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+                            Informational
+                          </span>
+                        )}
+                      </td>
 
-                  <button
-                    type="button"
-                    onClick={() => navigate('/employee/policies/' + doc.id)}
-                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
-                    title="View details"
-                  >
-                    <span>{isMandatoryPending ? 'Read & Sign' : 'View'}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {hasAttachment && (
+                            <a
+                              href={doc.attachmentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={fileName}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white text-[11px] font-semibold shadow-2xs transition-colors cursor-pointer"
+                              title="Download Attached Document File"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>Download</span>
+                            </a>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => navigate('/employee/policies/' + doc.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition-colors cursor-pointer"
+                            title="View Document Details"
+                          >
+                            <span>{isMandatoryPending ? 'Read & Sign' : 'View'}</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

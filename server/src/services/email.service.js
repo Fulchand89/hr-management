@@ -107,8 +107,61 @@ const sendHRNotificationEmail = async ({ to, name, subject, message, actionUrl =
   });
 };
 
+/**
+ * Send Automated Payslip Email with PDF Attachment
+ */
+const sendPayslipEmail = async ({ to, name, month, year, netSalary, pdfBuffer }) => {
+  const monthNames = [
+    '', 'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const monthStr = `${monthNames[month] || month} ${year}`;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <div style="background-color: #1e3a8a; padding: 24px; text-align: center; border-radius: 6px 6px 0 0;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Salary Payslip - ${monthStr}</h1>
+      </div>
+      <div style="padding: 24px; color: #333333; line-height: 1.6;">
+        <p>Dear <strong>${name}</strong>,</p>
+        <p>Your salary for the month of <strong>${monthStr}</strong> has been processed and disbursed.</p>
+        
+        <div style="background-color: #ecfdf5; border: 1px solid #10b981; border-radius: 6px; padding: 16px; margin: 20px 0; text-align: center;">
+          <span style="font-size: 13px; color: #065f46; font-weight: 600; text-transform: uppercase;">Net Disbursed Amount</span>
+          <div style="font-size: 24px; font-weight: bold; color: #047857; margin-top: 4px;">
+            ₹${Number(netSalary || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        <p>Your detailed payslip breakdown is attached to this email as a PDF document for your records.</p>
+        <p>You can also log into the HR portal at any time to review your salary structure, tax slips, and historical records.</p>
+        
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #94a3b8;">This is an automated notification from Gupta Tech Web Payroll Operations. Please do not reply directly to this email.</p>
+      </div>
+    </div>
+  `;
+
+  const attachments = [];
+  if (pdfBuffer) {
+    attachments.push({
+      filename: `Payslip_${monthStr.replace(' ', '_')}.pdf`,
+      content: pdfBuffer,
+      contentType: 'application/pdf'
+    });
+  }
+
+  return sendMail({
+    to,
+    subject: `Salary Payslip for ${monthStr} - Gupta Tech Web`,
+    html,
+    attachments
+  });
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendPasswordResetEmail,
-  sendHRNotificationEmail
+  sendHRNotificationEmail,
+  sendPayslipEmail
 };

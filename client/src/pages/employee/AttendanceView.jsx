@@ -27,6 +27,7 @@ export const AttendanceView = ({
   onEndBreak,
   onPunchOut,
   onBackToDashboard,
+  onRequestCorrection,
 }) => {
   return (
     <div className="space-y-6">
@@ -39,10 +40,22 @@ export const AttendanceView = ({
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                 Live Stopwatch & Punch Control
               </span>
-              <span className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                <Clock className="w-3.5 h-3.5 text-[#8B1D2C] shrink-0" />
-                Standard Shift (9h)
-              </span>
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                {onRequestCorrection && (
+                  <button
+                    type="button"
+                    onClick={onRequestCorrection}
+                    className="px-3 py-1 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-[#8B1D2C] hover:bg-rose-100/70 shadow-2xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-[#8B1D2C]" />
+                    Request Correction
+                  </button>
+                )}
+                <span className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                  <Clock className="w-3.5 h-3.5 text-[#8B1D2C] shrink-0" />
+                  Standard Shift (9h)
+                </span>
+              </div>
             </div>
 
             {/* Circular Timer Visual */}
@@ -231,7 +244,7 @@ export const AttendanceView = ({
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Grace Period:</strong> You can punch in until 09:15 AM without being marked late.
+                  <strong>Grace Period:</strong> You can punch in until 10:15 AM without being marked late (15-minute grace).
                 </span>
               </div>
               <div className="flex items-start gap-2.5">
@@ -243,11 +256,37 @@ export const AttendanceView = ({
               <div className="flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Minimum Hours:</strong> At least 4.5 hours required for Half-Day and 8 hours for Full-Day credit.
+                  <strong>Minimum Hours:</strong> At least 4 hours required for Half-Day and 8 hours for Full-Day credit.
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Attendance Correction Helper Card */}
+          {onRequestCorrection && (
+            <div className="bg-rose-50/40 rounded-3xl p-6 border border-rose-100 shadow-2xs space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#8B1D2C] text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Attendance Correction</h3>
+                  <p className="text-[11px] text-slate-500">Missed a punch or delayed clock-in?</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                If your attendance was marked late or missed due to official duty, client visit, or technical error, submit a correction request to HR for approval.
+              </p>
+              <button
+                type="button"
+                onClick={onRequestCorrection}
+                className="w-full py-2.5 px-4 rounded-xl bg-white border border-rose-200 hover:bg-rose-50 text-[#8B1D2C] font-bold text-xs shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Request Attendance Correction</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

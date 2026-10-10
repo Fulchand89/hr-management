@@ -15,6 +15,9 @@ const dashboardRoutes = require('./dashboard.routes');
 const reportsRoutes = require('./reports.routes');
 const payrollRoutes = require('./payroll.routes');
 const policyRoutes = require('./policy.routes');
+const resignationRoutes = require('./resignation.routes');
+const referralRoutes = require('./referral.routes');
+const appraisalRoutes = require('./appraisal.routes');
 const { sequelize } = require('../config/db');
 
 // Health Check Endpoint
@@ -51,5 +54,8 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/payroll', payrollRoutes);
 router.use('/policies', policyRoutes);
+router.use('/resignations', resignationRoutes);
+router.use('/referrals', referralRoutes);
+router.use('/appraisals', appraisalRoutes);
 
 module.exports = router;

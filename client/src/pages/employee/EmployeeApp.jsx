@@ -8,6 +8,7 @@ import AttendanceView from './AttendanceView';
 import MyAttendanceView from './MyAttendanceView';
 import LeavesView from './LeavesView';
 import ApplyLeaveModal from './ApplyLeaveModal';
+import ApplyAttendanceCorrectionModal from './ApplyAttendanceCorrectionModal';
 import AttendanceDetailModal from './AttendanceDetailModal';
 import NotificationsView from './NotificationsView';
 import ProfileView from './ProfileView';
@@ -16,6 +17,10 @@ import EmployeePoliciesView from './EmployeePoliciesView';
 import EmployeePolicyDetailView from './EmployeePolicyDetailView';
 import EmployeeHandbookView from './EmployeeHandbookView';
 import EmployeePolicyDocumentsView from './EmployeePolicyDocumentsView';
+import MyAppraisalView from './MyAppraisalView';
+import MyResignationView from './MyResignationView';
+import MyReferralsView from './MyReferralsView';
+import EmployeeKycDocumentsView from './EmployeeKycDocumentsView';
 import SignInView from './SignInView';
 
 import { useAuth } from '../../context/AuthContext';
@@ -39,6 +44,13 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
   // Global Modals
   const [isApplyLeaveModalOpen, setIsApplyLeaveModalOpen] = useState(false);
   const [isAttendanceDetailModalOpen, setIsAttendanceDetailModalOpen] = useState(false);
+  const [isApplyCorrectionModalOpen, setIsApplyCorrectionModalOpen] = useState(false);
+  const [selectedCorrectionRecord, setSelectedCorrectionRecord] = useState(null);
+
+  const handleOpenApplyCorrection = (record = null) => {
+    setSelectedCorrectionRecord(record);
+    setIsApplyCorrectionModalOpen(true);
+  };
 
   // Attendance state driven by API
   const [attendanceData, setAttendanceData] = useState(null);
@@ -174,6 +186,10 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     if (path.includes('/leaves')) return 'leaves';
     if (path.includes('/salary') || path.includes('/payslips')) return 'salary';
     if (path.includes('/policies')) return 'policies';
+    if (path.includes('/appraisals') || path.includes('/performance')) return 'appraisals';
+    if (path.includes('/resignation') || path.includes('/exit')) return 'resignation';
+    if (path.includes('/referrals') || path.includes('/rewards')) return 'referrals';
+    if (path.includes('/kyc') || path.includes('/documents')) return 'kyc';
     if (path.includes('/notifications')) return 'notifications';
     if (path.includes('/profile')) return 'profile';
     return 'dashboard';
@@ -227,6 +243,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
               onNavigateToLeaves={() => navigate('/employee/leaves')}
               onNavigateToMyAttendance={() => navigate('/employee/my-attendance')}
               onOpenApplyLeave={() => setIsApplyLeaveModalOpen(true)}
+              onRequestCorrection={handleOpenApplyCorrection}
               onSelectAttendanceRecord={(recordOrDate) => {
                 if (typeof recordOrDate === 'object' && recordOrDate !== null) {
                   setSelectedDateDetail(recordOrDate.date || null);
@@ -281,6 +298,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
               onTakeBreak={handleTakeBreak}
               onEndBreak={handleEndBreak}
               onPunchOut={handlePunchOut}
+              onRequestCorrection={() => handleOpenApplyCorrection(null)}
               onBackToDashboard={() => navigate('/employee/dashboard')}
             />
           }
@@ -289,11 +307,21 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
         {/* My Monthly Attendance View */}
         <Route
           path="my-attendance"
-          element={<MyAttendanceView onBack={() => navigate('/employee/dashboard')} />}
+          element={
+            <MyAttendanceView
+              onBack={() => navigate('/employee/dashboard')}
+              onRequestCorrection={handleOpenApplyCorrection}
+            />
+          }
         />
         <Route
           path="myattendance"
-          element={<MyAttendanceView onBack={() => navigate('/employee/dashboard')} />}
+          element={
+            <MyAttendanceView
+              onBack={() => navigate('/employee/dashboard')}
+              onRequestCorrection={handleOpenApplyCorrection}
+            />
+          }
         />
 
         {/* Leaves & Applications View */}
@@ -351,6 +379,46 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
           element={<EmployeePolicyDetailView />}
         />
 
+        {/* Performance & Appraisals */}
+        <Route
+          path="appraisals"
+          element={<MyAppraisalView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="performance"
+          element={<MyAppraisalView onBack={() => navigate('/employee/dashboard')} />}
+        />
+
+        {/* Resignation, Notice Period & Exit Clearance */}
+        <Route
+          path="resignation"
+          element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="exit"
+          element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
+        />
+
+        {/* Candidate Referrals & Spot Rewards */}
+        <Route
+          path="referrals"
+          element={<MyReferralsView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="rewards"
+          element={<MyReferralsView onBack={() => navigate('/employee/dashboard')} />}
+        />
+
+        {/* Employee KYC Documents & Compliance Locker */}
+        <Route
+          path="kyc"
+          element={<EmployeeKycDocumentsView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="documents"
+          element={<EmployeeKycDocumentsView onBack={() => navigate('/employee/dashboard')} />}
+        />
+
         {/* Fallback */}
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Routes>
@@ -374,6 +442,20 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
         }}
         selectedDate={selectedDateDetail}
         record={selectedRecordDetail}
+        onRequestCorrection={handleOpenApplyCorrection}
+      />
+
+      {/* Global Apply Attendance Correction Modal */}
+      <ApplyAttendanceCorrectionModal
+        isOpen={isApplyCorrectionModalOpen}
+        onClose={() => {
+          setIsApplyCorrectionModalOpen(false);
+          setSelectedCorrectionRecord(null);
+        }}
+        initialRecord={selectedCorrectionRecord}
+        onSuccess={() => {
+          loadTodayAttendance();
+        }}
       />
     </EmployeeLayout>
   );

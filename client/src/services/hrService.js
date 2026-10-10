@@ -381,3 +381,86 @@ export const getPayslipDetails = async (id) => {
   return res.data;
 };
 
+export const downloadPayslipPDF = async (id) => {
+  const res = await apiClient.get(`/payroll/${id}/download-pdf`, {
+    responseType: 'blob'
+  });
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// EXIT & RESIGNATION MANAGEMENT
+// ─────────────────────────────────────────────
+
+export const getAllResignations = async (params = {}) => {
+  const res = await apiClient.get('/resignations', { params });
+  return res.data;
+};
+
+export const getResignationById = async (id) => {
+  const res = await apiClient.get(`/resignations/${id}`);
+  return res.data;
+};
+
+export const updateResignationStatus = async (id, payload) => {
+  const res = await apiClient.patch(`/resignations/${id}/status`, payload);
+  return res.data;
+};
+
+export const updateClearanceStatus = async (resignationId, clearanceId, payload) => {
+  const res = await apiClient.patch(`/resignations/${resignationId}/clearances/${clearanceId}`, payload);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// EMPLOYEE REFERRALS & REWARDS
+// ─────────────────────────────────────────────
+
+export const getAllReferrals = async (params = {}) => {
+  const res = await apiClient.get('/referrals', { params });
+  return res.data;
+};
+
+export const updateReferral = async (id, payload) => {
+  const res = await apiClient.patch(`/referrals/${id}`, payload);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// PERFORMANCE APPRAISAL & REVIEWS
+// ─────────────────────────────────────────────
+
+export const getAllAppraisals = async (params = {}) => {
+  const res = await apiClient.get('/appraisals', { params });
+  return res.data;
+};
+
+export const createAppraisalReview = async (payload) => {
+  const res = await apiClient.post('/appraisals', payload);
+  return res.data;
+};
+
+export const getEmployeeAppraisals = async (userId) => {
+  const res = await apiClient.get(`/appraisals/employee/${userId}`);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// EMPLOYEE KYC DOCUMENTS (HR ADMIN)
+// ─────────────────────────────────────────────
+
+export const getAllEmployeeDocuments = async (params = {}) => {
+  const res = await apiClient.get('/employees/admin/documents', { params });
+  return res.data;
+};
+
+export const verifyEmployeeDocument = async (docId, payload) => {
+  const res = await apiClient.patch(`/employees/admin/documents/${docId}/verify`, payload);
+  return res.data;
+};
+
+export const deleteEmployeeDocument = async (docId) => {
+  const res = await apiClient.delete(`/employees/admin/documents/${docId}`);
+  return res.data;
+};
+

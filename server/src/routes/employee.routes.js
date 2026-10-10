@@ -50,9 +50,19 @@ router.put('/me/password', employeeController.changeMyPassword);
 // POST /api/v1/employees/me/avatar - Upload own avatar
 router.post('/me/avatar', upload.single('avatar'), employeeController.uploadMyAvatar);
 
+// KYC Document Self-Service routes
+router.get('/me/documents', employeeController.getMyDocuments);
+router.post('/me/documents', upload.single('file'), employeeController.uploadMyDocument);
+router.delete('/me/documents/:docId', employeeController.deleteDocument);
+
 // =============================================
 // ADMIN / HR ROUTES
 // =============================================
+
+// KYC Document Admin & Verification routes
+router.get('/admin/documents', authorize(ROLES.ADMIN, ROLES.HR), employeeController.getAllDocuments);
+router.patch('/admin/documents/:docId/verify', authorize(ROLES.ADMIN, ROLES.HR), employeeController.verifyDocument);
+router.delete('/admin/documents/:docId', authorize(ROLES.ADMIN, ROLES.HR), employeeController.deleteDocument);
 
 // 1. POST /api/v1/employees - Register new employee (Validation ke sath)
 router.post(
@@ -91,6 +101,13 @@ router.get(
   '/:id',
   authorizeSelfOrRoles(ROLES.ADMIN, ROLES.HR, ROLES.MANAGER),
   employeeController.getEmployeeById
+);
+
+// GET /api/v1/employees/:id/documents - Employee KYC documents
+router.get(
+  '/:id/documents',
+  authorizeSelfOrRoles(ROLES.ADMIN, ROLES.HR, ROLES.MANAGER),
+  employeeController.getEmployeeDocuments
 );
 
 // 4. PUT /api/v1/employees/:id - Employee details update

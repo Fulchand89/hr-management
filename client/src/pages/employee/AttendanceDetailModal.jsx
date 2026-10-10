@@ -11,7 +11,7 @@ import {
   Laptop,
 } from 'lucide-react';
 
-export const AttendanceDetailModal = ({ isOpen, onClose, selectedDate, record }) => {
+export const AttendanceDetailModal = ({ isOpen, onClose, selectedDate, record, onRequestCorrection }) => {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -166,14 +166,29 @@ export const AttendanceDetailModal = ({ isOpen, onClose, selectedDate, record })
           </div>
         </div>
 
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
-        >
-          Close Detail View
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+          {onRequestCorrection && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onRequestCorrection(record || { date: selectedDate });
+              }}
+              className="flex-1 py-3 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Request Correction</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

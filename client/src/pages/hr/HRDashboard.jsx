@@ -417,14 +417,6 @@ export const HRDashboard = ({
             </button>
           </div>
         </div>
-
-        {/* Location Verification Note */}
-        <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-            <ShieldCheck className="w-4 h-4" /> {user?.branchDetails?.name ? `${user.branchDetails.name} Network` : 'Authorized Network Access'}
-          </span>
-          <span className="text-slate-400">Authenticated Session &bull; Secure Portal</span>
-        </div>
       </div>
 
     </div>

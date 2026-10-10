@@ -160,7 +160,7 @@ export const EmployeePoliciesView = () => {
             title="Browse and download official attached policy documents and SOPs"
           >
             <FolderOpen className="w-3.5 h-3.5 text-[#8B1D2C]" />
-            <span>Documents ({policies.filter((p) => p.attachmentUrl).length})</span>
+            <span>Policy Documents ({policies.length})</span>
           </button>
 
           <button

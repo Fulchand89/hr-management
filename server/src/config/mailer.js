@@ -59,7 +59,7 @@ const initMailer = async () => {
 /**
  * Send email helper
  */
-const sendMail = async ({ to, subject, html, text }) => {
+const sendMail = async ({ to, subject, html, text, attachments }) => {
   if (!transporter) {
     await initMailer();
   }
@@ -69,7 +69,8 @@ const sendMail = async ({ to, subject, html, text }) => {
     to,
     subject,
     text: text || html.replace(/<[^>]*>?/gm, ''),
-    html
+    html,
+    attachments: attachments || []
   };
 
   try {

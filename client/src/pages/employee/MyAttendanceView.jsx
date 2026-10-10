@@ -13,17 +13,44 @@ import {
   Loader2,
 } from 'lucide-react';
 import AttendanceDetailModal from './AttendanceDetailModal';
-import { getMyAttendanceHistory, getHolidays } from '../../services/employeeService';
+import {
+  getMyAttendanceHistory,
+  getHolidays,
+  getMyAttendanceCorrections
+} from '../../services/employeeService';
 
-export const MyAttendanceView = ({ onBack }) => {
+export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'calendar'
+  const [activeTab, setActiveTab] = useState('timesheet'); // 'timesheet' | 'corrections'
   const [selectedRecordDate, setSelectedRecordDate] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const itemsPerPage = 10;
+
+  // Corrections state
+  const [correctionRequests, setCorrectionRequests] = useState([]);
+  const [correctionFilter, setCorrectionFilter] = useState('all');
+  const [isCorrectionsLoading, setIsCorrectionsLoading] = useState(false);
+
+  const loadCorrections = useCallback(async () => {
+    setIsCorrectionsLoading(true);
+    try {
+      const res = await getMyAttendanceCorrections();
+      const records = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setCorrectionRequests(records);
+    } catch {
+      setCorrectionRequests([]);
+    } finally {
+      setIsCorrectionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCorrections();
+  }, [loadCorrections]);
 
   const selectedMonth = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
   const currentMonthNum = currentDate.getMonth() + 1;
@@ -134,6 +161,15 @@ export const MyAttendanceView = ({ onBack }) => {
   const halfDayCount = summaryData?.halfDays ?? attendanceLogs.filter((l) => l.status === 'Half Day').length;
   const leaveCount = attendanceLogs.filter((l) => l.status === 'Leave' || l.status === 'Weekend').length;
 
+  const pendingCorrectionsCount = correctionRequests.filter((c) => c.status === 'pending').length;
+  const approvedCorrectionsCount = correctionRequests.filter((c) => c.status === 'approved').length;
+  const rejectedCorrectionsCount = correctionRequests.filter((c) => c.status === 'rejected').length;
+
+  const filteredCorrections = correctionRequests.filter((c) => {
+    if (correctionFilter === 'all') return true;
+    return c.status?.toLowerCase() === correctionFilter;
+  });
+
   const handleOpenDetail = (dateString, record) => {
     setSelectedRecordDate(dateString);
     setSelectedRecord(record || attendanceLogs.find((l) => l.date === dateString) || null);
@@ -158,67 +194,147 @@ export const MyAttendanceView = ({ onBack }) => {
 
   return (
     <div className="space-y-6">
-      {/* Top Controls Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
-        {/* Month Selector & Controls */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-2xs">
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="px-3 text-xs font-bold text-slate-800">{selectedMonth}</span>
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* View Mode Toggle: Table vs Calendar */}
-          <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5" /> Table
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('calendar')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                viewMode === 'calendar'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <CalendarIcon className="w-3.5 h-3.5" /> Calendar
-            </button>
-          </div>
-
-          {/* Export Button */}
+      {/* Top Controls & Sub-tab Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Sub-tab Navigation */}
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl w-fit border border-slate-200">
           <button
             type="button"
-            onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer transition-colors"
+            onClick={() => setActiveTab('timesheet')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'timesheet'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
           >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Export Timesheet</span>
+            <TableIcon className="w-3.5 h-3.5" />
+            <span>Monthly Timesheet</span>
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('corrections');
+              loadCorrections();
+            }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'corrections'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Correction Requests</span>
+            {pendingCorrectionsCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-900 font-bold">
+                {pendingCorrectionsCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Right Action Controls */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {activeTab === 'timesheet' ? (
+            <>
+              {/* Month Selector & Controls */}
+              <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="px-3 text-xs font-bold text-slate-800">{selectedMonth}</span>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* View Mode Toggle: Table vs Calendar */}
+              <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                    viewMode === 'table'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <TableIcon className="w-3.5 h-3.5" /> Table
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('calendar')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                    viewMode === 'calendar'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <CalendarIcon className="w-3.5 h-3.5" /> Calendar
+                </button>
+              </div>
+
+              {/* Export Button */}
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer transition-colors"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span>Export Timesheet</span>
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={loadCorrections}
+                className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-2xs cursor-pointer"
+                title="Refresh requests"
+              >
+                <Loader2 className={`w-3.5 h-3.5 ${isCorrectionsLoading ? 'animate-spin' : ''}`} />
+              </button>
+              {['all', 'pending', 'approved', 'rejected'].map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setCorrectionFilter(f)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${
+                    correctionFilter === f
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Primary Request Correction Button */}
+          {onRequestCorrection && (
+            <button
+              type="button"
+              onClick={() => onRequestCorrection(null)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 cursor-pointer transition-all"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Request Correction</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 4 Stat Overview KPI Cards */}
+      {activeTab === 'timesheet' ? (
+        <>
+          {/* 4 Stat Overview KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Present */}
         <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 flex items-center justify-between">
@@ -374,13 +490,25 @@ export const MyAttendanceView = ({ onBack }) => {
                     <td className="py-3 px-4 text-slate-500">{log.break}</td>
                     <td className="py-3 px-4 font-mono text-emerald-600 font-semibold">{log.overtime}</td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDetail(log.date, log)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer"
-                      >
-                        View Timeline
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDetail(log.date, log)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        >
+                          Timeline
+                        </button>
+                        {onRequestCorrection && (
+                          <button
+                            type="button"
+                            onClick={() => onRequestCorrection(log)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer whitespace-nowrap"
+                            title="Request Attendance Correction"
+                          >
+                            Correct
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )))}
@@ -519,18 +647,191 @@ export const MyAttendanceView = ({ onBack }) => {
           </div>
         </div>
       )}
+    </>
+  ) : (
+    /* Correction Requests Sub-Tab */
+    <div className="space-y-4">
+      {/* 4 Stat Overview for Correction Requests */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between">
+          <div>
+            <span className="text-2xl font-black text-slate-900 block font-mono">
+              {String(correctionRequests.length).padStart(2, '0')}
+            </span>
+            <span className="text-xs font-semibold text-slate-600 mt-0.5">
+              Total Requests
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-slate-200/80 text-slate-700 flex items-center justify-center font-bold">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
 
-      {/* Attendance Detail Modal */}
-      <AttendanceDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => {
-          setIsDetailModalOpen(false);
-          setSelectedRecord(null);
-        }}
-        selectedDate={selectedRecordDate}
-        record={selectedRecord}
-      />
+        <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 flex items-center justify-between">
+          <div>
+            <span className="text-2xl font-black text-slate-900 block font-mono">
+              {String(pendingCorrectionsCount).padStart(2, '0')}
+            </span>
+            <span className="text-xs font-semibold text-amber-800 mt-0.5">
+              Pending Review
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-100/80 text-amber-700 flex items-center justify-center font-bold">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 flex items-center justify-between">
+          <div>
+            <span className="text-2xl font-black text-slate-900 block font-mono">
+              {String(approvedCorrectionsCount).padStart(2, '0')}
+            </span>
+            <span className="text-xs font-semibold text-emerald-800 mt-0.5">
+              Approved
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center font-bold">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-rose-50/80 border border-rose-200/80 rounded-2xl p-4 flex items-center justify-between">
+          <div>
+            <span className="text-2xl font-black text-slate-900 block font-mono">
+              {String(rejectedCorrectionsCount).padStart(2, '0')}
+            </span>
+            <span className="text-xs font-semibold text-rose-800 mt-0.5">
+              Rejected
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-rose-100/80 text-rose-700 flex items-center justify-center font-bold">
+            <XCircle className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Correction Requests List Card */}
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Attendance Correction Requests</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Track status of your submitted clock-in/out adjustment requests</p>
+          </div>
+          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full w-fit">
+            {filteredCorrections.length} Filtered Requests
+          </span>
+        </div>
+
+        {isCorrectionsLoading ? (
+          <div className="py-16 text-center text-slate-500 text-xs flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-[#8B1D2C]" />
+            <span>Loading correction requests...</span>
+          </div>
+        ) : filteredCorrections.length === 0 ? (
+          <div className="py-16 text-center">
+            <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <h4 className="text-sm font-bold text-slate-700">No Attendance Correction Requests Found</h4>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-4">
+              You haven't submitted any attendance corrections matching this filter.
+            </p>
+            {onRequestCorrection && (
+              <button
+                type="button"
+                onClick={() => onRequestCorrection(null)}
+                className="px-4 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer inline-flex items-center gap-2"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Submit New Correction Request</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">System Time</th>
+                  <th className="py-3 px-4">Requested Time</th>
+                  <th className="py-3 px-4">Reason</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">HR Feedback</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {filteredCorrections.map((req) => (
+                  <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
+                      {req.date ? new Date(req.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
+                        {req.punchType || 'Check In Time'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
+                      {req.originalTime || 'Not Logged'}
+                    </td>
+                    <td className="py-3 px-4 font-mono font-bold text-emerald-700 whitespace-nowrap">
+                      {req.requestedTime || '--'}
+                    </td>
+                    <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={req.reason}>
+                      {req.reason || '--'}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                          req.status === 'approved'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : req.status === 'rejected'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            req.status === 'approved'
+                              ? 'bg-emerald-500'
+                              : req.status === 'rejected'
+                              ? 'bg-rose-500'
+                              : 'bg-amber-500'
+                          }`}
+                        />
+                        {req.status ? req.status.charAt(0).toUpperCase() + req.status.slice(1) : 'Pending'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                      {req.actionReason ? (
+                        <span className="text-slate-800 font-medium">{req.actionReason}</span>
+                      ) : req.status === 'pending' ? (
+                        <span className="text-slate-400 italic">Under HR Review</span>
+                      ) : (
+                        <span className="text-slate-400">--</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
+  )}
+
+  {/* Attendance Detail Modal */}
+  <AttendanceDetailModal
+    isOpen={isDetailModalOpen}
+    onClose={() => {
+      setIsDetailModalOpen(false);
+      setSelectedRecord(null);
+    }}
+    selectedDate={selectedRecordDate}
+    record={selectedRecord}
+    onRequestCorrection={(rec) => onRequestCorrection?.(rec)}
+  />
+</div>
   );
 };
 

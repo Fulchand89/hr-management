@@ -19,6 +19,9 @@ import {
   Sparkles,
   Wallet,
   BookOpen,
+  TrendingUp,
+  Gift,
+  UserMinus,
 } from 'lucide-react';
 
 export const EmployeeLayout = ({
@@ -59,6 +62,10 @@ export const EmployeeLayout = ({
     { id: 'leaves', label: 'Leaves & Requests', icon: CalendarDays },
     { id: 'salary', label: 'Salary & Compensation', icon: Wallet },
     { id: 'policies', label: 'Company Policies', icon: BookOpen },
+    { id: 'appraisals', label: 'Appraisals & Reviews', icon: TrendingUp },
+    { id: 'referrals', label: 'Referrals & Rewards', icon: Gift },
+    { id: 'kyc', label: 'KYC & Documents', icon: ShieldCheck },
+    { id: 'resignation', label: 'Resignation & Exit', icon: UserMinus },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'profile', label: 'My Profile', icon: User },
   ];

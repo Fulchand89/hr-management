@@ -53,6 +53,21 @@ const initPayrollModel = (sequelize) => {
         defaultValue: 0.0,
         allowNull: false
       },
+      lateCount: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false
+      },
+      lateLopDays: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0.0,
+        allowNull: false
+      },
+      sandwichLopDays: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0.0,
+        allowNull: false
+      },
       baseCtc: {
         type: DataTypes.DECIMAL(12, 2),
         defaultValue: 0.00,

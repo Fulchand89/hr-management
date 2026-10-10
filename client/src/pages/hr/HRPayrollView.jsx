@@ -510,6 +510,16 @@ export const HRPayrollView = () => {
                         <div className="text-[11px] text-rose-600 font-mono">
                           {Number(p.lopDays) > 0 ? `LOP: ${p.lopDays} days` : '0 LOP'}
                         </div>
+                        {Number(p.lateMarksCount) > 0 && (
+                          <div className="text-[10px] text-amber-600 font-mono">
+                            {p.lateMarksCount} Late Mark(s)
+                          </div>
+                        )}
+                        {Number(p.sandwichLopDays) > 0 && (
+                          <div className="text-[10px] text-purple-600 font-mono">
+                            {p.sandwichLopDays}d Sandwich LOP
+                          </div>
+                        )}
                       </td>
 
                       {/* Gross Earnings */}
@@ -528,6 +538,16 @@ export const HRPayrollView = () => {
                         <span className="block text-[10px] text-slate-400 font-normal">
                           PF: ₹{Math.round(p.pfDeduction || 0)}
                         </span>
+                        {Number(p.lateDeduction) > 0 && (
+                          <span className="block text-[10px] text-amber-600 font-normal">
+                            Late: -₹{Math.round(p.lateDeduction)}
+                          </span>
+                        )}
+                        {Number(p.sandwichLopDeduction) > 0 && (
+                          <span className="block text-[10px] text-purple-600 font-normal">
+                            Sandwich: -₹{Math.round(p.sandwichLopDeduction)}
+                          </span>
+                        )}
                       </td>
 
                       {/* Net Take-Home */}

@@ -32,6 +32,7 @@ export const EmployeeDashboard = ({
   onNavigateToLeaves,
   onNavigateToMyAttendance,
   onOpenApplyLeave,
+  onRequestCorrection,
   onSelectAttendanceRecord,
 }) => {
   const { user, token } = useAuth();
@@ -374,16 +375,20 @@ export const EmployeeDashboard = ({
               >
                 Detailed Clock &rarr;
               </button>
+
+              {onRequestCorrection && (
+                <button
+                  type="button"
+                  onClick={() => onRequestCorrection(null)}
+                  className="px-3.5 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100/80 text-[#8B1D2C] border border-rose-200/80 font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Request Correction</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Location Verification Note */}
-          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-              <ShieldCheck className="w-4 h-4" /> {user?.branchDetails?.name ? `${user.branchDetails.name} Network` : 'Authorized Network Access'}
-            </span>
-            <span className="text-slate-400">Authenticated Session &bull; Secure Portal</span>
-          </div>
         </div>
 
         {/* Right 1 Col: Quick Actions & Holidays */}
@@ -394,29 +399,41 @@ export const EmployeeDashboard = ({
               Quick Shortcuts
             </h3>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={onOpenApplyLeave}
-                className="p-3 sm:p-3.5 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-100 text-left transition-colors cursor-pointer group"
+                className="p-2.5 sm:p-3 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-100 text-left transition-colors cursor-pointer group"
               >
-                <div className="w-8 h-8 rounded-xl bg-[#8B1D2C] text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                  <CalendarDays className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-lg bg-[#8B1D2C] text-white flex items-center justify-center mb-1.5 shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  <CalendarDays className="w-3.5 h-3.5" />
                 </div>
-                <div className="text-xs font-bold text-slate-900 whitespace-nowrap">Apply Leave</div>
-                <div className="text-[11px] text-slate-500 whitespace-nowrap">Fast submission</div>
+                <div className="text-[11px] font-bold text-slate-900 truncate">Apply Leave</div>
+                <div className="text-[10px] text-slate-500 truncate">Fast request</div>
               </button>
 
               <button
                 type="button"
                 onClick={onNavigateToMyAttendance}
-                className="p-3 sm:p-3.5 rounded-2xl bg-sky-50/60 hover:bg-sky-100/60 border border-sky-100 text-left transition-colors cursor-pointer group"
+                className="p-2.5 sm:p-3 rounded-2xl bg-sky-50/60 hover:bg-sky-100/60 border border-sky-100 text-left transition-colors cursor-pointer group"
               >
-                <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                  <Clock className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center mb-1.5 shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  <Clock className="w-3.5 h-3.5" />
                 </div>
-                <div className="text-xs font-bold text-slate-900 whitespace-nowrap">Attendance Log</div>
-                <div className="text-[11px] text-slate-500 whitespace-nowrap">Monthly calendar</div>
+                <div className="text-[11px] font-bold text-slate-900 truncate">Timesheet</div>
+                <div className="text-[10px] text-slate-500 truncate">Monthly log</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onRequestCorrection?.(null)}
+                className="p-2.5 sm:p-3 rounded-2xl bg-amber-50/60 hover:bg-amber-100/60 border border-amber-100 text-left transition-colors cursor-pointer group"
+              >
+                <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center mb-1.5 shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  <Clock className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-[11px] font-bold text-slate-900 truncate">Correction</div>
+                <div className="text-[10px] text-slate-500 truncate">Fix missed punch</div>
               </button>
             </div>
           </div>

@@ -187,6 +187,24 @@ const getPayslipDetails = async (req, res, next) => {
   }
 };
 
+/**
+ * Stream Binary Payslip PDF Download
+ */
+const downloadPayslipPDF = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const pdfBuffer = await payrollService.downloadPayslipPDF(id, req.user);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Payslip_${id}.pdf`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    return res.end(pdfBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   generatePayroll,
   getPayrollDirectory,
@@ -197,5 +215,6 @@ module.exports = {
   bulkDisburse,
   exportBankSheet,
   getMyPayslips,
-  getPayslipDetails
+  getPayslipDetails,
+  downloadPayslipPDF
 };

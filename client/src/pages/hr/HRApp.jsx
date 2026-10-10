@@ -37,6 +37,7 @@ import HREditPolicyView from './HREditPolicyView';
 import HRAppraisalManagementView from './HRAppraisalManagementView';
 import HRExitManagementView from './HRExitManagementView';
 import HRReferralsRewardsView from './HRReferralsRewardsView';
+import HRKycVerificationView from './HRKycVerificationView';
 
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -437,6 +438,12 @@ export const HRApp = () => {
         <Route
           path="referrals-rewards"
           element={<HRReferralsRewardsView />}
+        />
+
+        {/* Employee KYC Documents Verification */}
+        <Route
+          path="kyc-documents"
+          element={<HRKycVerificationView />}
         />
 
         {/* Fallback */}

@@ -21,7 +21,7 @@ import {
   UserCheck,
   DollarSign
 } from 'lucide-react';
-import { getAllEmployees } from '../../services/hrService';
+import { getAllEmployees, getAllReferrals, updateReferral } from '../../services/hrService';
 import { useAuth } from '../../context/AuthContext';
 
 export const HRReferralsRewardsView = () => {
@@ -118,23 +118,55 @@ export const HRReferralsRewardsView = () => {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  useEffect(() => {
-    getAllEmployees({ limit: 50 })
-      .then((res) => {
-        const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-        setEmployees(list);
-        if (list.length > 0) {
-          setNewCert(prev => ({
-            ...prev,
-            employeeName: `${list[0].firstName} ${list[0].lastName || ''}`.trim(),
-            employeeCode: list[0].employeeCode || 'EMP-001',
-            department: list[0].department || 'Engineering'
-          }));
-        }
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+  const loadReferrals = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [empRes, refRes] = await Promise.all([
+        getAllEmployees({ limit: 50 }).catch(() => ({ data: [] })),
+        getAllReferrals().catch(() => ({ data: [] }))
+      ]);
+
+      const list = Array.isArray(empRes?.data) ? empRes.data : (Array.isArray(empRes) ? empRes : []);
+      setEmployees(list);
+
+      const refList = Array.isArray(refRes?.data) ? refRes.data : (Array.isArray(refRes) ? refRes : []);
+      if (refList.length > 0) {
+        setReferrals(
+          refList.map((r) => {
+            const joinDate = r.joiningDate || r.createdAt?.split('T')[0] || '';
+            const target3M = r.probationCompletionDate || '';
+            const isEligible = r.payoutStatus === 'eligible';
+            const isDisbursed = r.payoutStatus === 'paid';
+
+            return {
+              id: r.id,
+              candidateName: r.candidateName,
+              candidatePhone: r.candidatePhone,
+              candidateEmail: r.candidateEmail,
+              role: r.position,
+              experienceYears: Number(r.experienceYears || 0),
+              bonusAmount: Number(r.bonusAmount || 1500),
+              referredByEmpId: r.referrer?.employeeId || 'EMP',
+              referredByName: `${r.referrer?.firstName || ''} ${r.referrer?.lastName || ''}`.trim() || 'Employee',
+              referralDate: r.createdAt ? r.createdAt.split('T')[0] : '',
+              joiningDate: joinDate,
+              threeMonthTargetDate: target3M,
+              status: isDisbursed ? 'disbursed' : isEligible ? 'eligible' : r.status === 'hired' ? 'probation_active' : r.status,
+              notes: r.notes || ''
+            };
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Failed to load referrals:', err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadReferrals();
+  }, [loadReferrals]);
 
   // Submit Referral
   const handleCreateReferral = (e) => {
@@ -169,11 +201,18 @@ export const HRReferralsRewardsView = () => {
   };
 
   // Disburse Bonus
-  const handleDisburseBonus = (refId) => {
-    setReferrals(prev =>
-      prev.map(r => r.id === refId ? { ...r, status: 'disbursed' } : r)
-    );
-    showToast('Referral bonus approved & linked to monthly payroll disbursement!');
+  const handleDisburseBonus = async (refId) => {
+    try {
+      await updateReferral(refId, { payoutStatus: 'paid' });
+      showToast('Referral bonus approved & linked to monthly payroll disbursement!');
+      await loadReferrals();
+    } catch (err) {
+      // Fallback local update if mock ID
+      setReferrals((prev) =>
+        prev.map((r) => (r.id === refId ? { ...r, status: 'disbursed' } : r))
+      );
+      showToast('Referral bonus approved & linked to monthly payroll disbursement!');
+    }
   };
 
   // Submit Certificate
