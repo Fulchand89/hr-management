@@ -75,13 +75,7 @@ const getPayrollById = async (req, res, next) => {
 const adjustPayroll = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { bonus, otherDeductions, remarks } = req.body;
-    const result = await payrollService.adjustPayroll(id, {
-      bonus,
-      otherDeductions,
-      remarks,
-      adjustedBy: req.user.id
-    });
+    const result = await payrollService.adjustPayroll(id, req.body, req.user);
     return ApiResponse.success(res, {
       message: 'Payroll adjusted successfully',
       data: result

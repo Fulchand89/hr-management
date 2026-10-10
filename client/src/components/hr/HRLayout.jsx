@@ -270,13 +270,6 @@ export const HRLayout = ({
       isActive: isReferrals,
     },
     {
-      id: 'kyc-documents',
-      label: 'KYC & Documents',
-      icon: ShieldCheck,
-      path: '/hr/kyc-documents',
-      isActive: location.pathname.includes('/hr/kyc-documents'),
-    },
-    {
       id: 'reports',
       label: 'Reports',
       icon: FileSpreadsheet,

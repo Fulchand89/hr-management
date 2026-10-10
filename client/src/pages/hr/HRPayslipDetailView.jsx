@@ -279,10 +279,10 @@ export const HRPayslipDetailView = () => {
           </div>
 
           {/* C. Attendance Audit Row */}
-          <div className="grid grid-cols-4 gap-2 text-center py-2.5 px-3 bg-white rounded-lg border border-slate-200 text-xs">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center py-2.5 px-3 bg-white rounded-lg border border-slate-200 text-xs">
             <div>
               <span className="text-[10px] text-slate-400 font-semibold uppercase block">
-                Days in Month
+                Total Days
               </span>
               <span className="text-xs font-bold text-slate-900 font-mono mt-0.5 block">
                 {payslip.period.totalDays}
@@ -290,7 +290,7 @@ export const HRPayslipDetailView = () => {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-semibold uppercase block">
-                Working Days
+                Work Days
               </span>
               <span className="text-xs font-bold text-slate-900 font-mono mt-0.5 block">
                 {payslip.period.workingDays}
@@ -306,10 +306,32 @@ export const HRPayslipDetailView = () => {
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-semibold uppercase block">
-                Loss of Pay (LOP)
+                Logged Hrs
               </span>
-              <span className="text-xs font-bold text-slate-900 font-mono mt-0.5 block">
-                {payslip.period.lopDays}
+              <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
+                {payslip.period.actualLoggedHours ? `${payslip.period.actualLoggedHours}h` : 'N/A'}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-semibold uppercase block">
+                Short / OT
+              </span>
+              <span className="text-xs font-bold font-mono mt-0.5 block">
+                {payslip.period.overtimeHours > 0 ? (
+                  <span className="text-emerald-700">+{payslip.period.overtimeHours}h OT</span>
+                ) : payslip.period.underTimeHours > 0 ? (
+                  <span className="text-amber-700">-{payslip.period.underTimeHours}h Short</span>
+                ) : (
+                  <span className="text-slate-500">0h</span>
+                )}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 font-semibold uppercase block">
+                Loss of Pay
+              </span>
+              <span className="text-xs font-bold text-rose-600 font-mono mt-0.5 block">
+                {payslip.period.lopDays}d
               </span>
             </div>
           </div>

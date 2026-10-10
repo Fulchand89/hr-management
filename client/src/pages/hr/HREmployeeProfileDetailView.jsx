@@ -22,15 +22,20 @@ import {
   Percent,
   Layers,
   MapPin,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  FileText,
+  Check,
+  X
 } from 'lucide-react';
-import { getEmployeeById } from '../../services/hrService';
+import { getEmployeeById, getEmployeeDocuments, verifyEmployeeDocument } from '../../services/hrService';
 
 export const HREmployeeProfileDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
+  const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -41,9 +46,14 @@ export const HREmployeeProfileDetailView = () => {
       setIsLoading(true);
       setErrorMessage('');
       try {
-        const res = await getEmployeeById(id);
-        const data = res?.data || res;
+        const [resProfile, resDocs] = await Promise.all([
+          getEmployeeById(id),
+          getEmployeeDocuments(id).catch(() => [])
+        ]);
+        const data = resProfile?.data || resProfile;
         setProfile(data);
+        const docsList = Array.isArray(resDocs?.data) ? resDocs.data : (Array.isArray(resDocs) ? resDocs : []);
+        setDocuments(docsList);
       } catch (err) {
         console.error('Failed to load employee 360 profile:', err);
         setErrorMessage(
@@ -56,6 +66,21 @@ export const HREmployeeProfileDetailView = () => {
 
     fetchDetail();
   }, [id]);
+
+  const handleVerifyDoc = async (docId, status) => {
+    let remarks = '';
+    if (status === 'rejected') {
+      remarks = prompt('Enter rejection reason:') || 'Document invalid or illegible';
+    }
+    try {
+      await verifyEmployeeDocument(docId, { status, remarks });
+      const resDocs = await getEmployeeDocuments(id);
+      const docsList = Array.isArray(resDocs?.data) ? resDocs.data : (Array.isArray(resDocs) ? resDocs : []);
+      setDocuments(docsList);
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to update document status');
+    }
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -416,6 +441,109 @@ export const HREmployeeProfileDetailView = () => {
                 >
                   Configure Salary Structure
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* KYC & Compliance Documents Section */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#8B1D2C]" />
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  KYC &amp; Submitted Documents ({documents.length})
+                </h3>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-400">
+                Identity, Address &amp; Qualifications
+              </span>
+            </div>
+
+            {documents.length === 0 ? (
+              <div className="p-6 bg-slate-50 border border-slate-200/80 rounded-xl text-center text-xs text-slate-400">
+                <FileText className="w-6 h-6 mx-auto mb-1 text-slate-300" />
+                <span>No KYC documents uploaded by this employee yet.</span>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 border border-slate-200/80 rounded-xl overflow-hidden">
+                {documents.map((doc) => {
+                  const isVerified = doc.verificationStatus === 'verified';
+                  const isRejected = doc.verificationStatus === 'rejected';
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className="p-3.5 bg-white hover:bg-slate-50/70 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{doc.title}</span>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold bg-slate-100 px-2 py-0.5 rounded-md">
+                            {doc.documentType?.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                          {doc.fileUrl && (
+                            <a
+                              href={doc.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1"
+                            >
+                              <FileText className="w-3 h-3" />
+                              <span>View File</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          )}
+                          <span>&bull;</span>
+                          <span>Uploaded: {new Date(doc.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        {doc.remarks && (
+                          <p className="text-[10px] text-slate-500 italic mt-0.5">
+                            Note: {doc.remarks}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isVerified ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <Check className="w-3 h-3" /> Verified
+                          </span>
+                        ) : isRejected ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <X className="w-3 h-3" /> Rejected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock className="w-3 h-3" /> Pending Review
+                          </span>
+                        )}
+
+                        {!isVerified && (
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyDoc(doc.id, 'verified')}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>Verify</span>
+                          </button>
+                        )}
+
+                        {!isRejected && (
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyDoc(doc.id, 'rejected')}
+                            className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs cursor-pointer transition-colors"
+                          >
+                            Reject
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

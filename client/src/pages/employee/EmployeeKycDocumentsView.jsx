@@ -105,7 +105,13 @@ export const EmployeeKycDocumentsView = ({ onBack }) => {
     }
 
     const formData = new FormData();
-    formData.append('documentType', docType);
+    let normalizedType = docType;
+    if (docType === 'aadhaar' || docType === 'pan') normalizedType = 'id_proof';
+    else if (docType === 'bank') normalizedType = 'other';
+    else if (docType === 'degree') normalizedType = 'education';
+    else if (docType === 'experience') normalizedType = 'experience';
+
+    formData.append('documentType', normalizedType);
     formData.append('title', docTitle);
     formData.append('documentNumber', docNumber);
     formData.append('file', selectedFile);

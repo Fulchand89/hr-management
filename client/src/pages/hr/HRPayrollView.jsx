@@ -510,9 +510,24 @@ export const HRPayrollView = () => {
                         <div className="text-[11px] text-rose-600 font-mono">
                           {Number(p.lopDays) > 0 ? `LOP: ${p.lopDays} days` : '0 LOP'}
                         </div>
-                        {Number(p.lateMarksCount) > 0 && (
+                        {Number(p.actualLoggedHours) > 0 && (
+                          <div className="text-[10px] text-slate-500 font-mono">
+                            Logged: {p.actualLoggedHours}h
+                          </div>
+                        )}
+                        {Number(p.underTimeHours) > 0 && (
+                          <div className="text-[10px] text-amber-700 font-mono font-medium">
+                            {p.underTimeHours}h Short {p.waiveUnderTime ? '(Waived)' : ''}
+                          </div>
+                        )}
+                        {Number(p.overtimeHours) > 0 && (
+                          <div className="text-[10px] text-emerald-700 font-mono font-medium">
+                            +{p.overtimeHours}h OT ({p.overtimeRateMultiplier || 1.0}x)
+                          </div>
+                        )}
+                        {Number(p.lateMarksCount || p.lateCount) > 0 && (
                           <div className="text-[10px] text-amber-600 font-mono">
-                            {p.lateMarksCount} Late Mark(s)
+                            {p.lateMarksCount || p.lateCount} Late Mark(s)
                           </div>
                         )}
                         {Number(p.sandwichLopDays) > 0 && (
@@ -530,6 +545,11 @@ export const HRPayrollView = () => {
                             +₹{Math.round(p.bonus)} Bonus
                           </span>
                         )}
+                        {Number(p.overtimePay) > 0 && (
+                          <span className="block text-[10px] text-emerald-600 font-medium">
+                            +₹{Math.round(p.overtimePay)} OT Pay
+                          </span>
+                        )}
                       </td>
 
                       {/* Total Deductions */}
@@ -538,6 +558,11 @@ export const HRPayrollView = () => {
                         <span className="block text-[10px] text-slate-400 font-normal">
                           PF: ₹{Math.round(p.pfDeduction || 0)}
                         </span>
+                        {Number(p.underTimeDeduction) > 0 && !p.waiveUnderTime && (
+                          <span className="block text-[10px] text-amber-600 font-normal">
+                            Short Hrs: -₹{Math.round(p.underTimeDeduction)}
+                          </span>
+                        )}
                         {Number(p.lateDeduction) > 0 && (
                           <span className="block text-[10px] text-amber-600 font-normal">
                             Late: -₹{Math.round(p.lateDeduction)}
@@ -553,6 +578,11 @@ export const HRPayrollView = () => {
                       {/* Net Take-Home */}
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900 text-sm">
                         ₹{Math.round(p.netSalary).toLocaleString()}
+                        {p.isManuallyAdjusted && (
+                          <span className="block text-[10px] font-sans font-medium text-amber-600 mt-0.5">
+                            Adjusted by HR
+                          </span>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -577,9 +607,12 @@ export const HRPayrollView = () => {
                         {p.paymentStatus !== 'paid' && (
                           <button
                             type="button"
-                            onClick={() => navigate(`/hr/payroll/${p.id}/adjust`)}
+                            onClick={() => {
+                              setPayrollToAdjust(p);
+                              setIsAdjustModalOpen(true);
+                            }}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-600 text-xs font-semibold cursor-pointer hover:bg-slate-50 transition-colors"
-                            title="Adjust Bonus or Penalty"
+                            title="Adjust Days, Hours, Shortfall, OT or Salary"
                           >
                             <SlidersHorizontal className="w-3.5 h-3.5" />
                             <span>Adjust</span>

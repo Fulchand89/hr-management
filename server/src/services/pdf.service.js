@@ -86,18 +86,24 @@ const generatePayslipPDFBuffer = (payroll) => {
       doc.text('TOTAL DAYS', 50, y + 8);
       doc.text('WORK DAYS', 120, y + 8);
       doc.text('PRESENT', 190, y + 8);
-      doc.text('PAID LEAVES', 255, y + 8);
+      doc.text('LOGGED HRS', 255, y + 8);
       doc.text('LATE MARKS', 330, y + 8);
-      doc.text('SANDWICH LOP', 410, y + 8);
+      doc.text('SHORT / OT', 410, y + 8);
       doc.text('TOTAL LOP', 490, y + 8);
+
+      const shortOtStr = Number(payroll.overtimeHours || 0) > 0
+        ? `+${payroll.overtimeHours}h OT`
+        : Number(payroll.underTimeHours || 0) > 0
+        ? `-${payroll.underTimeHours}h Short`
+        : '0h';
 
       doc.fillColor('#0f172a').fontSize(10).font('Helvetica');
       doc.text(String(payroll.totalDays || 30), 50, y + 24);
       doc.text(String(payroll.workingDays || 26), 120, y + 24);
       doc.text(String(payroll.presentDays || 0), 190, y + 24);
-      doc.text(String(payroll.paidLeaves || 0), 255, y + 24);
+      doc.text(`${payroll.actualLoggedHours || 0}h`, 255, y + 24);
       doc.text(`${payroll.lateCount || 0} (${payroll.lateLopDays || 0}d)`, 330, y + 24);
-      doc.text(`${payroll.sandwichLopDays || 0}d`, 410, y + 24);
+      doc.text(shortOtStr, 410, y + 24);
       doc.fillColor('#dc2626').font('Helvetica-Bold');
       doc.text(`${payroll.lopDays || 0}d`, 490, y + 24);
 
@@ -118,17 +124,35 @@ const generatePayslipPDFBuffer = (payroll) => {
       const earnings = [
         { label: 'Basic Salary', val: payroll.basicSalary },
         { label: 'House Rent Allowance (HRA)', val: payroll.hra },
-        { label: 'Special Allowance', val: payroll.specialAllowance },
-        { label: 'Performance / Referral Bonus', val: payroll.bonus }
+        { label: 'Special Allowance', val: payroll.specialAllowance }
       ];
+      if (Number(payroll.bonus || 0) > 0) {
+        earnings.push({ label: 'Performance / Referral Bonus', val: payroll.bonus });
+      }
+      if (Number(payroll.overtimePay || 0) > 0) {
+        earnings.push({
+          label: `Overtime Pay (${payroll.overtimeHours || 0} hrs)`,
+          val: payroll.overtimePay
+        });
+      }
 
       const deductions = [
         { label: 'Provident Fund (PF)', val: payroll.pfDeduction },
         { label: 'Employee State Insurance (ESI)', val: payroll.esiDeduction },
-        { label: 'Professional / Income Tax', val: payroll.taxDeduction },
-        { label: 'LOP Deduction (Absence / Late)', val: payroll.lopDeduction },
-        { label: 'Other Deductions', val: payroll.otherDeductions }
+        { label: 'Professional / Income Tax', val: payroll.taxDeduction }
       ];
+      if (Number(payroll.lopDeduction || 0) > 0) {
+        deductions.push({ label: `Loss of Pay (${payroll.lopDays || 0}d)`, val: payroll.lopDeduction });
+      }
+      if (Number(payroll.underTimeDeduction || 0) > 0 && !payroll.waiveUnderTime) {
+        deductions.push({
+          label: `Under-Time Shortfall (${payroll.underTimeHours || 0} hrs)`,
+          val: payroll.underTimeDeduction
+        });
+      }
+      if (Number(payroll.otherDeductions || 0) > 0) {
+        deductions.push({ label: 'Other Deductions', val: payroll.otherDeductions });
+      }
 
       const maxRows = Math.max(earnings.length, deductions.length);
       const rowHeight = 20;

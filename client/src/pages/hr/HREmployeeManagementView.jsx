@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Users,
   UserPlus,
@@ -21,16 +21,47 @@ import {
   Sparkles,
   Wallet,
   EyeOff,
-  DollarSign
+  DollarSign,
+  ShieldCheck
 } from 'lucide-react';
-import { getAllEmployees, getDepartments } from '../../services/hrService';
+import { getAllEmployees, getDepartments, getAllEmployeeDocuments } from '../../services/hrService';
 import HRAddEmployeeModal from './HRAddEmployeeModal';
 import HREmployeeDetailModal from './HREmployeeDetailModal';
 import HRChangeEmployeeStatusModal from './HRChangeEmployeeStatusModal';
 import HRManageSalaryModal from './HRManageSalaryModal';
+import HRKycVerificationView from './HRKycVerificationView';
 
 export const HREmployeeManagementView = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'directory';
+  const [pendingKycCount, setPendingKycCount] = useState(0);
+
+  const fetchPendingKyc = useCallback(async () => {
+    try {
+      const res = await getAllEmployeeDocuments({ status: 'pending' });
+      const data = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setPendingKycCount(data.length);
+    } catch {
+      // silently ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPendingKyc();
+  }, [fetchPendingKyc]);
+
+  const handleTabChange = (tabKey) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tabKey === 'directory') {
+        next.delete('tab');
+      } else {
+        next.set('tab', tabKey);
+      }
+      return next;
+    });
+  };
 
   // Data state
   const [employees, setEmployees] = useState([]);
@@ -241,50 +272,135 @@ export const HREmployeeManagementView = () => {
         <div>
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#8B1D2C] to-[#5C101B] flex items-center justify-center text-white shadow-md shadow-[#8B1D2C]/20">
-              <Users className="w-5 h-5 text-rose-100" />
+              {activeTab === 'kyc' ? (
+                <ShieldCheck className="w-5 h-5 text-rose-100" />
+              ) : (
+                <Users className="w-5 h-5 text-rose-100" />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-                  Employee Directory & Management
+                  {activeTab === 'kyc' ? 'Employee KYC Documents' : 'Employee Directory & Management'}
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8B1D2C]/10 text-[#8B1D2C]">
-                  Directory
+                  {activeTab === 'kyc' ? 'KYC Verification' : 'Directory'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                Centralized workforce database, lifecycle statuses, and profile administration
+                {activeTab === 'kyc'
+                  ? 'Review, preview and verify employee submitted identity and qualification proofs'
+                  : 'Centralized workforce database, lifecycle statuses, and profile administration'}
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => fetchEmployees(true)}
-            disabled={refreshing || loading}
-            className="p-2.5 text-slate-600 hover:text-[#8B1D2C] bg-slate-50 hover:bg-rose-50 rounded-xl border border-slate-200 transition-colors cursor-pointer"
-            title="Refresh List"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${refreshing ? 'animate-spin text-[#8B1D2C]' : ''}`}
-            />
-          </button>
+          {activeTab === 'directory' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => fetchEmployees(true)}
+                disabled={refreshing || loading}
+                className="p-2.5 text-slate-600 hover:text-[#8B1D2C] bg-slate-50 hover:bg-rose-50 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                title="Refresh List"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${refreshing ? 'animate-spin text-[#8B1D2C]' : ''}`}
+                />
+              </button>
 
-          <button
-            type="button"
-            onClick={() => navigate('/hr/employees/add')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer active:scale-[0.98]"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Onboard New Employee</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => navigate('/hr/employees/add')}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer active:scale-[0.98]"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Onboard New Employee</span>
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              {pendingKycCount > 0 ? (
+                <span className="px-3 py-1.5 rounded-xl bg-amber-100 text-amber-800 text-xs font-bold">
+                  {pendingKycCount} Pending Review
+                </span>
+              ) : (
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold">
+                  All Documents Verified
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── Sub-Tabs Navigation (Directory vs KYC Verification) ── */}
+      <div className="flex items-center gap-2 border-b border-slate-200/80 pb-1">
+        <button
+          type="button"
+          onClick={() => handleTabChange('directory')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'directory'
+              ? 'bg-[#8B1D2C] text-white shadow-xs'
+              : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80 hover:text-slate-900'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Employee Directory</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+              activeTab === 'directory'
+                ? 'bg-white/20 text-white'
+                : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {totalCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('kyc')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'kyc'
+              ? 'bg-[#8B1D2C] text-white shadow-xs'
+              : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200/80 hover:text-slate-900'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          <span>KYC &amp; Documents Verification</span>
+          {pendingKycCount > 0 ? (
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                activeTab === 'kyc'
+                  ? 'bg-amber-400 text-slate-900'
+                  : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {pendingKycCount} Pending
+            </span>
+          ) : (
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                activeTab === 'kyc'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              All Verified
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'kyc' ? (
+        <HRKycVerificationView onDocumentUpdated={fetchPendingKyc} />
+      ) : (
+        <>
+          {/* KPI Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Personnel */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
           <div>
@@ -748,6 +864,8 @@ export const HREmployeeManagementView = () => {
           </div>
         )}
       </div>
+        </>
+      )}
 
       {/* Add / Edit Employee Modal */}
       <HRAddEmployeeModal

@@ -440,10 +440,10 @@ export const HRApp = () => {
           element={<HRReferralsRewardsView />}
         />
 
-        {/* Employee KYC Documents Verification */}
+        {/* Employee KYC Documents Verification (Redirect to Employees tab) */}
         <Route
           path="kyc-documents"
-          element={<HRKycVerificationView />}
+          element={<Navigate to="/hr/employees?tab=kyc" replace />}
         />
 
         {/* Fallback */}

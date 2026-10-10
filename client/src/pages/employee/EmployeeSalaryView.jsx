@@ -347,6 +347,21 @@ export const EmployeeSalaryView = ({ onBack }) => {
                       <td className="py-3 px-3.5 font-mono text-slate-700">
                         <span className="font-semibold text-emerald-700">{Number(slip.presentDays || 0)}</span>
                         <span className="text-slate-400"> / {slip.workingDays || 26}d</span>
+                        {Number(slip.actualLoggedHours) > 0 && (
+                          <div className="text-[10px] text-slate-500 font-sans">
+                            Logged: {slip.actualLoggedHours}h
+                          </div>
+                        )}
+                        {Number(slip.underTimeHours) > 0 && (
+                          <div className="text-[10px] text-amber-700 font-sans font-medium">
+                            {slip.underTimeHours}h Short {slip.waiveUnderTime ? '(Waived)' : ''}
+                          </div>
+                        )}
+                        {Number(slip.overtimeHours) > 0 && (
+                          <div className="text-[10px] text-emerald-700 font-sans font-medium">
+                            +{slip.overtimeHours}h OT
+                          </div>
+                        )}
                         {Number(slip.lateMarksCount) > 0 && (
                           <div className="text-[10px] text-amber-600 font-sans">
                             {slip.lateMarksCount} Late Mark(s)
@@ -361,10 +376,25 @@ export const EmployeeSalaryView = ({ onBack }) => {
 
                       <td className="py-3 px-3.5 font-mono text-slate-800">
                         ₹{Math.round(Number(slip.grossSalary || 0)).toLocaleString('en-IN')}
+                        {Number(slip.overtimePay) > 0 && (
+                          <span className="block text-[10px] text-emerald-600 font-sans">
+                            +₹{Math.round(slip.overtimePay)} OT
+                          </span>
+                        )}
+                        {Number(slip.bonus) > 0 && (
+                          <span className="block text-[10px] text-emerald-600 font-sans">
+                            +₹{Math.round(slip.bonus)} Bonus
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3 px-3.5 font-mono text-rose-700">
                         -₹{Math.round(Number(slip.totalDeductions || 0)).toLocaleString('en-IN')}
+                        {Number(slip.underTimeDeduction) > 0 && !slip.waiveUnderTime && (
+                          <div className="text-[10px] text-amber-700 font-sans">
+                            Shortfall: -₹{Math.round(slip.underTimeDeduction)}
+                          </div>
+                        )}
                         {(Number(slip.lateDeduction) > 0 || Number(slip.sandwichLopDeduction) > 0) && (
                           <div className="text-[10px] text-slate-500 font-sans">
                             {Number(slip.lateDeduction) > 0 ? `Late: -₹${Math.round(slip.lateDeduction)} ` : ''}

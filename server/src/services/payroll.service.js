@@ -102,10 +102,22 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
 
     let presentDays = 0;
     let lateCount = 0;
+    let totalLoggedSeconds = 0;
+    let totalUnderTimeMinutes = 0;
+    let totalOvertimeMinutes = 0;
+    const standardDailyWorkHours = 8.0; // 8h net shift
+
     const attMap = {};
     for (const att of attendances) {
       const dStr = typeof att.date === 'string' ? att.date : att.date.toISOString().split('T')[0];
       attMap[dStr] = att.status;
+
+      const loggedSec = Number(att.workingSeconds || 0) > 0
+        ? Number(att.workingSeconds)
+        : (Number(att.totalHours || 0) * 3600);
+      totalLoggedSeconds += loggedSec;
+      const loggedHours = loggedSec / 3600;
+
       if (att.status === 'present') {
         presentDays += 1;
       } else if (att.status === 'late') {
@@ -113,6 +125,21 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
         lateCount += 1;
       } else if (att.status === 'half_day') {
         presentDays += 0.5;
+      }
+
+      // Dynamic Under-Time & Overtime calculation
+      if (['present', 'late', 'half_day'].includes(att.status)) {
+        if (loggedHours < standardDailyWorkHours) {
+          const deficitMinutes = Math.round((standardDailyWorkHours - loggedHours) * 60);
+          if (deficitMinutes > 15) { // 15-minute grace window
+            totalUnderTimeMinutes += deficitMinutes;
+          }
+        } else if (loggedHours > standardDailyWorkHours) {
+          const extraMinutes = Math.round((loggedHours - standardDailyWorkHours) * 60);
+          if (extraMinutes >= 30) { // 30-minute threshold for overtime
+            totalOvertimeMinutes += extraMinutes;
+          }
+        }
       }
     }
 
@@ -216,10 +243,18 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
       taxDeduction = 0;
     }
 
-    // 4. LOP Prorated Calculation
+    // 4. LOP & Hours Prorated Calculation
     const perDayRate = daysInMonth > 0 ? monthlyGross / daysInMonth : 0;
+    const perHourRate = standardDailyWorkHours > 0 ? perDayRate / standardDailyWorkHours : 0;
+
+    const underTimeHours = parseFloat((totalUnderTimeMinutes / 60).toFixed(2));
+    const overtimeHours = parseFloat((totalOvertimeMinutes / 60).toFixed(2));
+
+    const underTimeDeduction = Math.round(underTimeHours * perHourRate);
+    const overtimePay = Math.round(overtimeHours * perHourRate * 1.0); // 1.0x standard rate
+
     const lopDeduction = Math.round(perDayRate * totalLopDays);
-    const earnedGross = Math.max(0, monthlyGross - lopDeduction);
+    const earnedGross = Math.max(0, monthlyGross - lopDeduction - underTimeDeduction + overtimePay);
 
     const totalDeductions = Math.round(pfDeduction + esiDeduction + taxDeduction);
     const netSalary = Math.max(0, earnedGross - totalDeductions);
@@ -237,6 +272,16 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
       lateCount,
       lateLopDays,
       sandwichLopDays,
+      expectedWorkingHours: standardWorkingDays * standardDailyWorkHours,
+      actualLoggedHours: parseFloat((totalLoggedSeconds / 3600).toFixed(2)),
+      underTimeHours,
+      underTimeDeduction,
+      overtimeHours,
+      overtimePay,
+      overtimeRateMultiplier: 1.0,
+      isManuallyAdjusted: false,
+      waiveUnderTime: false,
+      waiveLatePenalty: false,
       baseCtc,
       monthlyGross,
       basicSalary,
@@ -252,7 +297,7 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
       totalDeductions,
       netSalary,
       paymentStatus: 'pending',
-      remarks: `Automated payroll cycle for ${m}/${y} (Lates: ${lateCount}, Sandwich LOP: ${sandwichLopDays}d)`
+      remarks: `Automated payroll cycle for ${m}/${y} (Lates: ${lateCount}, Under-Time: ${underTimeHours}h, OT: ${overtimeHours}h, Sandwich LOP: ${sandwichLopDays}d)`
     });
 
     results.push(record);
@@ -447,43 +492,137 @@ const getPayrollById = async (id) => {
 };
 
 /**
- * Adjust Single Payroll (Bonus / Extra Deductions / Remarks)
+ * Adjust Single Payroll with Complete Dynamic HR Overrides (Days, Hours, Waivers, Bonus, Net)
  */
-const adjustPayroll = async (id, { bonus, otherDeductions, remarks, adjustedBy }) => {
+const adjustPayroll = async (id, payload = {}, requestingUser = {}) => {
   const payroll = await Payroll.findByPk(id);
   if (!payroll) {
     throw new NotFoundError('Payroll record not found');
   }
 
-  const numBonus = bonus !== undefined ? parseFloat(bonus) : Number(payroll.bonus || 0);
-  const numOtherDed = otherDeductions !== undefined ? parseFloat(otherDeductions) : Number(payroll.otherDeductions || 0);
+  const daysInMonth = Number(payroll.totalDays) || 30;
+  const standardDailyWorkHours = 8.0;
+  const monthlyGross = Number(payroll.monthlyGross || 0);
+  const perDayRate = daysInMonth > 0 ? monthlyGross / daysInMonth : 0;
+  const perHourRate = standardDailyWorkHours > 0 ? perDayRate / standardDailyWorkHours : 0;
 
-  // Recalculate Gross and Total Deductions
-  const baseGross = Number(payroll.monthlyGross || 0) - Number(payroll.lopDeduction || 0);
-  const newGross = Math.max(0, baseGross + numBonus);
+  // Snapshot audit before change
+  const previousSnapshot = {
+    gross: Number(payroll.grossSalary),
+    net: Number(payroll.netSalary),
+    presentDays: Number(payroll.presentDays),
+    lopDays: Number(payroll.lopDays),
+    underTimeHours: Number(payroll.underTimeHours),
+    underTimeDeduction: Number(payroll.underTimeDeduction),
+    overtimeHours: Number(payroll.overtimeHours),
+    overtimePay: Number(payroll.overtimePay),
+    bonus: Number(payroll.bonus),
+    otherDeductions: Number(payroll.otherDeductions),
+    remarks: payroll.remarks
+  };
+
+  // 1. Present & Leave Days adjustments
+  if (payload.presentDays !== undefined && payload.presentDays !== null && payload.presentDays !== '') {
+    payroll.presentDays = parseFloat(payload.presentDays);
+  }
+  if (payload.paidLeaves !== undefined && payload.paidLeaves !== null && payload.paidLeaves !== '') {
+    payroll.paidLeaves = parseFloat(payload.paidLeaves);
+  }
+  if (payload.lopDays !== undefined && payload.lopDays !== null && payload.lopDays !== '') {
+    payroll.lopDays = parseFloat(payload.lopDays);
+    payroll.lopDeduction = Math.round(Number(payroll.lopDays) * perDayRate);
+  }
+
+  // 2. Under-Time / Short Hours adjustments
+  if (payload.waiveUnderTime !== undefined) {
+    payroll.waiveUnderTime = Boolean(payload.waiveUnderTime);
+  }
+  if (payload.underTimeHours !== undefined && payload.underTimeHours !== null && payload.underTimeHours !== '') {
+    payroll.underTimeHours = parseFloat(payload.underTimeHours);
+  }
+  payroll.underTimeDeduction = payroll.waiveUnderTime
+    ? 0
+    : Math.round(Number(payroll.underTimeHours || 0) * perHourRate);
+
+  // 3. Overtime / Extra Hours adjustments
+  if (payload.overtimeHours !== undefined && payload.overtimeHours !== null && payload.overtimeHours !== '') {
+    payroll.overtimeHours = parseFloat(payload.overtimeHours);
+  }
+  if (payload.overtimeRateMultiplier !== undefined && payload.overtimeRateMultiplier !== null && payload.overtimeRateMultiplier !== '') {
+    payroll.overtimeRateMultiplier = parseFloat(payload.overtimeRateMultiplier);
+  }
+  if (payload.overtimePay !== undefined && payload.overtimePay !== null && payload.overtimePay !== '') {
+    payroll.overtimePay = parseFloat(payload.overtimePay);
+  } else {
+    payroll.overtimePay = Math.round(
+      Number(payroll.overtimeHours || 0) * perHourRate * Number(payroll.overtimeRateMultiplier || 1.0)
+    );
+  }
+
+  // 4. Late Mark Penalty Waiver
+  if (payload.waiveLatePenalty !== undefined) {
+    payroll.waiveLatePenalty = Boolean(payload.waiveLatePenalty);
+  }
+
+  // 5. Bonus & Other Deductions
+  if (payload.bonus !== undefined && payload.bonus !== null && payload.bonus !== '') {
+    payroll.bonus = parseFloat(payload.bonus);
+  }
+  if (payload.otherDeductions !== undefined && payload.otherDeductions !== null && payload.otherDeductions !== '') {
+    payroll.otherDeductions = parseFloat(payload.otherDeductions);
+  }
+
+  // 6. Recalculate Earned Gross & Deductions
+  const newGross = Math.max(
+    0,
+    monthlyGross -
+      Number(payroll.lopDeduction || 0) -
+      Number(payroll.underTimeDeduction || 0) +
+      Number(payroll.overtimePay || 0) +
+      Number(payroll.bonus || 0)
+  );
 
   const newTotalDeductions = Math.max(
     0,
     Number(payroll.pfDeduction || 0) +
-    Number(payroll.esiDeduction || 0) +
-    Number(payroll.taxDeduction || 0) +
-    numOtherDed
+      Number(payroll.esiDeduction || 0) +
+      Number(payroll.taxDeduction || 0) +
+      Number(payroll.otherDeductions || 0)
   );
 
-  const newNet = Math.max(0, newGross - newTotalDeductions);
-
-  payroll.bonus = numBonus;
-  payroll.otherDeductions = numOtherDed;
   payroll.grossSalary = newGross;
   payroll.totalDeductions = newTotalDeductions;
-  payroll.netSalary = newNet;
 
-  if (remarks) {
-    payroll.remarks = remarks;
+  // 7. Net Salary Calculation (allowing hard manual override if specified)
+  if (
+    payload.manualNetSalaryOverride !== undefined &&
+    payload.manualNetSalaryOverride !== null &&
+    payload.manualNetSalaryOverride !== ''
+  ) {
+    payroll.netSalary = Math.max(0, parseFloat(payload.manualNetSalaryOverride));
+  } else {
+    payroll.netSalary = Math.max(0, newGross - newTotalDeductions);
   }
 
+  if (payload.remarks) {
+    payroll.remarks = payload.remarks;
+  }
+
+  payroll.isManuallyAdjusted = true;
+  payroll.adjustedByUserId = requestingUser.id || payload.adjustedBy || null;
+
+  const currentTrail = Array.isArray(payroll.adjustmentAuditTrail) ? payroll.adjustmentAuditTrail : [];
+  currentTrail.push({
+    timestamp: new Date(),
+    adjustedBy: requestingUser.email || payload.adjustedBy || 'HR',
+    previous: previousSnapshot,
+    applied: payload,
+    resultingNetSalary: payroll.netSalary
+  });
+  payroll.adjustmentAuditTrail = currentTrail;
+
   await payroll.save();
-  logger.info(`Payroll ${id} adjusted by ${adjustedBy || 'HR'}. New Net: ${newNet}`);
+  logger.info(`Payroll ${id} dynamically adjusted by ${requestingUser.email || payload.adjustedBy || 'HR'}. New Net: ${payroll.netSalary}`);
 
   return getPayrollById(id);
 };
@@ -743,7 +882,13 @@ const getPayslipDetails = async (id, requestingUser) => {
       workingDays: payroll.workingDays,
       presentDays: Number(payroll.presentDays),
       paidLeaves: Number(payroll.paidLeaves),
-      lopDays: Number(payroll.lopDays)
+      lopDays: Number(payroll.lopDays),
+      expectedWorkingHours: Number(payroll.expectedWorkingHours || 0),
+      actualLoggedHours: Number(payroll.actualLoggedHours || 0),
+      underTimeHours: Number(payroll.underTimeHours || 0),
+      overtimeHours: Number(payroll.overtimeHours || 0),
+      waiveUnderTime: Boolean(payroll.waiveUnderTime),
+      monthlyGross: Number(payroll.monthlyGross || 0)
     },
     company: {
       name: 'Gupta Tech Web',
@@ -770,7 +915,8 @@ const getPayslipDetails = async (id, requestingUser) => {
       { name: 'Basic Salary', amount: Number(payroll.basicSalary || 0) },
       { name: 'House Rent Allowance (HRA)', amount: Number(payroll.hra || 0) },
       { name: 'Special Allowance', amount: Number(payroll.specialAllowance || 0) },
-      ...(Number(payroll.bonus || 0) > 0 ? [{ name: 'Incentive / Bonus', amount: Number(payroll.bonus) }] : [])
+      ...(Number(payroll.bonus || 0) > 0 ? [{ name: 'Incentive / Bonus', amount: Number(payroll.bonus) }] : []),
+      ...(Number(payroll.overtimePay || 0) > 0 ? [{ name: `Overtime Pay (${payroll.overtimeHours} hrs @ ${payroll.overtimeRateMultiplier || 1.0}x)`, amount: Number(payroll.overtimePay) }] : [])
     ],
     deductions: [
       { name: 'Employee Provident Fund (PF)', amount: Number(payroll.pfDeduction || 0) },
@@ -778,6 +924,7 @@ const getPayslipDetails = async (id, requestingUser) => {
       { name: 'Professional Tax (PT)', amount: 200 },
       { name: 'TDS / Income Tax', amount: Number(payroll.taxDeduction || 0) },
       ...(Number(payroll.lopDeduction || 0) > 0 ? [{ name: `Loss of Pay (${payroll.lopDays} days)`, amount: Number(payroll.lopDeduction) }] : []),
+      ...(Number(payroll.underTimeDeduction || 0) > 0 && !payroll.waiveUnderTime ? [{ name: `Short Hours / Under-Time (${payroll.underTimeHours} hrs)`, amount: Number(payroll.underTimeDeduction) }] : []),
       ...(Number(payroll.otherDeductions || 0) > 0 ? [{ name: 'Other Deductions', amount: Number(payroll.otherDeductions) }] : [])
     ],
     summary: {
@@ -785,6 +932,11 @@ const getPayslipDetails = async (id, requestingUser) => {
       totalDeductions: Number(payroll.totalDeductions || 0),
       netSalary: Number(payroll.netSalary || 0),
       netSalaryInWords: numberToWords(payroll.netSalary),
+      underTimeDeduction: Number(payroll.underTimeDeduction || 0),
+      overtimePay: Number(payroll.overtimePay || 0),
+      isManuallyAdjusted: Boolean(payroll.isManuallyAdjusted),
+      adjustmentAuditTrail: payroll.adjustmentAuditTrail || [],
+      remarks: payroll.remarks || '',
       paymentStatus: payroll.paymentStatus,
       paymentMode: payroll.paymentMode || 'Bank Transfer',
       transactionReference: payroll.transactionReference || 'N/A',

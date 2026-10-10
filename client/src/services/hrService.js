@@ -464,3 +464,9 @@ export const deleteEmployeeDocument = async (docId) => {
   return res.data;
 };
 
+export const getEmployeeDocuments = async (userId) => {
+  const res = await apiClient.get(`/employees/${userId}/documents`);
+  return res.data;
+};
+
+

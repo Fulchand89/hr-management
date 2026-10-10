@@ -153,6 +153,64 @@ const initPayrollModel = (sequelize) => {
         type: DataTypes.STRING(100),
         allowNull: true
       },
+      expectedWorkingHours: {
+        type: DataTypes.DECIMAL(6, 2),
+        defaultValue: 208.00,
+        allowNull: false
+      },
+      actualLoggedHours: {
+        type: DataTypes.DECIMAL(6, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      underTimeHours: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      underTimeDeduction: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      overtimeHours: {
+        type: DataTypes.DECIMAL(5, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      overtimePay: {
+        type: DataTypes.DECIMAL(12, 2),
+        defaultValue: 0.00,
+        allowNull: false
+      },
+      overtimeRateMultiplier: {
+        type: DataTypes.DECIMAL(3, 2),
+        defaultValue: 1.00,
+        allowNull: false
+      },
+      isManuallyAdjusted: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false
+      },
+      waiveUnderTime: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false
+      },
+      waiveLatePenalty: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false
+      },
+      adjustedByUserId: {
+        type: DataTypes.UUID,
+        allowNull: true
+      },
+      adjustmentAuditTrail: {
+        type: DataTypes.JSON,
+        allowNull: true
+      },
       remarks: {
         type: DataTypes.TEXT,
         allowNull: true

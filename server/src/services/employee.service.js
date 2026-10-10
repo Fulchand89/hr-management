@@ -812,10 +812,19 @@ const uploadEmployeeDocument = async (userId, payload, file) => {
     throw new BadRequestError('Document title is required');
   }
 
+  const validTypes = ['resume', 'offer_letter', 'id_proof', 'address_proof', 'education', 'experience', 'tax_doc', 'other'];
+  let normType = documentType ? String(documentType).toLowerCase().trim() : 'id_proof';
+  if (!validTypes.includes(normType)) {
+    if (normType === 'aadhaar' || normType === 'pan') normType = 'id_proof';
+    else if (normType === 'bank') normType = 'other';
+    else if (normType === 'degree') normType = 'education';
+    else normType = 'other';
+  }
+
   const doc = await EmployeeDocument.create({
     userId,
     title: title.trim(),
-    documentType: documentType || 'id_proof',
+    documentType: normType,
     fileUrl: `/uploads/${file.filename}`,
     fileSize: file.size,
     mimeType: file.mimetype,
@@ -879,7 +888,7 @@ const getAllDocuments = async (query = {}) => {
       { firstName: { [Op.like]: `%${search}%` } },
       { lastName: { [Op.like]: `%${search}%` } },
       { email: { [Op.like]: `%${search}%` } },
-      { employeeId: { [Op.like]: `%${search}%` } }
+      { employeeCode: { [Op.like]: `%${search}%` } }
     ];
   }
 
@@ -891,7 +900,7 @@ const getAllDocuments = async (query = {}) => {
         model: User,
         as: 'user',
         where: Object.keys(userWhere).length > 0 ? userWhere : undefined,
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeId'],
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode'],
         include: [
           { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
           { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
