@@ -20,7 +20,6 @@ import EmployeePolicyDocumentsView from './EmployeePolicyDocumentsView';
 import MyAppraisalView from './MyAppraisalView';
 import MyResignationView from './MyResignationView';
 import MyReferralsView from './MyReferralsView';
-import EmployeeKycDocumentsView from './EmployeeKycDocumentsView';
 import SignInView from './SignInView';
 
 import { useAuth } from '../../context/AuthContext';
@@ -189,7 +188,6 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     if (path.includes('/appraisals') || path.includes('/performance')) return 'appraisals';
     if (path.includes('/resignation') || path.includes('/exit')) return 'resignation';
     if (path.includes('/referrals') || path.includes('/rewards')) return 'referrals';
-    if (path.includes('/kyc') || path.includes('/documents')) return 'kyc';
     if (path.includes('/notifications')) return 'notifications';
     if (path.includes('/profile')) return 'profile';
     return 'dashboard';
@@ -223,7 +221,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
       onLogout={handleLogout}
     >
       <Routes>
-        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route index element={<Navigate to="/employee/dashboard" replace />} />
 
         {/* Dashboard View */}
         <Route
@@ -409,18 +407,12 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
           element={<MyReferralsView onBack={() => navigate('/employee/dashboard')} />}
         />
 
-        {/* Employee KYC Documents & Compliance Locker */}
-        <Route
-          path="kyc"
-          element={<EmployeeKycDocumentsView onBack={() => navigate('/employee/dashboard')} />}
-        />
-        <Route
-          path="documents"
-          element={<EmployeeKycDocumentsView onBack={() => navigate('/employee/dashboard')} />}
-        />
+        {/* Removed KYC & Documents Redirects */}
+        <Route path="kyc" element={<Navigate to="/employee/dashboard" replace />} />
+        <Route path="documents" element={<Navigate to="/employee/dashboard" replace />} />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
       </Routes>
 
       {/* Global Apply Leave Modal */}

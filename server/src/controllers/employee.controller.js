@@ -252,6 +252,18 @@ const getAllDocuments = async (req, res, next) => {
   }
 };
 
+const getDocumentById = async (req, res, next) => {
+  try {
+    const doc = await employeeService.getDocumentById(req.params.docId);
+    return ApiResponse.success(res, {
+      message: 'Document retrieved successfully',
+      data: doc
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const verifyDocument = async (req, res, next) => {
   try {
     const doc = await employeeService.verifyDocument(req.params.docId, req.body, req.user);
@@ -292,6 +304,7 @@ module.exports = {
   getMyDocuments,
   getEmployeeDocuments,
   getAllDocuments,
+  getDocumentById,
   verifyDocument,
   deleteDocument
 };

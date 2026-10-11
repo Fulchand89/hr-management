@@ -469,4 +469,9 @@ export const getEmployeeDocuments = async (userId) => {
   return res.data;
 };
 
+export const getEmployeeDocumentById = async (docId) => {
+  const res = await apiClient.get(`/employees/admin/documents/${docId}`);
+  return res.data;
+};
+
 

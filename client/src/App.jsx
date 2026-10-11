@@ -186,7 +186,7 @@ export function App() {
                 }}
               >
                 <Routes>
-                  <Route index element={<Navigate to="dashboard" replace />} />
+                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
 
                   {/* 1. Dashboard */}
                   <Route
@@ -297,7 +297,7 @@ export function App() {
                   <Route path="settings" element={<AdminSettingsPage />} />
 
                   {/* Catch-all admin fallback */}
-                  <Route path="*" element={<Navigate to="dashboard" replace />} />
+                  <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                 </Routes>
 
                 {/* Add / Edit Employee Form Modal */}

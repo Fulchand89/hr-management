@@ -318,7 +318,7 @@ export const EmployeeDashboard = ({
             </div>
 
             {/* Action Buttons Row */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
               {attendanceStatus === 'NOT_PUNCHED_IN' && (
                 <button
                   type="button"
@@ -334,14 +334,14 @@ export const EmployeeDashboard = ({
                   <button
                     type="button"
                     onClick={onTakeBreak}
-                    className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-white border-2 border-amber-500 text-amber-700 hover:bg-amber-50 font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all whitespace-nowrap shrink-0"
+                    className="flex-1 min-w-[130px] py-2.5 sm:py-3 px-3 sm:px-4 rounded-2xl bg-white border-2 border-amber-500 text-amber-700 hover:bg-amber-50 font-bold text-xs sm:text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all whitespace-nowrap"
                   >
                     <Coffee className="w-4 h-4 text-amber-600 shrink-0" /> Take Break
                   </button>
                   <button
                     type="button"
                     onClick={onPunchOut}
-                    className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap shrink-0"
+                    className="flex-1 min-w-[160px] py-2.5 sm:py-3 px-3 sm:px-4 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs sm:text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap"
                   >
                     <Square className="w-4 h-4 fill-white shrink-0" /> Punch Out & Finish Day
                   </button>
@@ -352,7 +352,7 @@ export const EmployeeDashboard = ({
                 <button
                   type="button"
                   onClick={onEndBreak}
-                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap shrink-0"
+                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap"
                 >
                   <Play className="w-4 h-4 fill-white shrink-0" /> Resume Work (End Break)
                 </button>
@@ -362,7 +362,7 @@ export const EmployeeDashboard = ({
                 <button
                   type="button"
                   onClick={onNavigateToAttendance}
-                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all whitespace-nowrap shrink-0"
+                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all whitespace-nowrap"
                 >
                   View Full Attendance Summary &rarr;
                 </button>
@@ -371,7 +371,7 @@ export const EmployeeDashboard = ({
               <button
                 type="button"
                 onClick={onNavigateToAttendance}
-                className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="py-2.5 sm:py-3 px-3.5 sm:px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
                 Detailed Clock &rarr;
               </button>
@@ -380,7 +380,7 @@ export const EmployeeDashboard = ({
                 <button
                   type="button"
                   onClick={() => onRequestCorrection(null)}
-                  className="px-3.5 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100/80 text-[#8B1D2C] border border-rose-200/80 font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5"
+                  className="py-2.5 sm:py-3 px-3 sm:px-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/80 text-[#8B1D2C] border border-rose-200/80 font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5"
                 >
                   <Clock className="w-3.5 h-3.5" />
                   <span>Request Correction</span>
@@ -389,6 +389,13 @@ export const EmployeeDashboard = ({
             </div>
           </div>
 
+          {/* Location Verification Note */}
+          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+              <ShieldCheck className="w-4 h-4" /> {user?.branchDetails?.name ? `${user.branchDetails.name} Network` : 'Authorized Network Access'}
+            </span>
+            <span className="text-slate-400">Authenticated Session &bull; Secure Portal</span>
+          </div>
         </div>
 
         {/* Right 1 Col: Quick Actions & Holidays */}
@@ -399,41 +406,29 @@ export const EmployeeDashboard = ({
               Quick Shortcuts
             </h3>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={onOpenApplyLeave}
-                className="p-2.5 sm:p-3 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-100 text-left transition-colors cursor-pointer group"
+                className="p-3 sm:p-3.5 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-100 text-left transition-colors cursor-pointer group"
               >
-                <div className="w-7 h-7 rounded-lg bg-[#8B1D2C] text-white flex items-center justify-center mb-1.5 shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                  <CalendarDays className="w-3.5 h-3.5" />
+                <div className="w-8 h-8 rounded-xl bg-[#8B1D2C] text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  <CalendarDays className="w-4 h-4" />
                 </div>
-                <div className="text-[11px] font-bold text-slate-900 truncate">Apply Leave</div>
-                <div className="text-[10px] text-slate-500 truncate">Fast request</div>
+                <div className="text-xs font-bold text-slate-900 whitespace-nowrap">Apply Leave</div>
+                <div className="text-[11px] text-slate-500 whitespace-nowrap">Fast submission</div>
               </button>
 
               <button
                 type="button"
                 onClick={onNavigateToMyAttendance}
-                className="p-2.5 sm:p-3 rounded-2xl bg-sky-50/60 hover:bg-sky-100/60 border border-sky-100 text-left transition-colors cursor-pointer group"
+                className="p-3 sm:p-3.5 rounded-2xl bg-sky-50/60 hover:bg-sky-100/60 border border-sky-100 text-left transition-colors cursor-pointer group"
               >
-                <div className="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center mb-1.5 shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                  <Clock className="w-3.5 h-3.5" />
+                <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  <Clock className="w-4 h-4" />
                 </div>
-                <div className="text-[11px] font-bold text-slate-900 truncate">Timesheet</div>
-                <div className="text-[10px] text-slate-500 truncate">Monthly log</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onRequestCorrection?.(null)}
-                className="p-2.5 sm:p-3 rounded-2xl bg-amber-50/60 hover:bg-amber-100/60 border border-amber-100 text-left transition-colors cursor-pointer group"
-              >
-                <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center mb-1.5 shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                  <Clock className="w-3.5 h-3.5" />
-                </div>
-                <div className="text-[11px] font-bold text-slate-900 truncate">Correction</div>
-                <div className="text-[10px] text-slate-500 truncate">Fix missed punch</div>
+                <div className="text-xs font-bold text-slate-900 whitespace-nowrap">Attendance Log</div>
+                <div className="text-[11px] text-slate-500 whitespace-nowrap">Monthly calendar</div>
               </button>
             </div>
           </div>

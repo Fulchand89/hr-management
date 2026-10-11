@@ -38,6 +38,7 @@ import HRAppraisalManagementView from './HRAppraisalManagementView';
 import HRExitManagementView from './HRExitManagementView';
 import HRReferralsRewardsView from './HRReferralsRewardsView';
 import HRKycVerificationView from './HRKycVerificationView';
+import HRKycDocumentDetailView from './HRKycDocumentDetailView';
 
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -226,7 +227,7 @@ export const HRApp = () => {
       onLogout={handleLogout}
     >
       <Routes>
-        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route index element={<Navigate to="/hr/dashboard" replace />} />
 
         {/* Dashboard View (Personal & HR Integrated) */}
         <Route
@@ -339,6 +340,18 @@ export const HRApp = () => {
           element={<HRAddEmployeeView />}
         />
         <Route
+          path="employees/kyc"
+          element={<HREmployeeManagementView defaultTab="kyc" />}
+        />
+        <Route
+          path="employees/kyc/:docId"
+          element={<HRKycDocumentDetailView />}
+        />
+        <Route
+          path="employees/documents/:docId"
+          element={<HRKycDocumentDetailView />}
+        />
+        <Route
           path="employees/:id"
           element={<HREmployeeProfileDetailView />}
         />
@@ -447,7 +460,7 @@ export const HRApp = () => {
         />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
       </Routes>
 
       {/* Global Apply Leave Modal */}

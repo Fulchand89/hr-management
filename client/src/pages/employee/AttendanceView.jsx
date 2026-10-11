@@ -36,23 +36,23 @@ export const AttendanceView = ({
         {/* Left Column (7 Cols): Circular Clock & Punch Actions */}
         <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 pb-4 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Live Stopwatch & Punch Control
               </span>
-              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 {onRequestCorrection && (
                   <button
                     type="button"
                     onClick={onRequestCorrection}
-                    className="px-3 py-1 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-[#8B1D2C] hover:bg-rose-100/70 shadow-2xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors"
+                    className="px-2.5 sm:px-3 py-1 rounded-xl bg-rose-50 border border-rose-200 text-xs font-bold text-[#8B1D2C] hover:bg-rose-100/70 shadow-2xs flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors"
                   >
                     <Clock className="w-3.5 h-3.5 text-[#8B1D2C]" />
                     Request Correction
                   </button>
                 )}
-                <span className="px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                  <Clock className="w-3.5 h-3.5 text-[#8B1D2C] shrink-0" />
+                <span className="px-2.5 sm:px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs flex items-center gap-1.5 whitespace-nowrap">
+                  <Clock className="w-3.5 h-3.5 text-[#8B1D2C]" />
                   Standard Shift (9h)
                 </span>
               </div>

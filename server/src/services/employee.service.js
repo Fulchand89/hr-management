@@ -915,6 +915,33 @@ const getAllDocuments = async (query = {}) => {
   });
 };
 
+const getDocumentById = async (documentId) => {
+  const doc = await EmployeeDocument.findByPk(documentId, {
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'department', 'designation', 'phone'],
+        include: [
+          { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
+          { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
+        ]
+      },
+      {
+        model: User,
+        as: 'verifiedByUser',
+        attributes: ['id', 'firstName', 'lastName', 'email']
+      }
+    ]
+  });
+
+  if (!doc) {
+    throw new NotFoundError('Document not found');
+  }
+
+  return doc;
+};
+
 const verifyDocument = async (documentId, payload, actor) => {
   const doc = await EmployeeDocument.findByPk(documentId, {
     include: [{ model: User, as: 'user', attributes: ['id', 'firstName', 'lastName', 'email'] }]
@@ -981,6 +1008,7 @@ module.exports = {
   getMyDocuments,
   getEmployeeDocuments,
   getAllDocuments,
+  getDocumentById,
   verifyDocument,
   deleteEmployeeDocument
 };

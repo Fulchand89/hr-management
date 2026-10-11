@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Users,
   UserPlus,
@@ -31,10 +31,12 @@ import HRChangeEmployeeStatusModal from './HRChangeEmployeeStatusModal';
 import HRManageSalaryModal from './HRManageSalaryModal';
 import HRKycVerificationView from './HRKycVerificationView';
 
-export const HREmployeeManagementView = () => {
+export const HREmployeeManagementView = ({ defaultTab }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'directory';
+  const isKycPath = location.pathname.includes('/kyc') || defaultTab === 'kyc';
+  const activeTab = isKycPath ? 'kyc' : (searchParams.get('tab') || 'directory');
   const [pendingKycCount, setPendingKycCount] = useState(0);
 
   const fetchPendingKyc = useCallback(async () => {
@@ -52,15 +54,11 @@ export const HREmployeeManagementView = () => {
   }, [fetchPendingKyc]);
 
   const handleTabChange = (tabKey) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (tabKey === 'directory') {
-        next.delete('tab');
-      } else {
-        next.set('tab', tabKey);
-      }
-      return next;
-    });
+    if (tabKey === 'directory') {
+      navigate('/hr/employees');
+    } else {
+      navigate('/hr/employees/kyc');
+    }
   };
 
   // Data state

@@ -61,6 +61,7 @@ router.delete('/me/documents/:docId', employeeController.deleteDocument);
 
 // KYC Document Admin & Verification routes
 router.get('/admin/documents', authorize(ROLES.ADMIN, ROLES.HR), employeeController.getAllDocuments);
+router.get('/admin/documents/:docId', authorize(ROLES.ADMIN, ROLES.HR), employeeController.getDocumentById);
 router.patch('/admin/documents/:docId/verify', authorize(ROLES.ADMIN, ROLES.HR), employeeController.verifyDocument);
 router.delete('/admin/documents/:docId', authorize(ROLES.ADMIN, ROLES.HR), employeeController.deleteDocument);
 

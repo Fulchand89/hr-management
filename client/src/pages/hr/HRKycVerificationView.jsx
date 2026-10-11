@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
   CheckCircle2,
@@ -23,10 +24,14 @@ import {
 } from '../../services/hrService';
 
 export const HRKycVerificationView = ({ onDocumentUpdated }) => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlStatus = searchParams.get('status') || 'all';
+
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState(urlStatus);
   const [selectedType, setSelectedType] = useState('all');
   const [toastMessage, setToastMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,6 +42,24 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
 
   // Preview Modal State
   const [previewDoc, setPreviewDoc] = useState(null);
+
+  // Sync state if urlStatus changes
+  useEffect(() => {
+    setSelectedStatus(urlStatus);
+  }, [urlStatus]);
+
+  const handleStatusChange = (st) => {
+    setSelectedStatus(st);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (st === 'all') {
+        next.delete('status');
+      } else {
+        next.set('status', st);
+      }
+      return next;
+    });
+  };
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -149,7 +172,7 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setSelectedStatus('all')}
+            onClick={() => handleStatusChange('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               selectedStatus === 'all'
                 ? 'bg-[#8B1D2C] text-white shadow-xs'
@@ -161,7 +184,7 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
 
           <button
             type="button"
-            onClick={() => setSelectedStatus('pending')}
+            onClick={() => handleStatusChange('pending')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               selectedStatus === 'pending'
                 ? 'bg-amber-500 text-white shadow-xs'
@@ -174,7 +197,7 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
 
           <button
             type="button"
-            onClick={() => setSelectedStatus('verified')}
+            onClick={() => handleStatusChange('verified')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               selectedStatus === 'verified'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -187,7 +210,7 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
 
           <button
             type="button"
-            onClick={() => setSelectedStatus('rejected')}
+            onClick={() => handleStatusChange('rejected')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
               selectedStatus === 'rejected'
                 ? 'bg-rose-600 text-white shadow-xs'
@@ -275,12 +298,16 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
                     <tr key={doc.id} className="hover:bg-slate-50/70 transition-colors">
                       {/* Employee */}
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-xs shrink-0">
+                        <div
+                          onClick={() => emp.id && navigate(`/hr/employees/${emp.id}`)}
+                          className="flex items-center gap-2.5 cursor-pointer group"
+                          title="View Employee Profile"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-xs shrink-0 group-hover:border-[#8B1D2C] group-hover:text-[#8B1D2C] transition-colors">
                             {emp.firstName?.[0]}{emp.lastName?.[0]}
                           </div>
                           <div>
-                            <span className="font-bold text-slate-900 block leading-tight">
+                            <span className="font-bold text-slate-900 group-hover:text-[#8B1D2C] block leading-tight transition-colors">
                               {fullName}
                             </span>
                             <span className="text-[10px] text-slate-400 font-mono">
@@ -292,7 +319,13 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
 
                       {/* Title & Type */}
                       <td className="py-3 px-4">
-                        <span className="font-bold text-slate-800 block">{doc.title}</span>
+                        <span
+                          onClick={() => navigate(`/hr/employees/kyc/${doc.id}`)}
+                          className="font-bold text-slate-800 hover:text-[#8B1D2C] cursor-pointer block leading-tight transition-colors"
+                          title="Open Document Verification Details"
+                        >
+                          {doc.title}
+                        </span>
                         <span className="text-[10px] text-slate-400 uppercase font-semibold">
                           {doc.documentType?.replace('_', ' ')}
                         </span>
@@ -333,12 +366,13 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
 
                       {/* Actions */}
                       <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
-                        {/* View Modal Trigger */}
+                        {/* View Button -> Dedicated Document Route */}
                         {doc.fileUrl && (
                           <button
                             type="button"
-                            onClick={() => setPreviewDoc(doc)}
+                            onClick={() => navigate(`/hr/employees/kyc/${doc.id}`)}
                             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 cursor-pointer transition-colors"
+                            title="Open Document Verification Details"
                           >
                             <Eye className="w-3.5 h-3.5 text-blue-600" />
                             <span>View</span>
