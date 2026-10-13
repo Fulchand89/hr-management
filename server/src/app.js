@@ -99,8 +99,9 @@ app.get('/', (req, res) => {
 // Setup Swagger API Documentation UI and raw JSON endpoint
 setupSwagger(app);
 
-// Mount V1 API routes
+// Mount V1 API routes (support both /api/v1 and /v1 for Vercel serverless routing)
 app.use('/api/v1', routes);
+app.use('/v1', routes);
 
 // 404 Route Not Found Catch-All
 app.use(notFoundHandler);
