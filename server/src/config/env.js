@@ -8,6 +8,26 @@ if (initialNodeEnv) {
   process.env.NODE_ENV = initialNodeEnv;
 }
 
+const isCloudOrVercel = Boolean(
+  process.env.VERCEL ||
+  process.env.VERCEL_ENV ||
+  process.env.NOW_REGION ||
+  process.env.AWS_REGION ||
+  process.env.NODE_ENV === 'production'
+);
+
+// If running in Cloud/Vercel and DB_HOST is set to localhost / 127.0.0.1 or empty,
+// automatically fall back to the live Hostinger cloud MySQL database so deployment never fails with ECONNREFUSED
+const rawDbHost = process.env.DB_HOST;
+const isLocalhostDb = !rawDbHost || rawDbHost === '127.0.0.1' || rawDbHost === 'localhost' || rawDbHost === '::1';
+const useRemoteDb = isCloudOrVercel && isLocalhostDb;
+
+const primaryDbHost = useRemoteDb ? 'srv1823.hstgr.io' : (rawDbHost || '127.0.0.1');
+const primaryDbPort = useRemoteDb ? 3306 : (parseInt(process.env.DB_PORT, 10) || 3308);
+const primaryDbName = useRemoteDb ? 'u879279162_camelcaravan' : (process.env.DB_NAME || 'hr_management_db');
+const primaryDbUser = useRemoteDb ? 'u879279162_camelcaravan' : (process.env.DB_USER || 'root');
+const primaryDbPassword = useRemoteDb ? 'CamelCaravan@123' : (process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '');
+
 const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT, 10) || 5000,
@@ -18,14 +38,14 @@ const env = {
   // Database (Primary)
   DB: {
     DIALECT: process.env.DB_DIALECT || 'mysql',
-    HOST: process.env.DB_HOST || (process.env.VERCEL ? 'srv1823.hstgr.io' : '127.0.0.1'),
-    PORT: parseInt(process.env.DB_PORT, 10) || (process.env.VERCEL ? 3306 : 3308),
-    NAME: process.env.DB_NAME || (process.env.VERCEL ? 'u879279162_camelcaravan' : 'hr_management_db'),
-    USER: process.env.DB_USER || (process.env.VERCEL ? 'u879279162_camelcaravan' : 'root'),
-    PASSWORD: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : (process.env.VERCEL ? 'CamelCaravan@123' : ''),
+    HOST: primaryDbHost,
+    PORT: primaryDbPort,
+    NAME: primaryDbName,
+    USER: primaryDbUser,
+    PASSWORD: primaryDbPassword,
     LOGGING: process.env.DB_LOGGING === 'true',
     POOL: {
-      max: parseInt(process.env.DB_POOL_MAX, 10) || 10,
+      max: parseInt(process.env.DB_POOL_MAX, 10) || (isCloudOrVercel ? 4 : 10),
       min: parseInt(process.env.DB_POOL_MIN, 10) || 0,
       acquire: parseInt(process.env.DB_POOL_ACQUIRE, 10) || 30000,
       idle: parseInt(process.env.DB_POOL_IDLE, 10) || 10000,
