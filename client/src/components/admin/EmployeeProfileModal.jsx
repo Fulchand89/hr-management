@@ -34,11 +34,18 @@ export const EmployeeProfileModal = ({
       <div className="space-y-6">
         {/* Profile Header */}
         <div className="flex items-center gap-4">
-          <img
-            src={employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
-            alt={employee.name}
-            className="w-16 h-16 rounded-2xl object-cover ring-2 ring-indigo-500/20"
-          />
+          {employee.avatar ? (
+            <img
+              src={employee.avatar}
+              alt={employee.name}
+              className="w-16 h-16 rounded-2xl object-cover ring-2 ring-indigo-500/20"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xl ring-2 ring-indigo-500/20 shrink-0">
+              {(employee.name?.[0] || 'E').toUpperCase()}
+            </div>
+          )}
+
           <div>
             <h4 className="text-lg font-bold text-slate-900">{employee.name}</h4>
             <p className="text-sm font-medium text-slate-500">{employee.designation}</p>

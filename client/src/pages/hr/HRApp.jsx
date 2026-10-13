@@ -36,7 +36,6 @@ import HRUploadPolicyDocumentView from './HRUploadPolicyDocumentView';
 import HREditPolicyView from './HREditPolicyView';
 import HRAppraisalManagementView from './HRAppraisalManagementView';
 import HRExitManagementView from './HRExitManagementView';
-import HRReferralsRewardsView from './HRReferralsRewardsView';
 import HRKycVerificationView from './HRKycVerificationView';
 import HRKycDocumentDetailView from './HRKycDocumentDetailView';
 
@@ -206,11 +205,6 @@ export const HRApp = () => {
       navigate('/signin');
     }
   };
-
-  // If on legacy hr/signin route, redirect to unified signin
-  if (location.pathname === '/hr/signin') {
-    return <Navigate to="/signin" replace />;
-  }
 
   return (
     <HRLayout
@@ -446,11 +440,19 @@ export const HRApp = () => {
           path="exit-management"
           element={<HRExitManagementView />}
         />
+        <Route
+          path="resignations"
+          element={<HRExitManagementView />}
+        />
+        <Route
+          path="resignation"
+          element={<HRExitManagementView />}
+        />
 
-        {/* Candidate Referrals & Spot Rewards */}
+        {/* Candidate Referrals & Spot Rewards (Removed - Redirect to Dashboard) */}
         <Route
           path="referrals-rewards"
-          element={<HRReferralsRewardsView />}
+          element={<Navigate to="/hr/dashboard" replace />}
         />
 
         {/* Employee KYC Documents Verification (Redirect to Employees tab) */}

@@ -63,10 +63,11 @@ export const punchOut = async (payload = {}) => {
   return res.data;
 };
 
-export const getMyAttendanceHistory = async (month, year) => {
-  const res = await apiClient.get('/attendance/my-history', {
-    params: { month, year }
-  });
+export const getMyAttendanceHistory = async (month, year, extraParams = {}) => {
+  const params = { ...extraParams };
+  if (month) params.month = month;
+  if (year) params.year = year;
+  const res = await apiClient.get('/attendance/my-history', { params });
   return res.data;
 };
 

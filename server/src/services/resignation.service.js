@@ -12,6 +12,7 @@ const {
 const { BadRequestError, NotFoundError, ConflictError } = require('../utils/apiError');
 const { USER_STATUS } = require('../constants/status');
 const logger = require('../config/logger');
+const socketService = require('./socket.service');
 
 const CLEARANCE_DEPTS = ['it', 'finance', 'hr', 'admin', 'manager'];
 
@@ -61,7 +62,7 @@ const submitResignation = async (userId, payload) => {
         userId,
         action: 'RESIGNATION_SUBMITTED',
         module: 'resignation',
-        description: `Submitted resignation requesting LWD: ${payload.requestedLastWorkingDay}`
+        details: `Submitted resignation requesting LWD: ${payload.requestedLastWorkingDay}`
       },
       { transaction }
     );
@@ -70,7 +71,9 @@ const submitResignation = async (userId, payload) => {
 
     return await getResignationById(resignation.id);
   } catch (err) {
-    await transaction.rollback();
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     logger.error('Error submitting resignation:', err);
     throw err;
   }
@@ -85,7 +88,7 @@ const getResignationById = async (id) => {
       {
         model: User,
         as: 'employee',
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeId', 'joiningDate', 'status'],
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'joiningDate', 'status'],
         include: [
           { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
           { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
@@ -127,6 +130,15 @@ const getMyResignation = async (userId) => {
     include: [
       {
         model: User,
+        as: 'employee',
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'joiningDate', 'status'],
+        include: [
+          { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
+          { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
+        ]
+      },
+      {
+        model: User,
         as: 'reviewer',
         attributes: ['id', 'firstName', 'lastName', 'email']
       },
@@ -162,7 +174,7 @@ const getAllResignations = async (query = {}) => {
       { firstName: { [Op.like]: `%${search}%` } },
       { lastName: { [Op.like]: `%${search}%` } },
       { email: { [Op.like]: `%${search}%` } },
-      { employeeId: { [Op.like]: `%${search}%` } }
+      { employeeCode: { [Op.like]: `%${search}%` } }
     ];
   }
 
@@ -174,7 +186,7 @@ const getAllResignations = async (query = {}) => {
         model: User,
         as: 'employee',
         where: Object.keys(userWhere).length > 0 ? userWhere : undefined,
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeId', 'joiningDate', 'status'],
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'joiningDate', 'status'],
         include: [
           { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
           { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
@@ -233,20 +245,71 @@ const updateResignationStatus = async (id, payload, actor) => {
         { status: USER_STATUS.RESIGNED },
         { where: { id: resignation.userId }, transaction }
       );
+    } else if (status === 'rejected') {
+      await User.update(
+        { status: USER_STATUS.ACTIVE },
+        { where: { id: resignation.userId }, transaction }
+      );
     }
 
-    await Notification.create(
+    let notifTitle = `Resignation Request ${status.toUpperCase().replace('_', ' ')}`;
+    let notifMessage = `Your resignation request status has been updated to ${status}.`;
+
+    if (status === 'rejected') {
+      notifTitle = 'Resignation Request Rejected';
+      notifMessage = rejectionReason
+        ? `Your resignation request has been rejected by HR. Reason: "${rejectionReason}".`
+        : 'Your resignation request has been rejected by HR.';
+    } else if (status === 'approved') {
+      notifTitle = 'Resignation Request Approved';
+      const lwd = approvedLastWorkingDay || resignation.requestedLastWorkingDay;
+      notifMessage = `Your resignation request has been approved by HR. Approved Last Working Day: ${lwd}.`;
+    } else if (status === 'completed') {
+      notifTitle = 'Exit Process Completed';
+      notifMessage = 'Your exit clearance and full & final settlement process has been completed.';
+    }
+
+    const createdNotif = await Notification.create(
       {
         userId: resignation.userId,
-        title: `Resignation Request ${status.toUpperCase().replace('_', ' ')}`,
-        message: `Your resignation request status has been updated to ${status}.`,
+        title: notifTitle,
+        message: notifMessage,
         type: 'resignation',
         actionUrl: '/employee/resignation'
       },
       { transaction }
     );
 
+    await ActivityLog.create(
+      {
+        userId: actor.id,
+        action: `RESIGNATION_${status.toUpperCase()}`,
+        module: 'resignation',
+        details: status === 'rejected'
+          ? `Rejected resignation request for user ${resignation.userId}. Reason: ${rejectionReason || 'No reason provided'}`
+          : `Updated resignation status to ${status} for user ${resignation.userId}`
+      },
+      { transaction }
+    );
+
     await transaction.commit();
+
+    try {
+      if (socketService && typeof socketService.emitToUser === 'function') {
+        socketService.emitToUser(resignation.userId, 'notification:direct', {
+          id: createdNotif.id,
+          title: notifTitle,
+          message: notifMessage,
+          type: 'resignation',
+          status,
+          rejectionReason: rejectionReason || null,
+          actionUrl: '/employee/resignation'
+        });
+      }
+    } catch (wsErr) {
+      logger.warn('Socket emit warning on resignation status update:', wsErr.message);
+    }
+
     return await getResignationById(id);
   } catch (err) {
     await transaction.rollback();

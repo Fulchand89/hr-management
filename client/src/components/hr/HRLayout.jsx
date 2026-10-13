@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -29,8 +29,7 @@ import {
   Home,
   Wallet,
   TrendingUp,
-  UserMinus,
-  Gift
+  UserMinus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -62,6 +61,25 @@ export const HRLayout = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isMoreModalOpen, setIsMoreModalOpen] = useState(false);
+  const profileDropdownRef = useRef(null);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+
+    if (isProfileDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isProfileDropdownOpen]);
 
   // Live Attendance Clock State for HR User (defaults to 0, controlled by real API prop)
   const [internalAttendanceStatus, setInternalAttendanceStatus] = useState('NOT_PUNCHED_IN');
@@ -163,8 +181,7 @@ export const HRLayout = ({
   const isHolidayManagement = currentPath.startsWith('/hr/holiday') || currentPath.startsWith('/hr/holidays');
   const isPolicies = currentPath.startsWith('/hr/policies');
   const isAppraisals = currentPath.startsWith('/hr/appraisals');
-  const isExit = currentPath.startsWith('/hr/exit');
-  const isReferrals = currentPath.startsWith('/hr/referrals');
+  const isExit = currentPath.startsWith('/hr/exit') || currentPath.startsWith('/hr/resignation');
   const isReports = currentPath.startsWith('/hr/reports');
   const isNotifications = currentPath.startsWith('/hr/notifications');
   const isProfile = currentPath.startsWith('/hr/profile');
@@ -194,7 +211,7 @@ export const HRLayout = ({
     },
     {
       id: 'leaves',
-      label: 'Leaves & Requests',
+      label: 'My Leaves (Personal)',
       icon: CalendarDays,
       path: '/hr/leaves',
       isActive: isPersonalLeaves,
@@ -229,7 +246,7 @@ export const HRLayout = ({
     },
     {
       id: 'leave-requests',
-      label: 'Staff Leave Approvals',
+      label: 'Leave Approvals (Staff & HR)',
       icon: CalendarDays,
       path: '/hr/leave-requests',
       isActive: isStaffLeaves,
@@ -257,17 +274,10 @@ export const HRLayout = ({
     },
     {
       id: 'exit-management',
-      label: 'Exit & Offboarding',
+      label: 'Exit & Resignations',
       icon: UserMinus,
       path: '/hr/exit-management',
       isActive: isExit,
-    },
-    {
-      id: 'referrals-rewards',
-      label: 'Referrals & Rewards',
-      icon: Gift,
-      path: '/hr/referrals-rewards',
-      isActive: isReferrals,
     },
     {
       id: 'reports',
@@ -428,7 +438,7 @@ export const HRLayout = ({
             </div>
 
             {/* Profile Dropdown Chip matching EmployeeLayout */}
-            <div className="relative">
+            <div className="relative" ref={profileDropdownRef}>
               <button
                 type="button"
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
@@ -755,7 +765,7 @@ export const HRLayout = ({
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors cursor-pointer ${
             isPersonalLeaves ? 'text-[#8B1D2C]' : 'text-slate-400 hover:text-slate-700'
           }`}
-          title="Leaves"
+          title="My Leaves"
         >
           <CalendarDays className="w-5 h-5" />
         </button>
@@ -884,23 +894,6 @@ export const HRLayout = ({
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
               </button>
 
-              {/* Referrals & Rewards */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMoreModalOpen(false);
-                  navigate('/hr/referrals-rewards');
-                }}
-                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Gift className="w-4 h-4" />
-                  </div>
-                  <span>Referrals & Rewards</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
-              </button>
 
               {/* Reports */}
               <button

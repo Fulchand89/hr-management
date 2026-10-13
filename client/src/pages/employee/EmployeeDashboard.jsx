@@ -31,6 +31,7 @@ export const EmployeeDashboard = ({
   onNavigateToAttendance,
   onNavigateToLeaves,
   onNavigateToMyAttendance,
+  onNavigateToResignation,
   onOpenApplyLeave,
   onRequestCorrection,
   onSelectAttendanceRecord,

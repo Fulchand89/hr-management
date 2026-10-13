@@ -1,5 +1,6 @@
 const attendanceService = require('./attendance.service');
 const notificationService = require('./notification.service');
+const resignationService = require('./resignation.service');
 const {
   User,
   Attendance,
@@ -15,14 +16,14 @@ const logger = require('../config/logger');
 
 /**
  * Get full dashboard summary for a logged-in employee
- * Aggregates: attendance, leave balance, notifications, upcoming holidays
+ * Aggregates: attendance, leave balance, notifications, upcoming holidays, resignation status
  */
 const getEmployeeDashboard = async (userId) => {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
 
   // Run all queries in parallel for speed
-  const [todayAttendance, leaveBalances, unreadCount, upcomingHolidays, monthHistory] = await Promise.all([
+  const [todayAttendance, leaveBalances, unreadCount, upcomingHolidays, monthHistory, myResignation] = await Promise.all([
     // 1. Today's attendance status
     attendanceService.getTodayStatus(userId).catch((err) => {
       logger.warn('Dashboard: attendance fetch error:', err.message);
@@ -57,7 +58,10 @@ const getEmployeeDashboard = async (userId) => {
     attendanceService.getMyAttendanceHistory(userId, {
       month: today.getMonth() + 1,
       year: today.getFullYear()
-    }).catch(() => null)
+    }).catch(() => null),
+
+    // 6. Resignation status (if any)
+    resignationService.getMyResignation(userId).catch(() => null)
   ]);
 
   // Format leave balances
@@ -130,7 +134,21 @@ const getEmployeeDashboard = async (userId) => {
     attendanceSummary: monthHistory ? monthHistory.summary : null,
     leaveBalances: formattedLeaveBalances,
     notifications: unreadCount,
-    upcomingHolidays: formattedHolidays
+    upcomingHolidays: formattedHolidays,
+    resignation: myResignation ? {
+      id: myResignation.id,
+      status: myResignation.status,
+      rejectionReason: myResignation.rejectionReason,
+      resignationDate: myResignation.resignationDate,
+      requestedLastWorkingDay: myResignation.requestedLastWorkingDay,
+      approvedLastWorkingDay: myResignation.approvedLastWorkingDay,
+      reviewedAt: myResignation.reviewedAt,
+      reviewedBy: myResignation.reviewer ? {
+        firstName: myResignation.reviewer.firstName,
+        lastName: myResignation.reviewer.lastName,
+        email: myResignation.reviewer.email
+      } : null
+    } : null
   };
 };
 

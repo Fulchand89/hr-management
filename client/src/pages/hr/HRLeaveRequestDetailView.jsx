@@ -91,14 +91,20 @@ export const HRLeaveRequestDetailView = ({ request: propRequest, onBack }) => {
           ? `${r.reviewer.firstName} ${r.reviewer.lastName || ''}`.trim()
           : null;
 
+        const applicantRole = (r.applicant?.role || '').toLowerCase();
+        const applicantDept = r.applicant?.department?.name || r.applicant?.department || 'General';
+        const isHRApplicant = applicantRole === 'hr' || applicantDept.toLowerCase().includes('human resources') || applicantDept.toLowerCase().includes('hr');
+
         setRequest({
           id: r.id,
           userId: r.userId,
+          role: applicantRole,
+          isHRApplicant,
           employeeName: applicantName,
           employeeEmail: r.applicant?.email || '',
           employeeId: r.applicant?.employeeCode || `EMP-${r.userId || 'N/A'}`,
-          designation: r.applicant?.designation?.name || r.applicant?.designation || 'Staff',
-          department: r.applicant?.department?.name || r.applicant?.department || 'General',
+          designation: r.applicant?.designation?.name || r.applicant?.designation || (isHRApplicant ? 'HR Specialist' : 'Staff'),
+          department: applicantDept,
           managerName: r.applicant?.reportingManager
             ? `${r.applicant.reportingManager.firstName} ${r.applicant.reportingManager.lastName || ''}`.trim()
             : 'HR Department',
@@ -313,10 +319,24 @@ export const HRLeaveRequestDetailView = ({ request: propRequest, onBack }) => {
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 Applicant Information
               </span>
-              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Active Staff
-              </span>
+              <div className="flex items-center gap-1.5">
+                {request.isHRApplicant ? (
+                  <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200 flex items-center gap-1">
+                    <BadgeCheck className="w-3.5 h-3.5 text-purple-600" />
+                    HR Personnel
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 flex items-center gap-1">
+                    <BadgeCheck className="w-3.5 h-3.5 text-blue-600" />
+                    Staff Member
+                  </span>
+                )}
+                {request.userId && user?.id && request.userId === user.id && (
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Self
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">

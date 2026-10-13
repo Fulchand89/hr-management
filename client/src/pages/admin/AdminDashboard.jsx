@@ -193,25 +193,39 @@ export const AdminDashboard = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {employees.slice(0, 5).map((emp) => (
-                  <tr
-                    key={emp.id}
-                    onClick={() => onSelectEmployee(emp)}
-                    className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                  >
-                    <td className="py-3 px-4 sm:px-6">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={emp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
-                          alt={emp.name}
-                          className="w-8 h-8 rounded-xl object-cover ring-1 ring-slate-200"
-                        />
-                        <div>
-                          <div className="font-semibold text-slate-900 text-xs sm:text-sm">{emp.name}</div>
-                          <div className="text-[11px] text-slate-400">{emp.email}</div>
-                        </div>
-                      </div>
+                {employees.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="py-8 text-center text-slate-400 text-xs">
+                      No employee records found in system.
                     </td>
+                  </tr>
+                ) : (
+                  employees.slice(0, 5).map((emp) => (
+                    <tr
+                      key={emp.id}
+                      onClick={() => onSelectEmployee(emp)}
+                      className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                    >
+                      <td className="py-3 px-4 sm:px-6">
+                        <div className="flex items-center gap-3">
+                          {emp.avatar ? (
+                            <img
+                              src={emp.avatar}
+                              alt={emp.name}
+                              className="w-8 h-8 rounded-xl object-cover ring-1 ring-slate-200"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs ring-1 ring-slate-200 shrink-0">
+                              {(emp.name?.[0] || 'E').toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-semibold text-slate-900 text-xs sm:text-sm">{emp.name}</div>
+                            <div className="text-[11px] text-slate-400">{emp.email}</div>
+                          </div>
+                        </div>
+                      </td>
+
                     <td className="py-3 px-4 text-xs font-medium text-slate-700">{emp.department}</td>
                     <td className="py-3 px-4 text-xs text-slate-600">{emp.designation}</td>
                     <td className="py-3 px-4 text-xs">
@@ -244,7 +258,8 @@ export const AdminDashboard = ({
                       </Badge>
                     </td>
                   </tr>
-                ))}
+                ))
+              )}
               </tbody>
             </table>
           </div>

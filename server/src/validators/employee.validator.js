@@ -90,6 +90,7 @@ const updateEmployeeSchema = Joi.object({
   firstName: Joi.string().trim().min(2).max(60).optional(),
   lastName: Joi.string().trim().min(2).max(60).optional(),
   email: Joi.string().trim().email().optional(),
+  password: Joi.string().min(8).max(128).allow('', null).optional(),
   employeeCode: Joi.string()
     .trim()
     .uppercase()

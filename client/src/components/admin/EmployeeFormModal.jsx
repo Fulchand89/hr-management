@@ -24,6 +24,9 @@ export const EmployeeFormModal = ({
     status: 'Active',
     joiningDate: new Date().toISOString().split('T')[0],
     location: 'Bangalore, IN',
+    bankName: '',
+    bankAccountNumber: '',
+    bankIfsc: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -40,6 +43,9 @@ export const EmployeeFormModal = ({
         status: employeeToEdit.status || 'Active',
         joiningDate: employeeToEdit.joiningDate || new Date().toISOString().split('T')[0],
         location: employeeToEdit.location || 'Bangalore, IN',
+        bankName: employeeToEdit.bankName || '',
+        bankAccountNumber: employeeToEdit.bankAccountNumber || '',
+        bankIfsc: employeeToEdit.bankIfsc || ''
       });
     } else {
       setFormData({
@@ -52,6 +58,9 @@ export const EmployeeFormModal = ({
         status: 'Active',
         joiningDate: new Date().toISOString().split('T')[0],
         location: 'Bangalore, IN',
+        bankName: '',
+        bankAccountNumber: '',
+        bankIfsc: ''
       });
     }
     setErrors({});
@@ -219,6 +228,33 @@ export const EmployeeFormModal = ({
             value={formData.joiningDate}
             onChange={(e) => handleChange('joiningDate', e.target.value)}
           />
+        </div>
+
+        {/* Row 5: Salary Bank Details (Optional for HR/Payroll) */}
+        <div className="pt-2 border-t border-slate-100">
+          <h4 className="text-xs font-bold text-slate-700 mb-2.5">
+            Salary Bank Details (For Direct Payroll Disbursement)
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Input
+              label="Bank Name"
+              placeholder="e.g. HDFC Bank"
+              value={formData.bankName}
+              onChange={(e) => handleChange('bankName', e.target.value)}
+            />
+            <Input
+              label="Account Number"
+              placeholder="Account Number"
+              value={formData.bankAccountNumber}
+              onChange={(e) => handleChange('bankAccountNumber', e.target.value)}
+            />
+            <Input
+              label="IFSC Code"
+              placeholder="e.g. HDFC0001234"
+              value={formData.bankIfsc}
+              onChange={(e) => handleChange('bankIfsc', e.target.value.toUpperCase())}
+            />
+          </div>
         </div>
 
         {/* Footer actions */}

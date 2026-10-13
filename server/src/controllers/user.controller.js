@@ -206,6 +206,20 @@ const updateUser = async (req, res, next) => {
       }
     }
 
+    // Check and update email if provided
+    if (req.body.email && req.body.email.toLowerCase() !== user.email) {
+      const existingEmail = await User.findOne({ where: { email: req.body.email.toLowerCase() } });
+      if (existingEmail && existingEmail.id !== user.id) {
+        throw new ConflictError(`Email '${req.body.email}' is already taken`);
+      }
+      user.email = req.body.email.toLowerCase();
+    }
+
+    // Update password if provided
+    if (req.body.password && typeof req.body.password === 'string' && req.body.password.trim()) {
+      user.password = req.body.password.trim();
+    }
+
     await user.save();
 
     return ApiResponse.success(res, {

@@ -18,6 +18,7 @@ const policyRoutes = require('./policy.routes');
 const resignationRoutes = require('./resignation.routes');
 const referralRoutes = require('./referral.routes');
 const appraisalRoutes = require('./appraisal.routes');
+const assetRoutes = require('./asset.routes');
 const { sequelize } = require('../config/db');
 
 // Health Check Endpoint
@@ -57,5 +58,6 @@ router.use('/policies', policyRoutes);
 router.use('/resignations', resignationRoutes);
 router.use('/referrals', referralRoutes);
 router.use('/appraisals', appraisalRoutes);
+router.use('/assets', assetRoutes);
 
 module.exports = router;

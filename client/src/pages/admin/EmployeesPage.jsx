@@ -295,11 +295,18 @@ export const EmployeesPage = ({
                     {/* Employee Info */}
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <img
-                          src={emp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
-                          alt={emp.name}
-                          className="w-10 h-10 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
-                        />
+                        {emp.avatar ? (
+                          <img
+                            src={emp.avatar}
+                            alt={emp.name}
+                            className="w-10 h-10 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm ring-1 ring-slate-200 shrink-0">
+                            {(emp.name?.[0] || 'E').toUpperCase()}
+                          </div>
+                        )}
+
                         <div className="min-w-0">
                           <button
                             type="button"

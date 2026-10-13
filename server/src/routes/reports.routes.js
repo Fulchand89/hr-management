@@ -19,4 +19,8 @@ router.get('/leave', reportsController.getLeaveReport);
 // 3. Employee 360 monthly audit summary
 router.get('/employee-summary', reportsController.getEmployeeSummaryReport);
 
+// 4. Activity and security audit logs
+router.get('/activity-logs', reportsController.getActivityLogs);
+
 module.exports = router;
+

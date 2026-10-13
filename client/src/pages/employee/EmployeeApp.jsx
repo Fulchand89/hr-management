@@ -7,8 +7,9 @@ import EmployeeDashboard from './EmployeeDashboard';
 import AttendanceView from './AttendanceView';
 import MyAttendanceView from './MyAttendanceView';
 import LeavesView from './LeavesView';
+import EmployeeAttendanceCorrectionView from './EmployeeAttendanceCorrectionView';
+import EmployeeApplyCorrectionView from './EmployeeApplyCorrectionView';
 import ApplyLeaveModal from './ApplyLeaveModal';
-import ApplyAttendanceCorrectionModal from './ApplyAttendanceCorrectionModal';
 import AttendanceDetailModal from './AttendanceDetailModal';
 import NotificationsView from './NotificationsView';
 import ProfileView from './ProfileView';
@@ -19,9 +20,9 @@ import EmployeeHandbookView from './EmployeeHandbookView';
 import EmployeePolicyDocumentsView from './EmployeePolicyDocumentsView';
 import MyAppraisalView from './MyAppraisalView';
 import MyResignationView from './MyResignationView';
-import MyReferralsView from './MyReferralsView';
 import SignInView from './SignInView';
 
+import { Bell, X, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   getTodayAttendance,
@@ -29,7 +30,9 @@ import {
   startBreak as apiStartBreak,
   endBreak as apiEndBreak,
   punchOut as apiPunchOut,
-  getUnreadCount
+  getUnreadCount,
+  getMyNotifications,
+  markNotificationRead
 } from '../../services/employeeService';
 
 export const EmployeeApp = ({ onSwitchToAdmin }) => {
@@ -43,13 +46,6 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
   // Global Modals
   const [isApplyLeaveModalOpen, setIsApplyLeaveModalOpen] = useState(false);
   const [isAttendanceDetailModalOpen, setIsAttendanceDetailModalOpen] = useState(false);
-  const [isApplyCorrectionModalOpen, setIsApplyCorrectionModalOpen] = useState(false);
-  const [selectedCorrectionRecord, setSelectedCorrectionRecord] = useState(null);
-
-  const handleOpenApplyCorrection = (record = null) => {
-    setSelectedCorrectionRecord(record);
-    setIsApplyCorrectionModalOpen(true);
-  };
 
   // Attendance state driven by API
   const [attendanceData, setAttendanceData] = useState(null);
@@ -58,6 +54,8 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
   const [breakSeconds, setBreakSeconds] = useState(0);
   const [timeline, setTimeline] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [activeToast, setActiveToast] = useState(null);
+  const [seenToastIds, setSeenToastIds] = useState(new Set());
 
   // Load today's attendance from API on mount
   const loadTodayAttendance = useCallback(async () => {
@@ -76,20 +74,86 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     }
   }, []);
 
-  // Load unread notification count
+  // Load unread notification count & trigger real-time toast for unread alerts
   const loadUnreadCount = useCallback(async () => {
     try {
       const res = await getUnreadCount();
-      setUnreadCount(res.data?.unreadCount ?? res.data ?? 0);
+      const count = res.data?.unreadCount ?? res.data ?? 0;
+      setUnreadCount(count);
+
+      if (count > 0) {
+        const notifRes = await getMyNotifications(1, 5);
+        const rawList = Array.isArray(notifRes?.data)
+          ? notifRes.data
+          : Array.isArray(notifRes?.data?.notifications)
+          ? notifRes.data.notifications
+          : Array.isArray(notifRes?.notifications)
+          ? notifRes.notifications
+          : Array.isArray(notifRes)
+          ? notifRes
+          : [];
+        const unreadList = rawList.filter((n) => !n.isRead);
+        if (unreadList.length > 0) {
+          const latest = unreadList[0];
+          setSeenToastIds((prev) => {
+            if (!prev.has(latest.id)) {
+              setActiveToast(latest);
+              return new Set([...prev, latest.id]);
+            }
+            return prev;
+          });
+        }
+      }
     } catch {
       setUnreadCount(0);
     }
   }, []);
 
+  // Auto-dismiss active toast after 9 seconds
+  useEffect(() => {
+    if (!activeToast) return;
+    const timer = setTimeout(() => {
+      setActiveToast(null);
+    }, 9000);
+    return () => clearTimeout(timer);
+  }, [activeToast]);
+
+  const handleToastAction = async (toast) => {
+    if (!toast) return;
+    try {
+      if (toast.id) {
+        await markNotificationRead(toast.id);
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch {
+      // optimistic fallback
+    }
+    setActiveToast(null);
+    const target =
+      toast.actionUrl ||
+      (toast.type === 'resignation' ? '/employee/resignation' : '/employee/notifications');
+    navigate(target);
+  };
+
   useEffect(() => {
     if (!token) return;
     loadTodayAttendance();
     loadUnreadCount();
+
+    // Poll unread notifications every 15 seconds for live status updates
+    const pollInterval = setInterval(() => {
+      loadUnreadCount();
+    }, 15000);
+
+    const onWindowFocus = () => {
+      loadUnreadCount();
+    };
+    window.addEventListener('focus', onWindowFocus);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', onWindowFocus);
+    };
   }, [token, loadTodayAttendance, loadUnreadCount]);
 
   // Live Timer Effect
@@ -180,6 +244,14 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
   // Compute active tab from route
   const getActiveTab = () => {
     const path = location.pathname;
+    if (
+      path.includes('/attendance-correction') ||
+      path.includes('/attendance-corrections') ||
+      path.includes('/correction-request') ||
+      path.includes('/correction-requests')
+    ) {
+      return 'attendance-correction';
+    }
     if (path.includes('/my-attendance') || path.includes('/myattendance')) return 'my-attendance';
     if (path.includes('/attendance')) return 'attendance';
     if (path.includes('/leaves')) return 'leaves';
@@ -187,7 +259,6 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
     if (path.includes('/policies')) return 'policies';
     if (path.includes('/appraisals') || path.includes('/performance')) return 'appraisals';
     if (path.includes('/resignation') || path.includes('/exit')) return 'resignation';
-    if (path.includes('/referrals') || path.includes('/rewards')) return 'referrals';
     if (path.includes('/notifications')) return 'notifications';
     if (path.includes('/profile')) return 'profile';
     return 'dashboard';
@@ -240,8 +311,9 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
               onNavigateToAttendance={() => navigate('/employee/attendance')}
               onNavigateToLeaves={() => navigate('/employee/leaves')}
               onNavigateToMyAttendance={() => navigate('/employee/my-attendance')}
+              onNavigateToResignation={() => navigate('/employee/resignation')}
               onOpenApplyLeave={() => setIsApplyLeaveModalOpen(true)}
-              onRequestCorrection={handleOpenApplyCorrection}
+              onRequestCorrection={() => navigate('/employee/attendance-correction/new')}
               onSelectAttendanceRecord={(recordOrDate) => {
                 if (typeof recordOrDate === 'object' && recordOrDate !== null) {
                   setSelectedDateDetail(recordOrDate.date || null);
@@ -296,7 +368,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
               onTakeBreak={handleTakeBreak}
               onEndBreak={handleEndBreak}
               onPunchOut={handlePunchOut}
-              onRequestCorrection={() => handleOpenApplyCorrection(null)}
+              onRequestCorrection={() => navigate('/employee/attendance-correction/new')}
               onBackToDashboard={() => navigate('/employee/dashboard')}
             />
           }
@@ -308,7 +380,7 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
           element={
             <MyAttendanceView
               onBack={() => navigate('/employee/dashboard')}
-              onRequestCorrection={handleOpenApplyCorrection}
+              onRequestCorrection={() => navigate('/employee/attendance-correction/new')}
             />
           }
         />
@@ -317,10 +389,37 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
           element={
             <MyAttendanceView
               onBack={() => navigate('/employee/dashboard')}
-              onRequestCorrection={handleOpenApplyCorrection}
+              onRequestCorrection={() => navigate('/employee/attendance-correction/new')}
             />
           }
         />
+
+        {/* Attendance Correction Dedicated Routes */}
+        <Route
+          path="attendance-correction"
+          element={
+            <EmployeeAttendanceCorrectionView
+              onBack={() => navigate('/employee/my-attendance')}
+            />
+          }
+        />
+        <Route
+          path="attendance-correction/new"
+          element={<EmployeeApplyCorrectionView />}
+        />
+        <Route
+          path="attendance-correction/apply"
+          element={<Navigate to="/employee/attendance-correction/new" replace />}
+        />
+        <Route
+          path="attendance-correction/request"
+          element={<Navigate to="/employee/attendance-correction/new" replace />}
+        />
+        <Route path="attendance-corrections" element={<Navigate to="/employee/attendance-correction" replace />} />
+        <Route path="attendance-corrections/new" element={<Navigate to="/employee/attendance-correction/new" replace />} />
+        <Route path="correction-request" element={<Navigate to="/employee/attendance-correction" replace />} />
+        <Route path="correction-request/new" element={<Navigate to="/employee/attendance-correction/new" replace />} />
+        <Route path="correction-requests" element={<Navigate to="/employee/attendance-correction" replace />} />
 
         {/* Leaves & Applications View */}
         <Route
@@ -335,7 +434,12 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
         {/* Notifications Hub View */}
         <Route
           path="notifications"
-          element={<NotificationsView onBack={() => navigate('/employee/dashboard')} />}
+          element={
+            <NotificationsView
+              onBack={() => navigate('/employee/dashboard')}
+              onUnreadChange={loadUnreadCount}
+            />
+          }
         />
 
         {/* Profile View */}
@@ -397,15 +501,9 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
           element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
         />
 
-        {/* Candidate Referrals & Spot Rewards */}
-        <Route
-          path="referrals"
-          element={<MyReferralsView onBack={() => navigate('/employee/dashboard')} />}
-        />
-        <Route
-          path="rewards"
-          element={<MyReferralsView onBack={() => navigate('/employee/dashboard')} />}
-        />
+        {/* Removed Referrals & Rewards Redirects */}
+        <Route path="referrals" element={<Navigate to="/employee/dashboard" replace />} />
+        <Route path="rewards" element={<Navigate to="/employee/dashboard" replace />} />
 
         {/* Removed KYC & Documents Redirects */}
         <Route path="kyc" element={<Navigate to="/employee/dashboard" replace />} />
@@ -434,21 +532,60 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
         }}
         selectedDate={selectedDateDetail}
         record={selectedRecordDetail}
-        onRequestCorrection={handleOpenApplyCorrection}
+        onRequestCorrection={(rec) => {
+          setIsAttendanceDetailModalOpen(false);
+          const targetDate = rec?.date || selectedDateDetail || '';
+          navigate(`/employee/attendance-correction/new?date=${targetDate}`);
+        }}
       />
 
-      {/* Global Apply Attendance Correction Modal */}
-      <ApplyAttendanceCorrectionModal
-        isOpen={isApplyCorrectionModalOpen}
-        onClose={() => {
-          setIsApplyCorrectionModalOpen(false);
-          setSelectedCorrectionRecord(null);
-        }}
-        initialRecord={selectedCorrectionRecord}
-        onSuccess={() => {
-          loadTodayAttendance();
-        }}
-      />
+      {/* Real-time Floating Notification Toast */}
+      {activeToast && (
+        <div className="fixed top-20 right-6 z-50 max-w-sm w-full bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl p-4 border border-slate-700/80 animate-in slide-in-from-top-3 fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <span
+              className={`p-2 rounded-xl shrink-0 ${
+                activeToast.type === 'resignation'
+                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}
+            >
+              <Bell className="w-5 h-5" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-xs font-bold text-white truncate">{activeToast.title}</h4>
+                <button
+                  type="button"
+                  onClick={() => setActiveToast(null)}
+                  className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed line-clamp-3">
+                {activeToast.message}
+              </p>
+              <div className="mt-2.5 flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => handleToastAction(activeToast)}
+                  className="text-xs font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  View Details <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveToast(null)}
+                  className="text-[11px] text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </EmployeeLayout>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
@@ -20,6 +21,7 @@ import {
 } from '../../services/employeeService';
 
 export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'calendar'
   const [activeTab, setActiveTab] = useState('timesheet'); // 'timesheet' | 'corrections'
@@ -212,10 +214,7 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
           </button>
           <button
             type="button"
-            onClick={() => {
-              setActiveTab('corrections');
-              loadCorrections();
-            }}
+            onClick={() => navigate('/employee/attendance-correction')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'corrections'
                 ? 'bg-white text-slate-900 shadow-xs'
@@ -319,16 +318,14 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
           )}
 
           {/* Primary Request Correction Button */}
-          {onRequestCorrection && (
-            <button
-              type="button"
-              onClick={() => onRequestCorrection(null)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 cursor-pointer transition-all"
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>Request Correction</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => navigate('/employee/attendance-correction/new')}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 cursor-pointer transition-all"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Request Correction</span>
+          </button>
         </div>
       </div>
 
@@ -498,16 +495,14 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
                         >
                           Timeline
                         </button>
-                        {onRequestCorrection && (
-                          <button
-                            type="button"
-                            onClick={() => onRequestCorrection(log)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer whitespace-nowrap"
-                            title="Request Attendance Correction"
-                          >
-                            Correct
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/employee/attendance-correction/new?date=${log.date || ''}`)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer whitespace-nowrap"
+                          title="Request Attendance Correction"
+                        >
+                          Correct
+                        </button>
                       </div>
                     </td>
                   </tr>

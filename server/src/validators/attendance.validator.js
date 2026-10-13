@@ -41,8 +41,8 @@ const createCorrectionSchema = Joi.object({
   attendanceId: Joi.string().uuid().optional().allow(null, ''),
   date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
   punchType: Joi.string().valid('Check In Time', 'Check Out Time', 'Break Time').required(),
-  originalTime: Joi.string().max(20).required(),
-  requestedTime: Joi.string().max(20).required(),
+  originalTime: Joi.string().max(100).required(),
+  requestedTime: Joi.string().max(100).required(),
   reason: Joi.string().trim().max(1000).required()
 });
 

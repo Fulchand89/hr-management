@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   DollarSign,
   TrendingUp,
@@ -9,48 +9,64 @@ import {
   Search,
   FileText
 } from 'lucide-react';
+import { getPayrollDirectory, getPayrollSummary } from '../../services/hrService';
 
 export const PayrollPage = () => {
-  const [selectedMonth, setSelectedMonth] = useState('October 2026');
+  const [payrolls, setPayrolls] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const payrolls = [
-    {
-      id: 'PAY-01',
-      employeeName: 'Sarah Connor',
-      employeeCode: 'EMP-001',
-      designation: 'HR Lead',
-      basic: '₹60,000',
-      hra: '₹20,000',
-      allowances: '₹15,000',
-      deductions: '₹7,500',
-      netSalary: '₹87,500',
-      status: 'paid'
-    },
-    {
-      id: 'PAY-02',
-      employeeName: 'John Doe',
-      employeeCode: 'EMP-004',
-      designation: 'Full Stack Dev',
-      basic: '₹48,000',
-      hra: '₹16,000',
-      allowances: '₹11,000',
-      deductions: '₹6,000',
-      netSalary: '₹69,000',
-      status: 'processed'
-    },
-    {
-      id: 'PAY-03',
-      employeeName: 'Michael Scott',
-      employeeCode: 'EMP-003',
-      designation: 'Branch Manager',
-      basic: '₹70,000',
-      hra: '₹24,000',
-      allowances: '₹16,000',
-      deductions: '₹9,000',
-      netSalary: '₹1,01,000',
-      status: 'pending'
+  const loadPayroll = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [dirRes, sumRes] = await Promise.all([
+        getPayrollDirectory().catch(() => ({ data: [] })),
+        getPayrollSummary().catch(() => null)
+      ]);
+
+      const rawPayrolls = Array.isArray(dirRes?.data) ? dirRes.data : (Array.isArray(dirRes) ? dirRes : []);
+      setPayrolls(
+        rawPayrolls.map((p) => {
+          const emp = p.user || p.employee || {};
+          const net = parseFloat(p.netSalary || p.netPay || 0);
+          const basic = parseFloat(p.basicSalary || p.basic || 0);
+          const hra = parseFloat(p.hra || 0);
+          const allow = parseFloat(p.allowances || 0);
+          const ded = parseFloat(p.deductions || 0);
+
+          return {
+            id: p.id,
+            employeeName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name || emp.email || 'Employee',
+            employeeCode: emp.employeeCode || 'EMP',
+            designation: emp.designationDetails?.title || emp.designation || 'Staff',
+            basic: `₹${basic.toLocaleString()}`,
+            hra: `₹${(hra + allow).toLocaleString()}`,
+            deductions: `₹${ded.toLocaleString()}`,
+            netSalary: `₹${net.toLocaleString()}`,
+            netNum: net,
+            dedNum: ded,
+            status: (p.status || 'pending').toLowerCase()
+          };
+        })
+      );
+
+      if (sumRes?.data) {
+        setSummary(sumRes.data);
+      }
+    } catch (err) {
+      console.error('Failed to load payroll directory:', err);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  }, []);
+
+  useEffect(() => {
+    loadPayroll();
+  }, [loadPayroll]);
+
+  const totalDisbursement = payrolls.reduce((sum, p) => sum + (p.netNum || 0), 0);
+  const totalDeductions = payrolls.reduce((sum, p) => sum + (p.dedNum || 0), 0);
+  const totalProcessed = payrolls.filter((p) => p.status === 'paid' || p.status === 'processed').length;
 
   return (
     <div className="space-y-6">
@@ -64,34 +80,34 @@ export const PayrollPage = () => {
             Automate monthly salary calculations, payslip distribution, and tax deductions.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl cursor-pointer">
-            <CreditCard className="w-4 h-4" />
-            Process Monthly Payroll
-          </button>
-        </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <div className="text-xs text-slate-500">Total Net Disbursement</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1">₹34,50,000</div>
-          <div className="text-[11px] text-emerald-600 font-semibold mt-1">October 2026 Cycle</div>
+          <div className="text-2xl font-bold text-slate-900 mt-1">
+            ₹{totalDisbursement.toLocaleString()}
+          </div>
+          <div className="text-[11px] text-emerald-600 font-semibold mt-1">Live Calculation</div>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <div className="text-xs text-slate-500">Employees Processed</div>
-          <div className="text-2xl font-bold text-emerald-600 mt-1">45 / 48</div>
-          <div className="text-[11px] text-slate-400 mt-1">3 pending review</div>
+          <div className="text-2xl font-bold text-emerald-600 mt-1">
+            {totalProcessed} / {payrolls.length}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-1">{payrolls.length - totalProcessed} pending</div>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <div className="text-xs text-slate-500">Statutory Deductions (PF/ESI)</div>
-          <div className="text-2xl font-bold text-indigo-600 mt-1">₹4,20,500</div>
+          <div className="text-2xl font-bold text-indigo-600 mt-1">
+            ₹{totalDeductions.toLocaleString()}
+          </div>
           <div className="text-[11px] text-slate-400 mt-1">Auto calculated</div>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <div className="text-xs text-slate-500">Payslips Generated</div>
-          <div className="text-2xl font-bold text-slate-800 mt-1">45 Slips</div>
+          <div className="text-2xl font-bold text-slate-800 mt-1">{payrolls.length} Slips</div>
           <div className="text-[11px] text-indigo-600 mt-1">Ready for PDF download</div>
         </div>
       </div>
@@ -100,10 +116,6 @@ export const PayrollPage = () => {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-semibold text-sm text-slate-800">Staff Salary Breakdown</h3>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg cursor-pointer">
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
-          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-600">
@@ -120,35 +132,43 @@ export const PayrollPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {payrolls.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50/60">
-                  <td className="py-3.5 px-4 font-semibold text-slate-900">{p.employeeName}</td>
-                  <td className="py-3.5 px-4 text-slate-600">{p.designation}</td>
-                  <td className="py-3.5 px-4 font-mono">{p.basic}</td>
-                  <td className="py-3.5 px-4 font-mono">{p.hra}</td>
-                  <td className="py-3.5 px-4 font-mono text-rose-600">{p.deductions}</td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{p.netSalary}</td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        p.status === 'paid'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : p.status === 'processed'
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}
-                    >
-                      {p.status.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer">
-                      <FileText className="w-3.5 h-3.5" />
-                      PDF
-                    </button>
+              {payrolls.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="py-8 text-center text-slate-400">
+                    {isLoading ? 'Loading payroll records...' : 'No payroll records processed yet.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                payrolls.map((p) => (
+                  <tr key={p.id} className="hover:bg-slate-50/60">
+                    <td className="py-3.5 px-4 font-semibold text-slate-900">{p.employeeName}</td>
+                    <td className="py-3.5 px-4 text-slate-600">{p.designation}</td>
+                    <td className="py-3.5 px-4 font-mono">{p.basic}</td>
+                    <td className="py-3.5 px-4 font-mono">{p.hra}</td>
+                    <td className="py-3.5 px-4 font-mono text-rose-600">{p.deductions}</td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{p.netSalary}</td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                          p.status === 'paid'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : p.status === 'processed'
+                            ? 'bg-indigo-50 text-indigo-700'
+                            : 'bg-amber-50 text-amber-700'
+                        }`}
+                      >
+                        {p.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer">
+                        <FileText className="w-3.5 h-3.5" />
+                        PDF
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

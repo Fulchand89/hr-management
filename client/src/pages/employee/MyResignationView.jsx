@@ -6,20 +6,16 @@ import {
   AlertCircle,
   Calendar,
   ShieldCheck,
-  Building2,
-  FileText,
-  UserMinus,
   RefreshCw,
   Loader2,
-  AlertTriangle,
-  ArrowRight,
-  ChevronRight,
-  FileCheck,
   Undo2,
   Laptop,
   Wallet,
   UserCheck,
-  Lock
+  Lock,
+  XCircle,
+  Building2,
+  ArrowRight
 } from 'lucide-react';
 import { getMyResignation, withdrawResignation } from '../../services/employeeService';
 import ApplyResignationModal from './ApplyResignationModal';
@@ -42,11 +38,13 @@ export const MyResignationView = ({ onBack }) => {
     setErrorMsg('');
     try {
       const res = await getMyResignation();
-      const data = res?.data || res || null;
+      const data =
+        res?.data && res.data.data !== undefined
+          ? res.data.data
+          : (res?.data !== undefined ? res.data : (res || null));
       setResignation(data);
     } catch (err) {
       console.error('Failed to load my resignation:', err);
-      // If 404 or no active resignation, it's normal
       if (err?.response?.status !== 404) {
         setErrorMsg('Failed to load exit details.');
       }
@@ -61,7 +59,7 @@ export const MyResignationView = ({ onBack }) => {
 
   const handleWithdraw = async () => {
     if (!resignation?.id) return;
-    if (!window.confirm('Are you sure you want to withdraw your resignation request? This will restore your active employment status.')) {
+    if (!window.confirm('Are you sure you want to withdraw your resignation request? Your employment status will remain active.')) {
       return;
     }
 
@@ -78,7 +76,6 @@ export const MyResignationView = ({ onBack }) => {
     }
   };
 
-  // Status Badge Helper
   const getStatusBadge = (status) => {
     switch (status) {
       case 'approved':
@@ -95,6 +92,7 @@ export const MyResignationView = ({ onBack }) => {
           dot: 'bg-emerald-500'
         };
       case 'settled':
+      case 'completed':
         return {
           label: 'F&F Settled (Completed)',
           bg: 'bg-teal-50 text-teal-700 border-teal-200',
@@ -114,23 +112,36 @@ export const MyResignationView = ({ onBack }) => {
         };
       default:
         return {
-          label: 'Notice Submitted (Pending Review)',
+          label: 'Submitted (Pending HR Review)',
           bg: 'bg-amber-50 text-amber-700 border-amber-200',
           dot: 'bg-amber-500 animate-pulse'
         };
     }
   };
 
-  const statusBadge = resignation ? getStatusBadge(resignation.status) : null;
+  const isRejected = Boolean(resignation && resignation.id && resignation.status === 'rejected');
+  const isWithdrawn = Boolean(resignation && resignation.id && resignation.status === 'withdrawn');
+  const isPending = Boolean(
+    resignation &&
+    resignation.id &&
+    ['pending', 'submitted', 'under_review'].includes(resignation.status)
+  );
+  const isApproved = Boolean(
+    resignation &&
+    resignation.id &&
+    ['approved', 'clearances_in_progress', 'cleared', 'settled', 'completed'].includes(resignation.status)
+  );
+  const hasActiveResignation = isPending || isApproved;
+  const statusBadge = resignation?.status ? getStatusBadge(resignation.status) : null;
 
-  // Timeline / F&F calculations
   const exitDates = useMemo(() => {
-    if (!resignation) return null;
-    const submitDate = new Date(resignation.resignationDate || resignation.createdAt);
+    if (!resignation || !resignation.id) return null;
+    const submitDate = new Date(resignation.resignationDate || resignation.createdAt || new Date());
     const lwd = new Date(
       resignation.approvedLastWorkingDay ||
       resignation.requestedLastWorkingDay ||
-      resignation.resignationDate
+      resignation.resignationDate ||
+      new Date()
     );
 
     const today = new Date();
@@ -138,6 +149,15 @@ export const MyResignationView = ({ onBack }) => {
 
     const fnfTarget = new Date(lwd);
     fnfTarget.setDate(fnfTarget.getDate() + 45);
+
+    const reviewedDate = resignation.reviewedAt ? new Date(resignation.reviewedAt) : null;
+    const reviewedFormatted = reviewedDate
+      ? reviewedDate.toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        })
+      : null;
 
     return {
       submitFormatted: submitDate.toLocaleDateString('en-IN', {
@@ -155,37 +175,42 @@ export const MyResignationView = ({ onBack }) => {
         month: 'short',
         year: 'numeric'
       }),
+      reviewedFormatted,
       daysRemaining: Math.max(0, diffToLwd),
       hasLwdPassed: diffToLwd <= 0
     };
   }, [resignation]);
 
-  const canWithdraw =
-    resignation &&
-    (resignation.status === 'submitted' || resignation.status === 'under_review');
+  const canWithdraw = Boolean(
+    hasActiveResignation &&
+    ['pending', 'submitted', 'under_review'].includes(resignation.status)
+  );
 
   const clearances = resignation?.clearances || [];
+  const clearedCount = clearances.filter((c) => c.status === 'cleared').length;
+  const totalClearances = clearances.length || 5;
+  const progressPercent = Math.round((clearedCount / totalClearances) * 100);
 
-  const deptIcons = {
-    it: Laptop,
-    finance: Wallet,
-    hr: UserCheck,
-    admin: Lock,
-    manager: ShieldCheck
-  };
+  const deptList = [
+    { key: 'it', name: 'IT & Hardware Assets', icon: Laptop, defaultDesc: 'Laptop, accessories & access revocation' },
+    { key: 'finance', name: 'Finance & Accounts', icon: Wallet, defaultDesc: 'Salary dues, expense claims & PF balance' },
+    { key: 'hr', name: 'Human Resources', icon: UserCheck, defaultDesc: 'Exit interview, NDA verification & certificates' },
+    { key: 'admin', name: 'Admin & Facilities', icon: Lock, defaultDesc: 'ID card & access permissions return' },
+    { key: 'manager', name: 'Reporting Manager', icon: ShieldCheck, defaultDesc: 'Knowledge transfer (KT) & sprint handover' }
+  ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16 font-sans text-slate-800 animate-in fade-in duration-200">
-      {/* Toast */}
+    <div className="space-y-6 max-w-6xl mx-auto pb-12 font-sans text-slate-800">
+      {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-2xl flex items-center gap-2">
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* ── 1. Page Header ──────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
             {onBack && (
@@ -202,11 +227,11 @@ export const MyResignationView = ({ onBack }) => {
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            60-Day mandatory notice tracking, multi-department clearances, and full & final settlement (F&F)
+            Track notice period, department clearances, and full & final (F&F) settlement
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={loadResignation}
@@ -217,11 +242,11 @@ export const MyResignationView = ({ onBack }) => {
             <span>Refresh</span>
           </button>
 
-          {(!resignation || resignation.status === 'withdrawn' || resignation.status === 'rejected') && (
+          {!hasActiveResignation && (
             <button
               type="button"
               onClick={() => setIsApplyModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm shadow-rose-600/20 transition-all cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Apply for Resignation</span>
@@ -230,52 +255,144 @@ export const MyResignationView = ({ onBack }) => {
         </div>
       </div>
 
+      {/* Loading State */}
       {loading && (
-        <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-          <p className="text-xs font-semibold text-slate-500">Checking active exit records...</p>
+        <div className="p-16 flex flex-col items-center justify-center gap-2.5 text-slate-400">
+          <Loader2 className="w-7 h-7 animate-spin text-[#8B1D2C]" />
+          <p className="text-xs font-semibold text-slate-500">Checking resignation records...</p>
         </div>
       )}
 
+      {/* Error State */}
       {!loading && errorMsg && (
-        <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-center">
-          <AlertCircle className="w-8 h-8 text-rose-500 mx-auto mb-2" />
-          <p className="text-sm font-semibold">{errorMsg}</p>
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-center flex items-center justify-center gap-2 text-xs">
+          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* Case A: No Active Resignation */}
-      {!loading && !errorMsg && (!resignation || resignation.status === 'withdrawn' || resignation.status === 'rejected') && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-8 text-center space-y-4 max-w-2xl mx-auto my-6">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-2xs">
-            <CheckCircle2 className="w-8 h-8" />
+      {/* ── Case 1: Rejected Resignation ──────────────────────────────── */}
+      {!loading && !errorMsg && isRejected && (
+        <div className="bg-white rounded-2xl border border-rose-200 shadow-2xs overflow-hidden">
+          <div className="p-5 bg-rose-50/50 border-b border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="p-2 rounded-xl bg-rose-100 text-rose-600 shrink-0">
+                <XCircle className="w-5 h-5" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">Resignation Request Declined</h3>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800">
+                    Rejected
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Your resignation request was reviewed and declined by HR / Management.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsApplyModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer self-start sm:self-auto"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Submit New Request</span>
+            </button>
+          </div>
+
+          <div className="p-5 space-y-4">
+            {/* HR Reason */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                HR Remarks / Reason for Decline:
+              </div>
+              <p className="text-xs text-slate-800 font-medium whitespace-pre-wrap">
+                {resignation.rejectionReason || 'No specific remarks entered by HR.'}
+              </p>
+              <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400 pt-1 border-t border-slate-200/60">
+                {resignation.reviewer && (
+                  <span>
+                    Reviewed by: <strong className="text-slate-600">{resignation.reviewer.firstName} {resignation.reviewer.lastName || ''}</strong>
+                  </span>
+                )}
+                {exitDates?.reviewedFormatted && (
+                  <span>Reviewed on: <strong className="text-slate-600">{exitDates.reviewedFormatted}</strong></span>
+                )}
+                <span>Ref: #{resignation.id.slice(0, 8).toUpperCase()}</span>
+              </div>
+            </div>
+
+            {/* Submitted Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Date Applied</span>
+                <div className="font-semibold text-slate-800 mt-0.5">{exitDates?.submitFormatted || 'N/A'}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Requested Last Working Day</span>
+                <div className="font-semibold text-slate-800 mt-0.5">{exitDates?.lwdFormatted || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Case 2: Withdrawn Resignation ─────────────────────────────── */}
+      {!loading && !errorMsg && isWithdrawn && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-8 text-center space-y-3 max-w-lg mx-auto my-6">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center mx-auto">
+            <Undo2 className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">
-              Active Employment in Good Standing
-            </h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
-              You do not have any pending or active resignation requests. Your employment status is fully active. If you intend to tender your resignation, please review company notice period guidelines below.
+            <h3 className="text-sm font-bold text-slate-900">Resignation Notice Withdrawn</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+              You withdrew your resignation request submitted on {exitDates?.submitFormatted || 'N/A'}. Your employment remains fully active.
             </p>
           </div>
-
           <div className="pt-2">
             <button
               type="button"
               onClick={() => setIsApplyModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Submit Resignation Notice</span>
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Submit Resignation</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Case B: Active Resignation Record */}
-      {!loading && !errorMsg && resignation && resignation.status !== 'withdrawn' && resignation.status !== 'rejected' && (
-        <>
-          {/* ── 2. Active Status & Notice Slabs ───────────────────────────── */}
+      {/* ── Case 3: No Resignation (Active Employment) ────────────────── */}
+      {!loading && !errorMsg && !hasActiveResignation && !isRejected && !isWithdrawn && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-8 text-center space-y-3 max-w-lg mx-auto my-6">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Active Employment Status</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+              You are currently an active employee in good standing. No resignation or exit process is active.
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setIsApplyModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Apply for Resignation</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Case 4: Active Resignation Lifecycle ───────────────────────── */}
+      {!loading && !errorMsg && hasActiveResignation && (
+        <div className="space-y-5">
+          {/* Status Header Card */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
@@ -284,10 +401,10 @@ export const MyResignationView = ({ onBack }) => {
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Active Resignation Notice Lifecycle
+                    Exit Clearance Lifecycle
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Reference ID: #{resignation.id.slice(0, 8).toUpperCase()} • Submitted on {exitDates?.submitFormatted}
+                    Ref #{resignation?.id?.slice(0, 8)?.toUpperCase()} • Submitted {exitDates?.submitFormatted || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -316,86 +433,87 @@ export const MyResignationView = ({ onBack }) => {
               </div>
             </div>
 
-            {/* 4 Cards: Submission, LWD, Days Left, F&F Target */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+            {/* 4 Summary Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Notice Duration</div>
-                <div className="text-base font-bold text-slate-900 mt-1 font-mono">
-                  {resignation.noticePeriodDays || 60} Days Mandatory
+                <div className="text-[10px] uppercase font-bold text-slate-400">Notice Period</div>
+                <div className="text-sm font-bold text-slate-900 mt-1">
+                  {resignation.noticePeriodDays || 60} Days
                 </div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
-                  Company Standard Notice
-                </div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Mandatory Duration</div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Last Working Day (LWD)</div>
-                <div className="text-base font-bold text-slate-900 mt-1">
+                <div className="text-[10px] uppercase font-bold text-slate-400">Last Working Day</div>
+                <div className="text-sm font-bold text-slate-900 mt-1">
                   {exitDates?.lwdFormatted}
                 </div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
+                <div className="text-[10px] text-slate-500 mt-0.5">
                   {resignation.approvedLastWorkingDay ? 'Approved by HR' : 'Requested date'}
                 </div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
                 <div className="text-[10px] uppercase font-bold text-slate-400">Notice Remaining</div>
-                <div className="text-base font-bold text-rose-600 mt-1 font-mono">
-                  {exitDates?.hasLwdPassed ? 'Completed' : `${exitDates?.daysRemaining} Day(s) Left`}
+                <div className="text-sm font-bold text-rose-600 mt-1">
+                  {exitDates?.hasLwdPassed ? 'Notice Complete' : `${exitDates?.daysRemaining} Day(s) Left`}
                 </div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
-                  Sprint handover ongoing
-                </div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Handover timeline</div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200/80">
-                <div className="text-[10px] uppercase font-bold text-emerald-700">F&F Settlement Due</div>
-                <div className="text-base font-bold text-emerald-900 mt-1">
+                <div className="text-[10px] uppercase font-bold text-emerald-700">F&F Settlement Target</div>
+                <div className="text-sm font-bold text-emerald-900 mt-1">
                   {exitDates?.fnfFormatted}
                 </div>
-                <div className="text-[11px] text-emerald-700/80 mt-0.5">
-                  Standard 45-day payout cycle
-                </div>
+                <div className="text-[10px] text-emerald-700/80 mt-0.5">Within 45 days of LWD</div>
               </div>
             </div>
 
-            {/* Employee Comments */}
-            {resignation.comments && (
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                <span className="font-bold text-slate-800">Your Transition Note: </span>
-                <span>{resignation.comments}</span>
+            {/* Employee's Submitted Note */}
+            {(resignation.reason || resignation.comments) && (
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-0.5">
+                <div className="font-bold text-slate-800">
+                  Reason: <span className="font-medium text-slate-700">{resignation.reason}</span>
+                </div>
+                {resignation.comments && (
+                  <p className="text-slate-500 italic">"{resignation.comments}"</p>
+                )}
               </div>
             )}
           </div>
 
-          {/* ── 3. Department Clearance Matrix ────────────────────────────── */}
+          {/* Department Clearances Checklist */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Department Clearance & Handover Status</span>
+                  <span>Department Clearances</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  All 5 departments must provide digital clearance prior to final settlement disbursement
+                  Clearances required from each department for final settlement processing
                 </p>
               </div>
 
-              <span className="text-xs font-bold text-slate-700">
-                {clearances.filter((c) => c.status === 'cleared').length} of {clearances.length || 5} Cleared
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="text-xs font-bold text-slate-700">
+                  {clearedCount} of {totalClearances} Cleared
+                </div>
+                <div className="w-20 bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {[
-                { deptKey: 'it', name: 'IT Infrastructure & Assets', desc: 'Laptop return, credentials, VPN revoke' },
-                { deptKey: 'finance', name: 'Finance & Accounts', desc: 'Salary balance, loan/advance recovery, PF check' },
-                { deptKey: 'hr', name: 'Human Resources Formalities', desc: 'Exit interview, NDA verification, certificates' },
-                { deptKey: 'admin', name: 'Administration & Facility', desc: 'ID card, access token, locker key handover' },
-                { deptKey: 'manager', name: 'Reporting Manager Handover', desc: 'Code repository transfer, sprint KT signoff' }
-              ].map((item, idx) => {
-                const IconComponent = deptIcons[item.deptKey] || ShieldCheck;
-                const rec = clearances.find((c) => c.department?.toLowerCase() === item.deptKey);
+            {/* Clearances Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {deptList.map((item, idx) => {
+                const IconComponent = item.icon;
+                const rec = clearances.find((c) => c.department?.toLowerCase() === item.key);
                 const isCleared = rec?.status === 'cleared';
 
                 return (
@@ -403,17 +521,17 @@ export const MyResignationView = ({ onBack }) => {
                     key={idx}
                     className={`p-3.5 rounded-xl border transition-all ${
                       isCleared
-                        ? 'bg-emerald-50/50 border-emerald-200/80'
+                        ? 'bg-emerald-50/40 border-emerald-200/80'
                         : 'bg-slate-50/60 border-slate-200/80'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span
                           className={`p-1.5 rounded-lg ${
                             isCleared
                               ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-slate-200 text-slate-600'
+                              : 'bg-slate-200/80 text-slate-600'
                           }`}
                         >
                           <IconComponent className="w-4 h-4" />
@@ -434,11 +552,17 @@ export const MyResignationView = ({ onBack }) => {
                       )}
                     </div>
 
-                    <p className="text-[11px] text-slate-500 mt-2">{item.desc}</p>
+                    <p className="text-[11px] text-slate-500 mt-2">{item.defaultDesc}</p>
 
                     {rec?.remarks && (
-                      <div className="mt-2 text-[10px] font-mono text-slate-600 bg-white/70 p-1.5 rounded border border-slate-200">
-                        Note: {rec.remarks}
+                      <div className="mt-2 text-[10px] text-slate-600 bg-white p-1.5 rounded border border-slate-200">
+                        Remarks: {rec.remarks}
+                      </div>
+                    )}
+
+                    {isCleared && rec?.clearedByUser && (
+                      <div className="mt-1 text-[10px] text-emerald-700">
+                        Signed off by: {rec.clearedByUser.firstName} {rec.clearedByUser.lastName || ''}
                       </div>
                     )}
                   </div>
@@ -446,46 +570,15 @@ export const MyResignationView = ({ onBack }) => {
               })}
             </div>
           </div>
-        </>
-      )}
-
-      {/* ── 4. Standard Offboarding Regulations & FAQ ──────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-          <FileText className="w-4 h-4 text-slate-700" />
-          <span>Exit & Offboarding Policy Regulations</span>
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600 leading-relaxed">
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-            <div className="font-bold text-slate-900">1. Notice Period Compliance</div>
-            <p className="text-[11px]">
-              Every employee is bound by the 60-day notice period requirement. Resignations submitted without serving full notice will require explicit buy-out approval or waiver from Management.
-            </p>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-            <div className="font-bold text-slate-900">2. Knowledge Transfer (KT)</div>
-            <p className="text-[11px]">
-              Complete project code repositories, documentation, and client handover files must be delivered to the designated colleague before the final clearance sign-off.
-            </p>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-            <div className="font-bold text-slate-900">3. F&F & Document Issuance</div>
-            <p className="text-[11px]">
-              Full & Final settlement proceeds, along with your official Experience Certificate and Relieving Letter, are disbursed within 45 days of the validated Last Working Day.
-            </p>
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Resignation Application Modal */}
       <ApplyResignationModal
         isOpen={isApplyModalOpen}
         onClose={() => setIsApplyModalOpen(false)}
         onSuccess={() => {
-          showToast('Resignation notice successfully submitted to HR.');
+          showToast('Resignation request successfully submitted to HR.');
           loadResignation();
         }}
       />

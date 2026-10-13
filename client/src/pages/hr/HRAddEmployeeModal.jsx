@@ -204,6 +204,11 @@ export const HRAddEmployeeModal = ({
       setActiveTab('security');
       return false;
     }
+    if (isEdit && formData.password && formData.password.trim().length > 0 && formData.password.trim().length < 8) {
+      setErrorMessage('New password must be at least 8 characters long.');
+      setActiveTab('security');
+      return false;
+    }
     if (formData.dob) {
       const birth = new Date(formData.dob);
       const today = new Date();
@@ -249,6 +254,9 @@ export const HRAddEmployeeModal = ({
         if (formData.salary) updatePayload.salary = parseFloat(formData.salary);
         if (formData.departmentId) updatePayload.departmentId = formData.departmentId;
         if (formData.designationId) updatePayload.designationId = formData.designationId;
+        if (formData.password && formData.password.trim()) {
+          updatePayload.password = formData.password.trim();
+        }
 
         const res = await updateEmployee(initialData.id, updatePayload);
         onSuccess(res?.data || res, 'Employee profile updated successfully!');
@@ -351,20 +359,18 @@ export const HRAddEmployeeModal = ({
             <Briefcase className="w-3.5 h-3.5" />
             Organization & Role
           </button>
-          {!isEdit && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('security')}
-              className={`px-3.5 py-2 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
-                activeTab === 'security'
-                  ? 'bg-[#8B1D2C] text-white shadow-xs'
-                  : 'text-slate-600 hover:bg-slate-200/70'
-              }`}
-            >
-              <Lock className="w-3.5 h-3.5" />
-              Credentials
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('security')}
+            className={`px-3.5 py-2 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'security'
+                ? 'bg-[#8B1D2C] text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-200/70'
+            }`}
+          >
+            <Lock className="w-3.5 h-3.5" />
+            Credentials
+          </button>
         </div>
 
         {/* Error Alert */}
@@ -632,20 +638,30 @@ export const HRAddEmployeeModal = ({
             </div>
           )}
 
-          {/* TAB 3: CREDENTIALS (NEW ONLY) */}
-          {!isEdit && activeTab === 'security' && (
+          {/* TAB 3: CREDENTIALS */}
+          {activeTab === 'security' && (
             <div className="space-y-4">
               <div className="p-4 bg-rose-50/70 border border-rose-200 rounded-2xl text-[#8B1D2C] text-xs leading-relaxed">
                 <p className="font-bold mb-1 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-[#8B1D2C]" />
-                  Auto-generated Account & Welcome Email
+                  {isEdit ? 'Corporate Account Credentials & Onboarding' : 'Auto-generated Account & Welcome Email'}
                 </p>
-                A welcome email with login instructions and this initial password will be prepared for the employee. The employee can reset their password upon first login.
+                {isEdit ? (
+                  <span>
+                    You can update both <strong>Email</strong> (under Personal Info) and <strong>Password</strong> here. When onboarding a new HR or employee in place of an existing account, update their email and set their new password below.
+                  </span>
+                ) : (
+                  <span>
+                    A welcome email with login instructions and this initial password will be prepared for the employee. The employee can reset their password upon first login.
+                  </span>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Initial Password <span className="text-[#8B1D2C]">*</span>
+                  {isEdit ? 'New Password / Reset Password' : (
+                    <>Initial Password <span className="text-[#8B1D2C]">*</span></>
+                  )}
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -654,13 +670,15 @@ export const HRAddEmployeeModal = ({
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="Min 8 characters"
-                    required
+                    placeholder={isEdit ? 'Leave blank to keep existing password' : 'Min 8 characters'}
+                    required={!isEdit}
                     className="w-full pl-9 pr-3.5 py-2 text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C] transition-colors"
                   />
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  Default recommended: Employee@123
+                  {isEdit
+                    ? 'Leave empty to preserve current password, or enter a new password (min 8 characters) to reset it.'
+                    : 'Default recommended: Employee@123'}
                 </span>
               </div>
             </div>
@@ -690,7 +708,7 @@ export const HRAddEmployeeModal = ({
                   Next: Organization & Role →
                 </button>
               )}
-              {!isEdit && activeTab === 'job' && (
+              {activeTab === 'job' && (
                 <button
                   type="button"
                   onClick={() => setActiveTab('security')}

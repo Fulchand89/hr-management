@@ -251,6 +251,7 @@ export const HRAddEmployeeView = ({ isEdit = false }) => {
         if (formData.salary) updatePayload.salary = parseFloat(formData.salary);
         if (formData.departmentId) updatePayload.departmentId = formData.departmentId;
         if (formData.designationId) updatePayload.designationId = formData.designationId;
+        if (formData.password && formData.password.trim()) updatePayload.password = formData.password.trim();
 
         await updateEmployee(id, updatePayload);
         setSuccessMessage('Employee profile updated successfully!');
@@ -734,10 +735,16 @@ export const HRAddEmployeeView = ({ isEdit = false }) => {
               <div className="p-4 bg-rose-50/70 border border-rose-200/80 rounded-2xl text-[#8B1D2C] text-xs leading-relaxed space-y-1">
                 <p className="font-bold flex items-center gap-1.5 text-sm text-[#8B1D2C]">
                   <Sparkles className="w-4 h-4" />
-                  Auto-provisioned Access
+                  {isEditMode ? 'Corporate Security & Credential Management' : 'Auto-provisioned Access'}
                 </p>
                 <p className="text-slate-600">
-                  The employee can log in using their registered corporate email address and this initial password. Upon first authentication, they will be prompted to customize their security credentials.
+                  {isEditMode ? (
+                    <>
+                      You can update both <strong>Email</strong> (in Personal Information) and <strong>Password</strong> here. If replacing an existing HR or staff member with a new person, update their email address and set a new password below.
+                    </>
+                  ) : (
+                    'The employee can log in using their registered corporate email address and this initial password. Upon first authentication, they will be prompted to customize their security credentials.'
+                  )}
                 </p>
               </div>
 

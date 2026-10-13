@@ -1,13 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Laptop, Monitor, Smartphone, Plus, Search, ShieldCheck } from 'lucide-react';
+import { getCompanyAssets } from '../../services/hrService';
 
 export const CompanyAssetsPage = () => {
-  const assets = [
-    { id: 'AST-01', name: 'MacBook Pro 16" M3', serial: 'C02G1028MD6T', category: 'laptop', assignedTo: 'John Doe', condition: 'new', status: 'allocated' },
-    { id: 'AST-02', name: 'Dell UltraSharp 27" 4K', serial: 'CN-0K790D-74261', category: 'monitor', assignedTo: 'Aarav Sharma', condition: 'good', status: 'allocated' },
-    { id: 'AST-03', name: 'ThinkPad X1 Carbon', serial: 'PF-2N9A91', category: 'laptop', assignedTo: 'Unassigned', condition: 'good', status: 'available' },
-    { id: 'AST-04', name: 'iPhone 15 Pro (Test Device)', serial: 'F2LXJ08KN7', category: 'mobile', assignedTo: 'Unassigned', condition: 'new', status: 'available' }
-  ];
+  const [assets, setAssets] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadAssets = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await getCompanyAssets();
+      const rawAssets = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setAssets(
+        rawAssets.map((a) => {
+          const emp = a.assignedEmployee || {};
+          return {
+            id: a.id,
+            name: a.assetName || a.name,
+            serial: a.serialNumber || a.serial,
+            category: a.category || 'other',
+            assignedTo: emp.firstName
+              ? `${emp.firstName} ${emp.lastName || ''}`.trim()
+              : (emp.email || 'Unassigned'),
+            condition: a.condition || 'good',
+            status: a.status || 'available'
+          };
+        })
+      );
+    } catch (err) {
+      console.error('Failed to load assets:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAssets();
+  }, [loadAssets]);
 
   return (
     <div className="space-y-6">
@@ -21,10 +50,6 @@ export const CompanyAssetsPage = () => {
             Hardware allocations, equipment tracking, and IT asset registry.
           </p>
         </div>
-        <button className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl cursor-pointer">
-          <Plus className="w-4 h-4" />
-          Add Asset
-        </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -41,22 +66,32 @@ export const CompanyAssetsPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {assets.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50/60">
-                  <td className="py-3 px-4 font-semibold text-slate-900">{a.name}</td>
-                  <td className="py-3 px-4 font-mono text-slate-500">{a.serial}</td>
-                  <td className="py-3 px-4 capitalize">{a.category}</td>
-                  <td className="py-3 px-4 font-medium">{a.assignedTo}</td>
-                  <td className="py-3 px-4 capitalize">{a.condition}</td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                      a.status === 'allocated' ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'
-                    }`}>
-                      {a.status.toUpperCase()}
-                    </span>
+              {assets.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="py-8 text-center text-slate-400">
+                    {isLoading ? 'Loading assets...' : 'No company assets currently registered.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                assets.map((a) => (
+                  <tr key={a.id} className="hover:bg-slate-50/60">
+                    <td className="py-3 px-4 font-semibold text-slate-900">{a.name}</td>
+                    <td className="py-3 px-4 font-mono text-slate-500">{a.serial}</td>
+                    <td className="py-3 px-4 capitalize">{a.category}</td>
+                    <td className="py-3 px-4 font-medium">{a.assignedTo}</td>
+                    <td className="py-3 px-4 capitalize">{a.condition}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                          a.status === 'allocated' ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'
+                        }`}
+                      >
+                        {a.status.toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

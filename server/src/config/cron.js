@@ -113,7 +113,48 @@ const initCronJobs = () => {
       logger.error('[CRON] Midnight attendance auto-close error:', err.message);
     }
   });
-  scheduledTasks.push(autoCloseJob);
+  // 5. Monthly Automated Payroll Calculation (1st of month at 01:00 AM)
+  if (env.CRON.PAYROLL_ENABLED) {
+    const payrollJob = cron.schedule(env.CRON.PAYROLL_SCHEDULE, async () => {
+      logger.info('[CRON] Running automated monthly payroll batch generation...');
+      try {
+        const payrollService = require('../services/payroll.service');
+        const now = new Date();
+        // Calculate prior month when running on the 1st
+        let targetMonth = now.getMonth(); // 0-indexed, so getMonth() is precisely the 1-indexed previous month
+        let targetYear = now.getFullYear();
+        if (targetMonth === 0) {
+          targetMonth = 12;
+          targetYear -= 1;
+        }
+
+        const result = await payrollService.generateMonthlyPayroll({
+          month: targetMonth,
+          year: targetYear,
+          generatedBy: null,
+          isAutomatedCron: true
+        });
+
+        logger.info(`[CRON] Automated payroll batch completed: ${result.totalProcessed || 0} employees processed for ${targetMonth}/${targetYear}.`);
+
+        try {
+          const socketService = require('../services/socket.service');
+          socketService.emitToRole('hr', 'notification', {
+            title: 'Automated Monthly Payroll Completed',
+            message: `Automated payroll for ${targetMonth}/${targetYear} calculated for ${result.totalProcessed || 0} employees (${result.totalEligible || result.totalProcessed} eligible).`,
+            type: 'payroll_automated',
+            timestamp: new Date().toISOString(),
+            data: { month: targetMonth, year: targetYear, totalProcessed: result.totalProcessed }
+          });
+        } catch (sErr) {
+          logger.warn('[CRON] Socket notification error for payroll cron:', sErr.message);
+        }
+      } catch (err) {
+        logger.error('[CRON] Automated monthly payroll error:', err.message);
+      }
+    });
+    scheduledTasks.push(payrollJob);
+  }
 
   logger.success(`Scheduled ${scheduledTasks.length} cron background tasks.`);
 };

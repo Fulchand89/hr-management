@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Search, Bell, Plus, Sparkles } from 'lucide-react';
+import { Menu, Search, Bell, Plus, Sparkles, ShieldCheck } from 'lucide-react';
 import Button from '../common/Button';
 
 export const AdminNavbar = ({
@@ -43,6 +43,17 @@ export const AdminNavbar = ({
 
       {/* Right actions */}
       <div className="flex items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={() => { window.location.href = '/hr/dashboard'; }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 text-[#8B1D2C] hover:bg-rose-100 text-xs font-bold border border-rose-200 transition-colors cursor-pointer"
+          title="Switch to HR Operations Portal"
+        >
+          <ShieldCheck className="w-4 h-4 text-[#8B1D2C]" />
+          <span className="hidden sm:inline">HR Portal &rarr;</span>
+          <span className="sm:hidden">HR</span>
+        </button>
+
         <button
           type="button"
           className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"

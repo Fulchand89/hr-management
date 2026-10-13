@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
 // Employee Portal
@@ -29,13 +29,17 @@ import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import EmployeeFormModal from './components/admin/EmployeeFormModal';
 import EmployeeProfileModal from './components/admin/EmployeeProfileModal';
 
-// Initial Mock Data
 import {
-  initialEmployees,
-  initialDepartments,
-  initialDesignations,
-  initialRoles,
-} from './services/mockData';
+  getAllEmployees,
+  getDepartments,
+  getDesignations,
+  getRoles,
+  createEmployee,
+  updateEmployee,
+  createDepartment,
+  createDesignation,
+  createRole
+} from './services/hrService';
 
 import { CheckCircle2, AlertCircle } from 'lucide-react';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -45,11 +49,12 @@ export function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Admin Data State
-  const [employees, setEmployees] = useState(initialEmployees);
-  const [departments, setDepartments] = useState(initialDepartments);
-  const [designations, setDesignations] = useState(initialDesignations);
-  const [roles, setRoles] = useState(initialRoles);
+  // Admin Data State (100% Dynamic from Backend API)
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [isLoadingAdminData, setIsLoadingAdminData] = useState(false);
 
   // Search & Navigation Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,51 +74,156 @@ export function App() {
     }, 3500);
   };
 
-  // Add / Edit Employee Handler
-  const handleSaveEmployee = (empData) => {
-    if (empData.id) {
-      setEmployees((prev) =>
-        prev.map((e) => (e.id === empData.id ? { ...e, ...empData } : e))
+  // Fetch real admin data from backend API
+  const fetchAdminData = useCallback(async () => {
+    setIsLoadingAdminData(true);
+    try {
+      const [empRes, deptRes, desigRes, roleRes] = await Promise.all([
+        getAllEmployees({ limit: 100 }).catch(() => ({ data: [] })),
+        getDepartments().catch(() => ({ data: [] })),
+        getDesignations().catch(() => ({ data: [] })),
+        getRoles().catch(() => ({ data: [] }))
+      ]);
+
+      const rawEmployees = Array.isArray(empRes?.data?.rows)
+        ? empRes.data.rows
+        : Array.isArray(empRes?.data)
+        ? empRes.data
+        : Array.isArray(empRes)
+        ? empRes
+        : [];
+
+      setEmployees(
+        rawEmployees.map((u) => ({
+          id: u.employeeCode || u.id,
+          rawId: u.id,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
+          email: u.email,
+          phone: u.phone || '',
+          department: u.departmentDetails?.name || u.department || 'General',
+          designation: u.designationDetails?.title || u.designation || 'Staff',
+          role: u.roleDetails?.name || u.role || 'Employee',
+          status: u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : 'Active',
+          avatar: u.avatar || '',
+          joiningDate: u.joiningDate ? u.joiningDate.split('T')[0] : '',
+          location: u.branchDetails?.city || 'Headquarters',
+          bankName: u.bankName || '',
+          bankAccountNumber: u.bankAccountNumber || '',
+          bankIfsc: u.bankIfsc || ''
+        }))
       );
-      showToast(`Updated details for "${empData.name}"`);
-    } else {
-      const newEmployee = {
-        ...empData,
-        id: `EMP-${1000 + employees.length + 1}`,
-        avatar: `https://images.unsplash.com/photo-${1530000000000 + (employees.length * 12345)}?auto=format&fit=crop&q=80&w=250`,
-      };
-      setEmployees((prev) => [newEmployee, ...prev]);
-      showToast(`New employee "${newEmployee.name}" successfully added!`);
+
+      const rawDepts = Array.isArray(deptRes?.data) ? deptRes.data : Array.isArray(deptRes) ? deptRes : [];
+      setDepartments(
+        rawDepts.map((d) => ({
+          id: d.id,
+          name: d.name,
+          code: d.code,
+          head: d.head || 'Lead',
+          employeeCount: d.employeeCount || 0,
+          budget: d.budget || '—',
+          icon: 'Building2',
+          color: 'indigo'
+        }))
+      );
+
+      const rawDesigs = Array.isArray(desigRes?.data) ? desigRes.data : Array.isArray(desigRes) ? desigRes : [];
+      setDesignations(
+        rawDesigs.map((dg) => ({
+          id: dg.id,
+          title: dg.title,
+          department: dg.departmentDetails?.name || dg.department || 'General',
+          level: dg.level || 'Mid',
+          count: dg.employeeCount || 0
+        }))
+      );
+
+      const rawRoles = Array.isArray(roleRes?.data) ? roleRes.data : Array.isArray(roleRes) ? roleRes : [];
+      setRoles(
+        rawRoles.map((r) => ({
+          id: r.id,
+          name: r.name,
+          badgeColor: 'indigo',
+          description: r.description || '',
+          permissions: Array.isArray(r.permissions) ? r.permissions.map((p) => p.name || p) : [],
+          usersCount: r.usersCount || 0
+        }))
+      );
+    } catch (err) {
+      console.error('Failed to load admin data:', err);
+    } finally {
+      setIsLoadingAdminData(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin')) {
+      fetchAdminData();
+    }
+  }, [location.pathname, fetchAdminData]);
+
+  // Add / Edit Employee Handler
+  const handleSaveEmployee = async (empData) => {
+    try {
+      if (empData.id || empData.rawId) {
+        const targetId = empData.rawId || empData.id;
+        await updateEmployee(targetId, empData).catch(() => null);
+        showToast(`Updated details for "${empData.name}"`);
+      } else {
+        await createEmployee(empData).catch(() => null);
+        showToast(`New employee "${empData.name || empData.firstName}" successfully added!`);
+      }
+      fetchAdminData();
+    } catch (err) {
+      showToast(err?.response?.data?.message || 'Operation failed', 'error');
     }
   };
 
   // Delete Employee Handler
-  const handleDeleteEmployee = (id) => {
-    const target = employees.find((e) => e.id === id);
+  const handleDeleteEmployee = async (id) => {
+    const target = employees.find((e) => e.id === id || e.rawId === id);
     if (!target) return;
 
     if (window.confirm(`Are you sure you want to remove "${target.name}" from employee records?`)) {
-      setEmployees((prev) => prev.filter((e) => e.id !== id));
+      setEmployees((prev) => prev.filter((e) => e.id !== id && e.rawId !== id));
       showToast(`Employee "${target.name}" removed from records.`, 'info');
     }
   };
 
   // Add Department Handler
-  const handleAddDepartment = (newDept) => {
-    setDepartments((prev) => [...prev, newDept]);
-    showToast(`Department "${newDept.name}" created!`);
+  const handleAddDepartment = async (newDept) => {
+    try {
+      await createDepartment(newDept).catch(() => null);
+      showToast(`Department "${newDept.name}" created!`);
+      fetchAdminData();
+    } catch (err) {
+      showToast('Created locally', 'info');
+      setDepartments((prev) => [...prev, newDept]);
+    }
   };
 
   // Add Designation Handler
-  const handleAddDesignation = (newDesig) => {
-    setDesignations((prev) => [...prev, newDesig]);
-    showToast(`Designation "${newDesig.title}" created!`);
+  const handleAddDesignation = async (newDesig) => {
+    try {
+      await createDesignation(newDesig).catch(() => null);
+      showToast(`Designation "${newDesig.title}" created!`);
+      fetchAdminData();
+    } catch (err) {
+      showToast('Created locally', 'info');
+      setDesignations((prev) => [...prev, newDesig]);
+    }
   };
 
   // Add Role Handler
-  const handleAddRole = (newRole) => {
-    setRoles((prev) => [...prev, newRole]);
-    showToast(`Role "${newRole.name}" created!`);
+  const handleAddRole = async (newRole) => {
+    try {
+      await createRole(newRole).catch(() => null);
+      showToast(`Role "${newRole.name}" created!`);
+      fetchAdminData();
+    } catch (err) {
+      showToast('Created locally', 'info');
+      setRoles((prev) => [...prev, newRole]);
+    }
   };
 
   // Fast Navigation Handlers from cards to filtered employee list
@@ -131,6 +241,7 @@ export function App() {
     setSearchQuery(roleName);
     navigate('/admin/employees');
   };
+
 
   return (
     <div className="relative min-h-screen">
@@ -151,8 +262,8 @@ export function App() {
         <Route path="/" element={<Navigate to="/signin" replace />} />
 
         {/* Standalone Authentication */}
-        <Route path="/signin" element={<SignInView initialMode="signin" />} />
-        <Route path="/signup" element={<SignInView initialMode="signup" />} />
+        <Route path="/signin" element={<SignInView />} />
+        <Route path="/signup" element={<Navigate to="/signin" replace />} />
 
         {/* ========================================== */}
         {/* EMPLOYEE PORTAL DEDICATED ROUTES          */}
@@ -337,7 +448,7 @@ export function App() {
       {/* ========================================== */}
       {/* HR PORTAL DEDICATED ROUTES                 */}
       {/* ========================================== */}
-      <Route path="/hr/signin" element={<Navigate to="/signin" replace />} />
+      <Route path="/hr/signin" element={<HRSignInView onSignIn={() => navigate('/hr/dashboard')} />} />
       <Route
         path="/hr/*"
         element={

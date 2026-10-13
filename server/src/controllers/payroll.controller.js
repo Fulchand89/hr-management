@@ -199,6 +199,21 @@ const downloadPayslipPDF = async (req, res, next) => {
   }
 };
 
+/**
+ * Pre-Flight Payroll Workforce & Time Audit Metrics
+ */
+const getPayrollPreflight = async (req, res, next) => {
+  try {
+    const result = await payrollService.getPayrollPreflightMetrics(req.query);
+    return ApiResponse.success(res, {
+      message: 'Payroll pre-flight audit metrics retrieved successfully',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   generatePayroll,
   getPayrollDirectory,
@@ -210,5 +225,6 @@ module.exports = {
   exportBankSheet,
   getMyPayslips,
   getPayslipDetails,
-  downloadPayslipPDF
+  downloadPayslipPDF,
+  getPayrollPreflight
 };

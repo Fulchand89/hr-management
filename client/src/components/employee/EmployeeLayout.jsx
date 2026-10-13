@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
@@ -19,9 +19,9 @@ import {
   Wallet,
   BookOpen,
   TrendingUp,
-  Gift,
   UserMinus,
   ShieldCheck,
+  CalendarClock,
 } from 'lucide-react';
 
 export const EmployeeLayout = ({
@@ -54,16 +54,35 @@ export const EmployeeLayout = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const profileDropdownRef = useRef(null);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+
+    if (isProfileDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isProfileDropdownOpen]);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'attendance', label: 'Live Punch & Timer', icon: Clock },
     { id: 'my-attendance', label: 'My Attendance', icon: CalendarCheck },
+    { id: 'attendance-correction', label: 'Attendance Corrections', icon: CalendarClock },
     { id: 'leaves', label: 'Leaves & Requests', icon: CalendarDays },
     { id: 'salary', label: 'Salary & Compensation', icon: Wallet },
     { id: 'policies', label: 'Company Policies', icon: BookOpen },
     { id: 'appraisals', label: 'Appraisals & Reviews', icon: TrendingUp },
-    { id: 'referrals', label: 'Referrals & Rewards', icon: Gift },
     { id: 'resignation', label: 'Resignation & Exit', icon: UserMinus },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'profile', label: 'My Profile', icon: User },
@@ -217,7 +236,7 @@ export const EmployeeLayout = ({
             </div>
 
             {/* Profile Dropdown Chip */}
-            <div className="relative">
+            <div className="relative" ref={profileDropdownRef}>
               <button
                 type="button"
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
@@ -278,6 +297,17 @@ export const EmployeeLayout = ({
                     type="button"
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
+                      onSelectTab('attendance-correction');
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    <CalendarClock className="w-4 h-4 text-slate-400" /> Attendance Corrections
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
                       onSelectTab('leaves');
                     }}
                     className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
@@ -305,6 +335,17 @@ export const EmployeeLayout = ({
                     className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
                   >
                     <BookOpen className="w-4 h-4 text-slate-400" /> Company Policies
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      onSelectTab('resignation');
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                  >
+                    <UserMinus className="w-4 h-4 text-slate-400" /> Resignation & Exit
                   </button>
 
                   <div className="my-1 border-t border-slate-100" />

@@ -61,10 +61,14 @@ export const HRExitManagementView = () => {
         getAllResignations().catch(() => ({ data: [] }))
       ]);
 
-      const empData = Array.isArray(empRes?.data) ? empRes.data : (Array.isArray(empRes) ? empRes : []);
+      const empData = Array.isArray(empRes?.data?.data)
+        ? empRes.data.data
+        : (Array.isArray(empRes?.data) ? empRes.data : (Array.isArray(empRes) ? empRes : []));
       setEmployees(empData);
 
-      const resignData = Array.isArray(resignRes?.data) ? resignRes.data : (Array.isArray(resignRes) ? resignRes : []);
+      const resignData = Array.isArray(resignRes?.data?.data)
+        ? resignRes.data.data
+        : (Array.isArray(resignRes?.data) ? resignRes.data : (Array.isArray(resignRes) ? resignRes : []));
       setResignationList(resignData);
     } catch (err) {
       console.error('Failed to load exit management data:', err);
@@ -98,7 +102,7 @@ export const HRExitManagementView = () => {
       return {
         id: raw.id,
         raw,
-        employeeCode: emp.employeeId || 'EMP-01',
+        employeeCode: emp.employeeCode || emp.employeeId || 'EMP-01',
         employeeName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee',
         designation: emp.designationDetails?.title || 'Staff',
         department: emp.departmentDetails?.name || 'Operations',

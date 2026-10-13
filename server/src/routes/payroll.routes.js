@@ -34,7 +34,10 @@ router.get('/export-bank-sheet', adminOrHr, payrollController.exportBankSheet);
 // 3. Monthly KPI Summary
 router.get('/summary', adminOrHr, payrollController.getPayrollSummary);
 
-// 4. Get Directory with Filters & Pagination
+// 4. Pre-Flight Workforce & Time Audit Metrics
+router.get('/preflight', adminOrHr, payrollController.getPayrollPreflight);
+
+// 5. Get Directory with Filters & Pagination
 router.get('/', adminOrHr, payrollController.getPayrollDirectory);
 
 // 5. Bulk Disburse

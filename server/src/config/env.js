@@ -66,7 +66,9 @@ const env = {
     ENABLED: process.env.CRON_ENABLED !== 'false',
     ATTENDANCE_SCHEDULE: process.env.CRON_ATTENDANCE_SCHEDULE || '0 10 * * 1-5',
     LEAVE_ALERT_SCHEDULE: process.env.CRON_LEAVE_ALERT_SCHEDULE || '0 19 * * 1-5',
-    CLEANUP_SCHEDULE: process.env.CRON_CLEANUP_SCHEDULE || '0 0 * * 0'
+    CLEANUP_SCHEDULE: process.env.CRON_CLEANUP_SCHEDULE || '0 0 * * 0',
+    PAYROLL_SCHEDULE: process.env.CRON_PAYROLL_SCHEDULE || '0 1 1 * *',
+    PAYROLL_ENABLED: process.env.CRON_PAYROLL_ENABLED !== 'false'
   },
 
   // Uploads

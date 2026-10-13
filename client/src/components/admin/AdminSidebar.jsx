@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard,
   Users,
@@ -16,8 +17,10 @@ import {
   Terminal,
   Settings,
   Megaphone,
+  User,
   X
 } from 'lucide-react';
+
 
 export const AdminSidebar = ({
   employeeCount = 0,
@@ -29,8 +32,10 @@ export const AdminSidebar = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const currentTab = location.pathname.replace(/^\/admin\/?/, '').split('/')[0] || 'dashboard';
+
 
   const menuItems = [
     {
@@ -264,20 +269,33 @@ export const AdminSidebar = ({
         {/* User Card */}
         <div className="p-4 border-t border-slate-100 bg-white">
           <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-            <img
-              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120"
-              alt="Admin"
-              className="w-9 h-9 rounded-xl object-cover ring-2 ring-indigo-500/20"
-            />
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user?.firstName || 'User'}
+                className="w-9 h-9 rounded-xl object-cover ring-2 ring-indigo-500/20"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs ring-2 ring-indigo-500/20">
+                {(user?.firstName?.[0] || user?.name?.[0] || user?.email?.[0] || 'A').toUpperCase()}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-slate-800 truncate">Sarah Connor</p>
+              <p className="text-xs font-semibold text-slate-800 truncate">
+                {user?.firstName
+                  ? `${user.firstName} ${user.lastName || ''}`.trim()
+                  : (user?.name || user?.email?.split('@')[0] || 'Admin User')}
+              </p>
               <div className="flex items-center gap-1 mt-0.5">
                 <UserCheck className="w-3 h-3 text-emerald-500" />
-                <span className="text-[11px] text-slate-500 font-medium truncate">HR Administrator</span>
+                <span className="text-[11px] text-slate-500 font-medium truncate capitalize">
+                  {user?.role || 'Administrator'}
+                </span>
               </div>
             </div>
           </div>
         </div>
+
       </aside>
     </>
   );

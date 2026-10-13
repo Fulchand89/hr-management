@@ -67,8 +67,34 @@ const getEmployeeSummaryReport = async (req, res, next) => {
   }
 };
 
+const getActivityLogs = async (req, res, next) => {
+  try {
+    const { ActivityLog, User } = require('../models');
+    const logs = await ActivityLog.findAll({
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode'],
+          required: false
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 100
+    });
+    return ApiResponse.success(res, {
+      message: 'Activity logs retrieved successfully',
+      data: logs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAttendanceReport,
   getLeaveReport,
-  getEmployeeSummaryReport
+  getEmployeeSummaryReport,
+  getActivityLogs
 };
+

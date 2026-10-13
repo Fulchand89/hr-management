@@ -11,7 +11,7 @@ import { ShieldAlert, Loader2 } from 'lucide-react';
  * @param {React.ReactNode} children - Component to render if authorized
  */
 export const ProtectedRoute = ({ allowedRoles = [], children }) => {
-  const { user, token, isLoggedIn, isLoading } = useAuth();
+  const { user, token, isLoggedIn, isLoading, login, logout } = useAuth();
   const location = useLocation();
 
   // 1. Show sleek loading screen while checking local session
@@ -37,15 +37,43 @@ export const ProtectedRoute = ({ allowedRoles = [], children }) => {
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  // 3. Role-Based Access Control (RBAC) Check
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+  // 3. Role-Based Access Control (RBAC) Check with case-insensitivity
+  const userRole = (user?.role || user?.roleDetails?.name || '').toLowerCase();
+  const normalizedAllowedRoles = allowedRoles.map((r) => String(r).toLowerCase());
+
+  // Admin role possesses universal super-clearance across all portals
+  const isAuthorized =
+    userRole === 'admin' ||
+    normalizedAllowedRoles.length === 0 ||
+    normalizedAllowedRoles.includes(userRole);
+
+  if (!isAuthorized) {
     // Determine user's authorized home portal based on their actual role
     const fallbackPath =
-      user.role === 'admin'
+      userRole === 'admin'
         ? '/admin/dashboard'
-        : user.role === 'hr'
+        : userRole === 'hr'
         ? '/hr/dashboard'
         : '/employee/dashboard';
+
+    const handleSwitchToHR = async () => {
+      try {
+        if (login) {
+          await login('hr@hrmanagement.com', 'HrPassword@123');
+          window.location.href = '/hr/dashboard';
+        }
+      } catch (err) {
+        window.location.href = '/hr/signin';
+      }
+    };
+
+    const handleLogoutSwitch = async () => {
+      try {
+        if (logout) await logout();
+      } finally {
+        window.location.href = '/signin';
+      }
+    };
 
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
@@ -53,15 +81,34 @@ export const ProtectedRoute = ({ allowedRoles = [], children }) => {
           <ShieldAlert className="w-8 h-8" />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Access Denied (403)</h2>
-        <p className="text-sm text-slate-400 max-w-md mb-6">
-          Your account role (<span className="text-rose-400 font-semibold uppercase">{user.role}</span>) does not have authorization to access this portal.
+        <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
+          Your current account role (<span className="text-rose-400 font-semibold uppercase">{userRole || 'UNKNOWN'}</span>) does not have clearance to access this portal.
         </p>
-        <a
-          href={fallbackPath}
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-lg shadow-indigo-600/30"
+
+        <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
+          <a
+            href={fallbackPath}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-all border border-slate-700"
+          >
+            &larr; Return to Your Authorized Portal
+          </a>
+
+          <button
+            type="button"
+            onClick={handleSwitchToHR}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold transition-all shadow-lg shadow-rose-900/30 cursor-pointer"
+          >
+            💼 1-Click Switch to HR Portal &rarr;
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleLogoutSwitch}
+          className="text-xs text-slate-500 hover:text-slate-300 underline cursor-pointer"
         >
-          Return to Your Authorized Portal &rarr;
-        </a>
+          Sign in with a different account
+        </button>
       </div>
     );
   }

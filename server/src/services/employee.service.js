@@ -406,6 +406,7 @@ const updateEmployee = async (id, payload, actor = null) => {
       throw new ConflictError(`Email '${payload.email}' is already taken by another employee`);
     }
     employee.email = payload.email.toLowerCase();
+    employee.refreshToken = null;
   }
 
   // Check unique employee code if updating
@@ -466,12 +467,21 @@ const updateEmployee = async (id, payload, actor = null) => {
   }
 
   // Update scalar fields
-  const scalarFields = ['firstName', 'lastName', 'phone', 'joiningDate', 'salary', 'dob', 'gender', 'status'];
+  const scalarFields = [
+    'firstName', 'lastName', 'phone', 'joiningDate', 'salary', 'dob', 'gender', 'status',
+    'address', 'bankName', 'bankAccountNumber', 'bankIfsc'
+  ];
   scalarFields.forEach((field) => {
     if (payload[field] !== undefined) {
       employee[field] = payload[field];
     }
   });
+
+  // Update password if provided
+  if (payload.password && typeof payload.password === 'string' && payload.password.trim()) {
+    employee.password = payload.password.trim();
+    employee.refreshToken = null;
+  }
 
   await employee.save();
 

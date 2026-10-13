@@ -23,11 +23,11 @@ export const AdminSettingsPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Company Legal Name</label>
-              <input type="text" defaultValue="WorkPulse Technologies Pvt. Ltd." className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+              <input type="text" defaultValue="Gupta Tech Web" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Work Email Domain</label>
-              <input type="text" defaultValue="@workpulse.io" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
+              <input type="text" defaultValue="@guptatechweb.com" className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs" />
             </div>
           </div>
         </div>

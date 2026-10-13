@@ -494,6 +494,7 @@ const getAdminLeaveRequests = async (query) => {
           'firstName',
           'lastName',
           'email',
+          'role',
           'employeeCode',
           'department',
           'departmentId',
@@ -549,7 +550,7 @@ const getLeaveRequestById = async (id, user) => {
       {
         model: User,
         as: 'applicant',
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'department', 'designation', 'avatar']
+        attributes: ['id', 'firstName', 'lastName', 'email', 'role', 'employeeCode', 'department', 'designation', 'avatar']
       },
       {
         model: LeaveType,

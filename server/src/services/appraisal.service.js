@@ -164,7 +164,7 @@ const getAppraisalById = async (id) => {
       {
         model: User,
         as: 'employee',
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeId', 'salary'],
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'salary'],
         include: [
           { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
           { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
@@ -210,7 +210,7 @@ const getAllAppraisals = async (query = {}) => {
       { firstName: { [Op.like]: `%${search}%` } },
       { lastName: { [Op.like]: `%${search}%` } },
       { email: { [Op.like]: `%${search}%` } },
-      { employeeId: { [Op.like]: `%${search}%` } }
+      { employeeCode: { [Op.like]: `%${search}%` } }
     ];
   }
 
@@ -222,7 +222,7 @@ const getAllAppraisals = async (query = {}) => {
         model: User,
         as: 'employee',
         where: Object.keys(userWhere).length > 0 ? userWhere : undefined,
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeId', 'salary'],
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode', 'salary'],
         include: [
           { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
           { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }

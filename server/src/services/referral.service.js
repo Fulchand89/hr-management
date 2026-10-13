@@ -63,7 +63,7 @@ const getReferralById = async (id) => {
       {
         model: User,
         as: 'referrer',
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeId'],
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode'],
         include: [
           { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
           { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }
@@ -132,7 +132,7 @@ const getAllReferrals = async (query = {}) => {
       {
         model: User,
         as: 'referrer',
-        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeId'],
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode'],
         include: [
           { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] },
           { model: Designation, as: 'designationDetails', attributes: ['id', 'title'] }

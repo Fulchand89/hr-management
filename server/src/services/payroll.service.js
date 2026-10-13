@@ -6,6 +6,7 @@ const {
   Department,
   Designation,
   Attendance,
+  AttendanceCorrection,
   LeaveRequest,
   Holiday
 } = require('../models');
@@ -41,7 +42,7 @@ const numberToWords = (num) => {
 /**
  * Generate / Calculate Monthly Payroll Batch
  */
-const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }) => {
+const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy, isAutomatedCron = false }) => {
   const m = parseInt(month, 10);
   const y = parseInt(year, 10);
 
@@ -74,7 +75,14 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
     return {
       month: m,
       year: y,
+      totalEligible: 0,
       totalProcessed: 0,
+      missingStructureCount: 0,
+      totalGrossPayout: 0,
+      totalNetPayout: 0,
+      anomaliesCount: 0,
+      anomalies: [],
+      isAutomatedCron: Boolean(isAutomatedCron),
       message: 'No active employees found to process payroll'
     };
   }
@@ -90,8 +98,16 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
   );
 
   const results = [];
+  let missingStructureCount = 0;
+  let totalGrossPayout = 0;
+  let totalNetPayout = 0;
+  const anomalies = [];
 
   for (const emp of employees) {
+    if (!emp.salaryStructure) {
+      missingStructureCount += 1;
+    }
+
     // 1. Calculate Attendance & Leaves for Month
     const attendances = await Attendance.findAll({
       where: {
@@ -259,6 +275,20 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
     const totalDeductions = Math.round(pfDeduction + esiDeduction + taxDeduction);
     const netSalary = Math.max(0, earnedGross - totalDeductions);
 
+    totalGrossPayout += earnedGross;
+    totalNetPayout += netSalary;
+
+    if (lateCount >= 3 || underTimeHours >= 5 || totalLopDays >= 3) {
+      anomalies.push({
+        userId: emp.id,
+        employeeName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email,
+        lateCount,
+        underTimeHours,
+        lopDays: totalLopDays,
+        netSalary
+      });
+    }
+
     // 5. Upsert snapshot into payrolls table
     const [record] = await Payroll.upsert({
       userId: emp.id,
@@ -308,8 +338,112 @@ const generateMonthlyPayroll = async ({ month, year, departmentId, generatedBy }
   return {
     month: m,
     year: y,
+    totalEligible: employees.length,
     totalProcessed: results.length,
-    message: `Payroll successfully generated for ${results.length} employee(s).`
+    missingStructureCount,
+    totalGrossPayout: Math.round(totalGrossPayout),
+    totalNetPayout: Math.round(totalNetPayout),
+    anomaliesCount: anomalies.length,
+    anomalies,
+    isAutomatedCron: Boolean(isAutomatedCron),
+    message: `Payroll successfully generated for ${results.length} employee(s) (${employees.length} eligible).`
+  };
+};
+
+/**
+ * Pre-Flight Payroll Workforce & Time Audit Metrics
+ */
+const getPayrollPreflightMetrics = async ({ month, year, departmentId }) => {
+  const m = month ? parseInt(month, 10) : new Date().getMonth() + 1;
+  const y = year ? parseInt(year, 10) : new Date().getFullYear();
+
+  if (!m || m < 1 || m > 12 || !y || y < 2020) {
+    throw new BadRequestError('Invalid month or year specified for preflight metrics');
+  }
+
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+  const endDate = `${y}-${String(m).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+  const userWhere = {
+    status: { [Op.in]: ['active', 'probation'] }
+  };
+  if (departmentId) {
+    userWhere.departmentId = departmentId;
+  }
+
+  const employees = await User.findAll({
+    where: userWhere,
+    include: [
+      { model: SalaryStructure, as: 'salaryStructure' },
+      { model: Department, as: 'departmentDetails', attributes: ['id', 'name'] }
+    ],
+    attributes: ['id', 'firstName', 'lastName', 'email', 'status', 'salary', 'departmentId']
+  });
+
+  const totalEligible = employees.length;
+  const missingStructureCount = employees.filter((e) => !e.salaryStructure).length;
+
+  // Pending leaves for this period
+  const pendingLeaves = await LeaveRequest.count({
+    where: {
+      status: 'pending',
+      [Op.or]: [
+        { startDate: { [Op.between]: [startDate, endDate] } },
+        { endDate: { [Op.between]: [startDate, endDate] } }
+      ]
+    }
+  });
+
+  // Pending attendance corrections
+  let pendingCorrections = 0;
+  try {
+    pendingCorrections = await AttendanceCorrection.count({
+      where: {
+        status: 'pending',
+        date: { [Op.between]: [startDate, endDate] }
+      }
+    });
+  } catch (err) {
+    logger.warn('[PAYROLL PREFLIGHT] Error querying corrections:', err.message);
+  }
+
+  // Unclosed shifts
+  let unclosedAttendances = 0;
+  try {
+    unclosedAttendances = await Attendance.count({
+      where: {
+        date: { [Op.between]: [startDate, endDate] },
+        clockOut: null,
+        status: { [Op.in]: ['working', 'WORKING', 'on_break', 'ON_BREAK'] }
+      }
+    });
+  } catch (err) {
+    logger.warn('[PAYROLL PREFLIGHT] Error querying unclosed attendances:', err.message);
+  }
+
+  // Already generated payroll records count for month
+  const alreadyGeneratedCount = await Payroll.count({
+    where: { month: m, year: y }
+  });
+
+  const env = require('../config/env');
+
+  return {
+    month: m,
+    year: y,
+    daysInMonth,
+    totalEligible,
+    missingStructureCount,
+    pendingLeaves,
+    pendingCorrections,
+    unclosedAttendances,
+    alreadyGeneratedCount,
+    automatedCron: {
+      enabled: Boolean(env.CRON?.PAYROLL_ENABLED),
+      schedule: env.CRON?.PAYROLL_SCHEDULE || '0 1 1 * *',
+      description: 'Scheduled on 1st of every month at 01:00 AM'
+    }
   };
 };
 
@@ -956,5 +1090,6 @@ module.exports = {
   exportBankSheet,
   getMyPayslips,
   getPayslipDetails,
-  downloadPayslipPDF
+  downloadPayslipPDF,
+  getPayrollPreflightMetrics
 };

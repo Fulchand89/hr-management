@@ -343,6 +343,11 @@ export const getPayrollSummary = async (params = {}) => {
   return res.data;
 };
 
+export const getPayrollPreflight = async (params = {}) => {
+  const res = await apiClient.get('/payroll/preflight', { params });
+  return res.data;
+};
+
 export const getPayrollById = async (id) => {
   const res = await apiClient.get(`/payroll/${id}`);
   return res.data;
@@ -473,5 +478,62 @@ export const getEmployeeDocumentById = async (docId) => {
   const res = await apiClient.get(`/employees/admin/documents/${docId}`);
   return res.data;
 };
+
+// ─────────────────────────────────────────────
+// ROLES & RBAC
+// ─────────────────────────────────────────────
+
+export const getRoles = async (params = {}) => {
+  const res = await apiClient.get('/roles', { params });
+  return res.data;
+};
+
+export const createRole = async (payload) => {
+  const res = await apiClient.post('/roles', payload);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// DEPARTMENTS & DESIGNATIONS (ADMIN)
+// ─────────────────────────────────────────────
+
+export const createDepartment = async (payload) => {
+  const res = await apiClient.post('/departments', payload);
+  return res.data;
+};
+
+export const createDesignation = async (payload) => {
+  const res = await apiClient.post('/designations', payload);
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// ACTIVITY AUDIT LOGS
+// ─────────────────────────────────────────────
+
+export const getActivityLogs = async () => {
+  const res = await apiClient.get('/reports/activity-logs');
+  return res.data;
+};
+
+// ─────────────────────────────────────────────
+// COMPANY ASSETS INVENTORY
+// ─────────────────────────────────────────────
+
+export const getCompanyAssets = async () => {
+  const res = await apiClient.get('/assets');
+  return res.data;
+};
+
+export const createCompanyAsset = async (payload) => {
+  const res = await apiClient.post('/assets', payload);
+  return res.data;
+};
+
+export const deleteCompanyAsset = async (id) => {
+  const res = await apiClient.delete(`/assets/${id}`);
+  return res.data;
+};
+
 
 

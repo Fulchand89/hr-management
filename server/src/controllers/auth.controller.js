@@ -1,19 +1,16 @@
 const authService = require('../services/auth.service');
 const ApiResponse = require('../utils/apiResponse');
+const { ForbiddenError } = require('../utils/apiError');
 
 /**
- * Register new user
+ * Register new user - Public registration is strictly disabled
  */
 const register = async (req, res, next) => {
-  try {
-    const result = await authService.register(req.body);
-    return ApiResponse.created(res, {
-      message: 'User registered successfully',
-      data: result
-    });
-  } catch (error) {
-    next(error);
-  }
+  return next(
+    new ForbiddenError(
+      'Public self-registration is disabled. Employee accounts must be provisioned by the HR department.'
+    )
+  );
 };
 
 /**

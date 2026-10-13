@@ -35,7 +35,19 @@ async function runPayrollTests() {
 
     const hrHeader = `Bearer ${hrToken}`;
 
-    // 2. Batch Generate Payroll for October 2026
+    // 2. Pre-Flight Workforce & Time Audit Check
+    const preflightRes = await request(app)
+      .get('/api/v1/payroll/preflight?month=10&year=2026')
+      .set('Authorization', hrHeader);
+
+    assert(
+      preflightRes.status === 200 &&
+      typeof preflightRes.body.data?.totalEligible === 'number' &&
+      preflightRes.body.data?.automatedCron?.enabled !== undefined,
+      '2. GET /api/v1/payroll/preflight (Workforce Count & Automated Time Audit Metrics)'
+    );
+
+    // 3. Batch Generate Payroll for October 2026
     const genRes = await request(app)
       .post('/api/v1/payroll/generate')
       .set('Authorization', hrHeader)
@@ -43,7 +55,7 @@ async function runPayrollTests() {
 
     assert(
       (genRes.status === 200 || genRes.status === 201) && genRes.body.success === true,
-      '2. POST /api/v1/payroll/generate (Batch Monthly Calculation)',
+      '3. POST /api/v1/payroll/generate (Batch Monthly Calculation with Total Counts)',
       JSON.stringify(genRes.body)
     );
 
@@ -158,6 +170,7 @@ async function runPayrollTests() {
     console.error('Test execution error:', error);
   } finally {
     await closeConnection();
+    process.exit(failed > 0 ? 1 : 0);
   }
 }
 

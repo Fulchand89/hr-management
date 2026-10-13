@@ -37,11 +37,11 @@ const initAttendanceCorrectionModel = (sequelize) => {
         allowNull: false
       },
       originalTime: {
-        type: DataTypes.STRING(20),
+        type: DataTypes.STRING(100),
         allowNull: false
       },
       requestedTime: {
-        type: DataTypes.STRING(20),
+        type: DataTypes.STRING(100),
         allowNull: false
       },
       reason: {

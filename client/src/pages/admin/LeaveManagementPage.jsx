@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   CalendarDays,
   CheckCircle2,
@@ -15,6 +15,7 @@ import {
   User
 } from 'lucide-react';
 import Badge from '../../components/common/Badge';
+import { getAdminLeaveRequests, actionLeaveRequest } from '../../services/hrService';
 
 export const LeaveManagementPage = () => {
   const [activeFilter, setActiveFilter] = useState('all');
@@ -22,6 +23,41 @@ export const LeaveManagementPage = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [actionReason, setActionReason] = useState('');
   const [actionType, setActionType] = useState(null); // 'approved' | 'rejected'
+  const [requests, setRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load real leave requests from backend API
+  const loadRequests = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await getAdminLeaveRequests();
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setRequests(
+        list.map((r) => ({
+          id: r.id,
+          employeeName: `${r.employee?.firstName || ''} ${r.employee?.lastName || ''}`.trim() || r.employee?.email || 'Employee',
+          employeeCode: r.employee?.employeeCode || 'EMP',
+          avatar: r.employee?.avatar || '',
+          department: r.employee?.departmentDetails?.name || 'General',
+          leaveType: r.leaveType?.name || r.type || 'Leave',
+          startDate: r.startDate ? r.startDate.split('T')[0] : '',
+          endDate: r.endDate ? r.endDate.split('T')[0] : '',
+          totalDays: parseFloat(r.totalDays || 1),
+          reason: r.reason || '',
+          status: (r.status || 'pending').toLowerCase(),
+          appliedOn: r.createdAt ? r.createdAt.split('T')[0] : ''
+        }))
+      );
+    } catch (err) {
+      console.error('Failed to load leave requests:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRequests();
+  }, [loadRequests]);
 
   // Lock body scroll when modal is active
   useEffect(() => {
@@ -34,79 +70,22 @@ export const LeaveManagementPage = () => {
     }
   }, [selectedRequest, actionType]);
 
-  // Sample data for Leave Requests
-  const [requests, setRequests] = useState([
-    {
-      id: 'LV-1001',
-      employeeName: 'Aarav Sharma',
-      employeeCode: 'EMP-004',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120',
-      department: 'Engineering',
-      leaveType: 'Casual Leave',
-      startDate: '2026-10-10',
-      endDate: '2026-10-12',
-      totalDays: 2.0,
-      reason: 'Family wedding celebration in hometown.',
-      status: 'pending',
-      appliedOn: '2026-10-04',
-    },
-    {
-      id: 'LV-1002',
-      employeeName: 'Priya Patel',
-      employeeCode: 'EMP-005',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120',
-      department: 'Human Resources',
-      leaveType: 'Sick Leave',
-      startDate: '2026-10-08',
-      endDate: '2026-10-08',
-      totalDays: 1.0,
-      reason: 'Viral fever rest and physician checkup.',
-      status: 'pending',
-      appliedOn: '2026-10-05',
-    },
-    {
-      id: 'LV-1003',
-      employeeName: 'Rohan Verma',
-      employeeCode: 'EMP-006',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
-      department: 'Sales & Marketing',
-      leaveType: 'Paid Leave',
-      startDate: '2026-10-15',
-      endDate: '2026-10-20',
-      totalDays: 5.0,
-      reason: 'Annual personal family vacation.',
-      status: 'approved',
-      appliedOn: '2026-09-28',
-    },
-    {
-      id: 'LV-1004',
-      employeeName: 'Neha Gupta',
-      employeeCode: 'EMP-007',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120',
-      department: 'Design & Creative',
-      leaveType: 'Casual Leave',
-      startDate: '2026-09-18',
-      endDate: '2026-09-19',
-      totalDays: 2.0,
-      reason: 'Personal home shifting work.',
-      status: 'rejected',
-      appliedOn: '2026-09-15',
-    }
-  ]);
-
-  const handleAction = (status) => {
+  const handleAction = async (status) => {
     if (!selectedRequest) return;
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === selectedRequest.id
-          ? { ...r, status, actionReason }
-          : r
-      )
-    );
+    try {
+      await actionLeaveRequest(selectedRequest.id, {
+        status: status.toUpperCase(),
+        remarks: actionReason
+      });
+      loadRequests();
+    } catch (err) {
+      console.error('Failed to action leave:', err);
+    }
     setSelectedRequest(null);
     setActionType(null);
     setActionReason('');
   };
+
 
   const filteredRequests = requests.filter((r) => {
     const matchesFilter = activeFilter === 'all' ? true : r.status === activeFilter;
@@ -236,11 +215,18 @@ export const LeaveManagementPage = () => {
                   <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={req.avatar}
-                          alt={req.employeeName}
-                          className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200"
-                        />
+                        {req.avatar ? (
+                          <img
+                            src={req.avatar}
+                            alt={req.employeeName}
+                            className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs ring-1 ring-slate-200 shrink-0">
+                            {(req.employeeName?.[0] || 'E').toUpperCase()}
+                          </div>
+                        )}
+
                         <div>
                           <div className="font-semibold text-slate-900">{req.employeeName}</div>
                           <div className="text-[11px] text-slate-400">{req.employeeCode}</div>

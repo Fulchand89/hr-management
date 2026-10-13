@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Clock,
   Calendar,
@@ -10,63 +10,81 @@ import {
   Filter,
   ArrowUpRight
 } from 'lucide-react';
+import { getAdminDailyAttendance } from '../../services/hrService';
 
 export const AttendancePage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [records, setRecords] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const records = [
-    {
-      id: 'ATT-1',
-      employeeName: 'Aarav Sharma',
-      employeeCode: 'EMP-004',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=120',
-      department: 'Engineering',
-      clockIn: '09:05 AM',
-      clockOut: '06:12 PM',
-      totalHours: '09h 07m',
-      status: 'present'
-    },
-    {
-      id: 'ATT-2',
-      employeeName: 'Priya Patel',
-      employeeCode: 'EMP-005',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=120',
-      department: 'Human Resources',
-      clockIn: '09:25 AM',
-      clockOut: '--:--',
-      totalHours: '05h 40m',
-      status: 'late'
-    },
-    {
-      id: 'ATT-3',
-      employeeName: 'Rohan Verma',
-      employeeCode: 'EMP-006',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=120',
-      department: 'Sales',
-      clockIn: '--:--',
-      clockOut: '--:--',
-      totalHours: '00h 00m',
-      status: 'on_leave'
-    },
-    {
-      id: 'ATT-4',
-      employeeName: 'Neha Gupta',
-      employeeCode: 'EMP-007',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=120',
-      department: 'Design',
-      clockIn: '--:--',
-      clockOut: '--:--',
-      totalHours: '00h 00m',
-      status: 'absent'
+  const loadDailyAttendance = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await getAdminDailyAttendance({ date: selectedDate });
+      const rawRecords = Array.isArray(res?.data?.records)
+        ? res.data.records
+        : Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+        ? res
+        : [];
+
+      setRecords(
+        rawRecords.map((att) => {
+          const emp = att.user || att.employee || {};
+          const formatTime = (timeStr) => {
+            if (!timeStr) return '--:--';
+            try {
+              const d = new Date(timeStr);
+              return !isNaN(d.getTime())
+                ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+                : timeStr;
+            } catch {
+              return timeStr;
+            }
+          };
+
+          const rawStatus = (att.status || 'absent').toLowerCase();
+          const hrs = att.workingHours || att.totalHours || '00:00:00';
+          const hrsFormatted = typeof hrs === 'number'
+            ? `${Math.floor(hrs / 3600)}h ${Math.floor((hrs % 3600) / 60)}m`
+            : hrs;
+
+          return {
+            id: att.id,
+            employeeName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name || emp.email || 'Employee',
+            employeeCode: emp.employeeCode || emp.id?.slice(0, 8) || 'EMP',
+            avatar: emp.avatar || '',
+            department: emp.departmentDetails?.name || emp.department || 'General',
+            clockIn: formatTime(att.punchInTime || att.punchIn),
+            clockOut: formatTime(att.punchOutTime || att.punchOut),
+            totalHours: hrsFormatted,
+            status: rawStatus
+          };
+        })
+      );
+    } catch (err) {
+      console.error('Failed to load attendance roster:', err);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  }, [selectedDate]);
+
+  useEffect(() => {
+    loadDailyAttendance();
+  }, [loadDailyAttendance]);
 
   const filtered = records.filter(
     (r) =>
       r.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.employeeCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const presentCount = records.filter((r) => r.status === 'present').length;
+  const lateCount = records.filter((r) => r.status === 'late').length;
+  const onLeaveCount = records.filter((r) => r.status === 'on_leave' || r.status === 'leave').length;
+  const absentCount = records.filter((r) => r.status === 'absent').length;
 
   return (
     <div className="space-y-6">
@@ -98,44 +116,46 @@ export const AttendancePage = () => {
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-slate-900">42 / 48</div>
+            <div className="text-2xl font-bold text-slate-900">{presentCount}</div>
             <div className="text-xs text-slate-500">Present Today</div>
           </div>
         </div>
+
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
             <AlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-amber-600">3</div>
+            <div className="text-2xl font-bold text-amber-600">{lateCount}</div>
             <div className="text-xs text-slate-500">Late Arrivals</div>
           </div>
         </div>
+
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-            <Calendar className="w-6 h-6" />
+            <Coffee className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-indigo-600">2</div>
-            <div className="text-xs text-slate-500">On Approved Leave</div>
+            <div className="text-2xl font-bold text-slate-900">{onLeaveCount}</div>
+            <div className="text-xs text-slate-500">On Leave</div>
           </div>
         </div>
+
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
             <XCircle className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-rose-600">1</div>
-            <div className="text-xs text-slate-500">Absent Without Notice</div>
+            <div className="text-2xl font-bold text-rose-600">{absentCount}</div>
+            <div className="text-xs text-slate-500">Absent</div>
           </div>
         </div>
       </div>
 
-      {/* Roster Table */}
+      {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-sm text-slate-800">Attendance Log for {selectedDate}</h3>
-          <div className="relative w-64">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="relative w-full sm:w-64">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -160,43 +180,55 @@ export const AttendancePage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/60">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <img src={item.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
-                      <div>
-                        <div className="font-semibold text-slate-900">{item.employeeName}</div>
-                        <div className="text-[11px] text-slate-400">{item.employeeCode}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">{item.department}</td>
-                  <td className="py-3 px-4 font-mono">{item.clockIn}</td>
-                  <td className="py-3 px-4 font-mono">{item.clockOut}</td>
-                  <td className="py-3 px-4 font-semibold text-slate-800">{item.totalHours}</td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        item.status === 'present'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : item.status === 'late'
-                          ? 'bg-amber-50 text-amber-700'
-                          : item.status === 'on_leave'
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : 'bg-rose-50 text-rose-700'
-                      }`}
-                    >
-                      {item.status.replace('_', ' ').toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer">
-                      Regularize
-                    </button>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="py-8 text-center text-slate-400">
+                    {isLoading ? 'Loading attendance records...' : 'No attendance records found for this date.'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/60">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        {item.avatar ? (
+                          <img src={item.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
+                            {(item.employeeName?.[0] || 'E').toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-semibold text-slate-900">{item.employeeName}</div>
+                          <div className="text-[11px] text-slate-400">{item.employeeCode}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">{item.department}</td>
+                    <td className="py-3 px-4 font-mono">{item.clockIn}</td>
+                    <td className="py-3 px-4 font-mono">{item.clockOut}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-800">{item.totalHours}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                          item.status === 'present'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : item.status === 'late'
+                            ? 'bg-amber-50 text-amber-700'
+                            : item.status === 'on_leave'
+                            ? 'bg-indigo-50 text-indigo-700'
+                            : 'bg-rose-50 text-rose-700'
+                        }`}
+                      >
+                        {item.status.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <span className="text-xs text-slate-400 font-medium">Logged</span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

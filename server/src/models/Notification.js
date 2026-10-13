@@ -28,9 +28,13 @@ const initNotificationModel = (sequelize) => {
         allowNull: false
       },
       type: {
-        type: DataTypes.ENUM('info', 'warning', 'success', 'error', 'announcement', 'leave', 'attendance', 'payroll'),
+        type: DataTypes.ENUM('info', 'warning', 'success', 'error', 'announcement', 'leave', 'attendance', 'payroll', 'resignation'),
         defaultValue: 'info',
         allowNull: false
+      },
+      actionUrl: {
+        type: DataTypes.STRING(255),
+        allowNull: true
       },
       isRead: {
         type: DataTypes.BOOLEAN,
