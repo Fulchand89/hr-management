@@ -9,7 +9,10 @@ const getBaseUrl = () => {
 
 const apiClient = axios.create({
   baseURL: getBaseUrl(),
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true'
+  },
   withCredentials: true
 });
 

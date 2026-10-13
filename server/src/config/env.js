@@ -18,11 +18,11 @@ const env = {
   // Database (Primary)
   DB: {
     DIALECT: process.env.DB_DIALECT || 'mysql',
-    HOST: process.env.DB_HOST || '127.0.0.1',
-    PORT: parseInt(process.env.DB_PORT, 10) || 3308,
-    NAME: process.env.DB_NAME || 'hr_management_db',
-    USER: process.env.DB_USER || 'root',
-    PASSWORD: process.env.DB_PASSWORD || '',
+    HOST: process.env.DB_HOST || (process.env.VERCEL ? 'srv1823.hstgr.io' : '127.0.0.1'),
+    PORT: parseInt(process.env.DB_PORT, 10) || (process.env.VERCEL ? 3306 : 3308),
+    NAME: process.env.DB_NAME || (process.env.VERCEL ? 'u879279162_camelcaravan' : 'hr_management_db'),
+    USER: process.env.DB_USER || (process.env.VERCEL ? 'u879279162_camelcaravan' : 'root'),
+    PASSWORD: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : (process.env.VERCEL ? 'CamelCaravan@123' : ''),
     LOGGING: process.env.DB_LOGGING === 'true',
     POOL: {
       max: parseInt(process.env.DB_POOL_MAX, 10) || 10,

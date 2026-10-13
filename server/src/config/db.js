@@ -40,7 +40,7 @@ if (process.env.NODE_ENV === 'test') {
 // ==========================================
 // 2. Secondary Database Connection (Hostinger Remote / DB2)
 // ==========================================
-if (process.env.NODE_ENV !== 'test' && env.DB2 && env.DB2.ENABLED) {
+if (process.env.NODE_ENV !== 'test' && env.DB2 && env.DB2.ENABLED && env.DB.HOST !== env.DB2.HOST) {
   try {
     sequelize2 = new Sequelize(env.DB2.NAME, env.DB2.USER, env.DB2.PASSWORD, {
       host: env.DB2.HOST,

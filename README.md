@@ -64,5 +64,23 @@ npm run dev
 
 ---
 
+## ⚡ Deployment on Vercel (One-Click Fullstack)
+
+The repository is configured for direct **Fullstack Deployment on Vercel**:
+1. Push your changes to GitHub:
+   ```bash
+   git add .
+   git commit -m "feat: configure Vercel fullstack deployment"
+   git push origin main
+   ```
+2. Go to **[vercel.com](https://vercel.com)** -> Click **Add New Project** -> Import `hr-management`.
+3. Keep default settings (Root directory: `./`).
+4. Click **Deploy**.
+   * Frontend (Vite SPA) is built into static assets.
+   * Backend REST API runs as a serverless function via `api/index.js`.
+   * Automatically connects to the cloud Hostinger MySQL database.
+
+---
+
 ## 📱 Mobile & App Developer Documentation
 Full OpenAPI / Swagger documentation with request bodies, schemas, and Postman import instructions is available in [SWAGGER_API_DOCS.md](./SWAGGER_API_DOCS.md).
