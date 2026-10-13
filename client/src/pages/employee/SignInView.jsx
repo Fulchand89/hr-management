@@ -70,9 +70,7 @@ export const SignInView = () => {
       return;
     }
 
-    if (role === 'admin') {
-      navigate('/admin/dashboard', { replace: true });
-    } else if (role === 'hr') {
+    if (role === 'admin' || role === 'hr') {
       navigate('/hr/dashboard', { replace: true });
     } else {
       navigate('/employee/dashboard', { replace: true });

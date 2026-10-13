@@ -520,17 +520,6 @@ export const HRLayout = ({
                     <Users className="w-4 h-4 text-[#8B1D2C]" /> Switch to Employee Portal
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileDropdownOpen(false);
-                      navigate('/admin/dashboard');
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 cursor-pointer font-semibold"
-                  >
-                    <LayoutDashboard className="w-4 h-4 text-indigo-500" /> Switch to Admin Portal
-                  </button>
-
                   <div className="my-1 border-t border-slate-100" />
 
                   <button

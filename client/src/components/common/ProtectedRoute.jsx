@@ -50,9 +50,7 @@ export const ProtectedRoute = ({ allowedRoles = [], children }) => {
   if (!isAuthorized) {
     // Determine user's authorized home portal based on their actual role
     const fallbackPath =
-      userRole === 'admin'
-        ? '/admin/dashboard'
-        : userRole === 'hr'
+      userRole === 'admin' || userRole === 'hr'
         ? '/hr/dashboard'
         : '/employee/dashboard';
 

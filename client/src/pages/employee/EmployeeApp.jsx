@@ -35,7 +35,7 @@ import {
   markNotificationRead
 } from '../../services/employeeService';
 
-export const EmployeeApp = ({ onSwitchToAdmin }) => {
+export const EmployeeApp = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, token, logout } = useAuth();
@@ -285,7 +285,6 @@ export const EmployeeApp = ({ onSwitchToAdmin }) => {
       onTakeBreak={handleTakeBreak}
       onEndBreak={handleEndBreak}
       onPunchOut={handlePunchOut}
-      onSwitchToAdmin={() => navigate('/admin/dashboard')}
       onSwitchToHR={() => navigate('/hr/dashboard')}
       unreadNotifications={unreadCount}
       onApplyLeaveClick={() => setIsApplyLeaveModalOpen(true)}

@@ -86,13 +86,6 @@ export const HRSignInView = ({ onSignIn }) => {
           >
             Employee Portal &rarr;
           </button>
-          <button
-            type="button"
-            onClick={() => navigate('/admin/dashboard')}
-            className="hidden sm:inline-flex px-3.5 py-1.5 rounded-xl bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold transition-all cursor-pointer backdrop-blur-md shadow-xs"
-          >
-            Admin Console &rarr;
-          </button>
         </div>
       </div>
 
