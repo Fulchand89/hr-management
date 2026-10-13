@@ -22,6 +22,7 @@ import {
   updateMyProfile
 } from '../../services/employeeService';
 import HRPayslipModal from '../hr/HRPayslipModal';
+import { PageSkeleton } from '../../components/common/Skeleton';
 
 const MONTH_NAMES = [
   '', 'January', 'February', 'March', 'April', 'May', 'June',
@@ -222,12 +223,7 @@ export const EmployeeSalaryView = () => {
   const availableYears = Array.from(new Set(payslips.map((s) => s.year))).filter(Boolean);
 
   if (loading) {
-    return (
-      <div className="p-16 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200/80 max-w-4xl mx-auto my-8">
-        <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-        <p className="text-xs font-semibold text-slate-500">Loading salary details...</p>
-      </div>
-    );
+    return <PageSkeleton statsCount={4} tableRows={4} />;
   }
 
   return (

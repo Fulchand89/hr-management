@@ -299,6 +299,9 @@ export const HRApp = () => {
             />
           }
         />
+        <Route path="live-attendance" element={<Navigate to="/hr/attendance" replace />} />
+        <Route path="timer" element={<Navigate to="/hr/attendance" replace />} />
+        <Route path="punch" element={<Navigate to="/hr/attendance" replace />} />
 
         {/* Monthly Attendance Records */}
         <Route
@@ -309,16 +312,29 @@ export const HRApp = () => {
           path="myattendance"
           element={<HRMyAttendanceView onBack={() => navigate('/hr/dashboard')} />}
         />
+        <Route path="attendance-log" element={<Navigate to="/hr/my-attendance" replace />} />
+        <Route path="attendance-history" element={<Navigate to="/hr/my-attendance" replace />} />
 
         {/* Staff Attendance Records */}
         <Route
           path="staff-attendance"
           element={<HRStaffAttendance />}
         />
+        <Route path="staffattendance" element={<HRStaffAttendance />} />
+        <Route path="attendance/staff" element={<HRStaffAttendance />} />
+        <Route path="employee-attendance" element={<HRStaffAttendance />} />
 
         {/* Employee Lifecycle Management */}
         <Route
           path="employees"
+          element={<HREmployeeManagementView />}
+        />
+        <Route
+          path="employee"
+          element={<Navigate to="/hr/employees" replace />}
+        />
+        <Route
+          path="employee-management"
           element={<HREmployeeManagementView />}
         />
         <Route
@@ -331,6 +347,18 @@ export const HRApp = () => {
         />
         <Route
           path="employees/new"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employee/add"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employee/create"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employee/new"
           element={<HRAddEmployeeView />}
         />
         <Route
@@ -350,7 +378,19 @@ export const HRApp = () => {
           element={<HREmployeeProfileDetailView />}
         />
         <Route
+          path="employee/:id"
+          element={<HREmployeeProfileDetailView />}
+        />
+        <Route
           path="employees/:id/edit"
+          element={<HRAddEmployeeView isEdit={true} />}
+        />
+        <Route
+          path="employee/:id/edit"
+          element={<HRAddEmployeeView isEdit={true} />}
+        />
+        <Route
+          path="employees/edit/:id"
           element={<HRAddEmployeeView isEdit={true} />}
         />
         <Route
@@ -358,47 +398,98 @@ export const HRApp = () => {
           element={<HREmployeeSalaryView />}
         />
         <Route
+          path="employee/:id/salary"
+          element={<HREmployeeSalaryView />}
+        />
+        <Route
           path="employees/:id/status"
           element={<HREmployeeStatusView />}
         />
         <Route
-          path="employee-management"
-          element={<HREmployeeManagementView />}
+          path="employee/:id/status"
+          element={<HREmployeeStatusView />}
+        />
+
+        {/* KYC Verification & Document Audit Direct Routes */}
+        <Route
+          path="kyc"
+          element={<HREmployeeManagementView defaultTab="kyc" />}
+        />
+        <Route
+          path="kyc-verification"
+          element={<HREmployeeManagementView defaultTab="kyc" />}
+        />
+        <Route
+          path="kyc-documents"
+          element={<HREmployeeManagementView defaultTab="kyc" />}
+        />
+        <Route
+          path="documents"
+          element={<HREmployeeManagementView defaultTab="kyc" />}
+        />
+        <Route
+          path="kyc/:docId"
+          element={<HRKycDocumentDetailView />}
+        />
+        <Route
+          path="documents/:docId"
+          element={<HRKycDocumentDetailView />}
         />
 
         {/* Payroll & Compensation */}
         <Route path="payroll" element={<HRPayrollView />} />
         <Route path="payroll/process" element={<HRPayrollProcessView />} />
+        <Route path="payroll/:id" element={<HRPayslipDetailView />} />
         <Route path="payroll/:id/payslip" element={<HRPayslipDetailView />} />
+        <Route path="payroll/payslip/:id" element={<HRPayslipDetailView />} />
         <Route path="payroll/:id/adjust" element={<HRPayrollAdjustView />} />
+        <Route path="payroll/adjust/:id" element={<HRPayrollAdjustView />} />
+        <Route path="payslip/:id" element={<HRPayslipDetailView />} />
+        <Route path="payslips/:id" element={<HRPayslipDetailView />} />
+        <Route path="payslips" element={<Navigate to="/hr/payroll" replace />} />
+        <Route path="salary" element={<Navigate to="/hr/payroll" replace />} />
 
         {/* Leaves & Requests View */}
         <Route
           path="leaves"
           element={<HRLeavesView onBack={() => navigate('/hr/dashboard')} />}
         />
+        <Route path="my-leaves" element={<Navigate to="/hr/leaves" replace />} />
+        <Route path="myleaves" element={<Navigate to="/hr/leaves" replace />} />
 
         {/* Attendance Corrections (HR Queue) */}
         <Route path="attendance-correction" element={<HRAttendanceCorrectionView />} />
         <Route path="attendance-correction/:id" element={<HRAttendanceCorrectionDetailView />} />
+        <Route path="attendance-corrections" element={<HRAttendanceCorrectionView />} />
+        <Route path="attendance-corrections/:id" element={<HRAttendanceCorrectionDetailView />} />
+        <Route path="corrections" element={<HRAttendanceCorrectionView />} />
+        <Route path="corrections/:id" element={<HRAttendanceCorrectionDetailView />} />
 
         {/* Holiday Management */}
         <Route path="holidays" element={<HRHolidayManagementView />} />
         <Route path="holiday-management" element={<HRHolidayManagementView />} />
+        <Route path="holiday" element={<HRHolidayManagementView />} />
+        <Route path="holiday-calendar" element={<HRHolidayManagementView />} />
 
         {/* Workforce Reports */}
         <Route path="reports" element={<HRReportsView />} />
+        <Route path="report" element={<HRReportsView />} />
 
         {/* Staff Leave Applications (HR Queue) */}
         <Route path="leave-requests" element={<HRLeaveRequestsView />} />
         <Route path="leave-requests/:id" element={<HRLeaveRequestDetailView />} />
+        <Route path="leave-request/:id" element={<HRLeaveRequestDetailView />} />
+        <Route path="leave-request" element={<Navigate to="/hr/leave-requests" replace />} />
         <Route path="leave-detail" element={<HRLeaveRequestDetailView />} />
+        <Route path="leave-detail/:id" element={<HRLeaveRequestDetailView />} />
+        <Route path="leave-approvals" element={<Navigate to="/hr/leave-requests" replace />} />
 
         {/* Notifications Hub View */}
         <Route
           path="notifications"
           element={<HRNotificationsView onBack={() => navigate('/hr/dashboard')} />}
         />
+        <Route path="notification" element={<Navigate to="/hr/notifications" replace />} />
 
         {/* Profile View */}
         <Route
@@ -410,6 +501,7 @@ export const HRApp = () => {
             />
           }
         />
+        <Route path="my-profile" element={<Navigate to="/hr/profile" replace />} />
 
         {/* HR Policies & SOPs Administration */}
         <Route
@@ -417,7 +509,23 @@ export const HRApp = () => {
           element={<HRPolicyManagementView />}
         />
         <Route
+          path="policy"
+          element={<HRPolicyManagementView />}
+        />
+        <Route
+          path="policy-management"
+          element={<HRPolicyManagementView />}
+        />
+        <Route
           path="policies/add"
+          element={<HRAddPolicyView />}
+        />
+        <Route
+          path="policies/new"
+          element={<HRAddPolicyView />}
+        />
+        <Route
+          path="policies/create"
           element={<HRAddPolicyView />}
         />
         <Route
@@ -428,16 +536,40 @@ export const HRApp = () => {
           path="policies/edit/:id"
           element={<HREditPolicyView />}
         />
+        <Route
+          path="policies/:id"
+          element={<HREditPolicyView />}
+        />
 
         {/* Appraisal & Increment Cycles */}
         <Route
           path="appraisals"
           element={<HRAppraisalManagementView />}
         />
+        <Route
+          path="appraisal"
+          element={<HRAppraisalManagementView />}
+        />
+        <Route
+          path="performance"
+          element={<HRAppraisalManagementView />}
+        />
+        <Route
+          path="reviews"
+          element={<HRAppraisalManagementView />}
+        />
 
         {/* Resignation, Notice & Exit Clearance */}
         <Route
           path="exit-management"
+          element={<HRExitManagementView />}
+        />
+        <Route
+          path="exit"
+          element={<HRExitManagementView />}
+        />
+        <Route
+          path="exits"
           element={<HRExitManagementView />}
         />
         <Route
@@ -448,17 +580,15 @@ export const HRApp = () => {
           path="resignation"
           element={<HRExitManagementView />}
         />
+        <Route
+          path="resignation-management"
+          element={<HRExitManagementView />}
+        />
 
         {/* Candidate Referrals & Spot Rewards (Removed - Redirect to Dashboard) */}
         <Route
           path="referrals-rewards"
           element={<Navigate to="/hr/dashboard" replace />}
-        />
-
-        {/* Employee KYC Documents Verification (Redirect to Employees tab) */}
-        <Route
-          path="kyc-documents"
-          element={<Navigate to="/hr/employees?tab=kyc" replace />}
         />
 
         {/* Fallback */}

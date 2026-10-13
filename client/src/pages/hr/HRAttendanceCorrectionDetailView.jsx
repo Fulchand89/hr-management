@@ -18,6 +18,7 @@ import {
   getAttendanceCorrectionById,
   actionAttendanceCorrection
 } from '../../services/hrService';
+import { PageSkeleton } from '../../components/common/Skeleton';
 
 export const HRAttendanceCorrectionDetailView = () => {
   const navigate = useNavigate();
@@ -106,9 +107,8 @@ export const HRAttendanceCorrectionDetailView = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto py-16 text-center space-y-3">
-        <Clock className="w-8 h-8 text-[#8B1D2C] animate-spin mx-auto" />
-        <p className="text-xs text-slate-500 font-semibold">Loading correction details from server...</p>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <PageSkeleton />
       </div>
     );
   }

@@ -9,6 +9,8 @@
     "migrate": "node migrate.js up",
     "migrate:undo": "node migrate.js down",
     "seed": "node seed.js",
+    "sync:dbs": "node src/utils/syncDatabases.js",
+    "sync:dbs:pull": "node src/utils/syncDatabases.js --from-remote",
     "test": "cross-env NODE_ENV=test jest --runInBand --forceExit"
   },
   "keywords": [],

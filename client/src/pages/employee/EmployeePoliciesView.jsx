@@ -13,6 +13,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { getPolicies } from '../../services/policyService';
+import { PageSkeleton } from '../../components/common/Skeleton';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Categories' },
@@ -77,6 +78,10 @@ export const EmployeePoliciesView = () => {
     if (statusFilter === 'signed') return p.isAcknowledged;
     return true;
   });
+
+  if (isLoading) {
+    return <PageSkeleton statsCount={3} tableRows={4} />;
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-16">

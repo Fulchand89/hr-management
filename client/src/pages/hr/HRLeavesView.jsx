@@ -21,6 +21,7 @@ import {
   getLeaveBalance,
   cancelLeave as apiCancelLeave
 } from '../../services/hrService';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const HRLeavesView = ({ onBack }) => {
   const navigate = useNavigate();
@@ -284,10 +285,7 @@ export const HRLeavesView = ({ onBack }) => {
         {/* Leave Requests Table */}
         <div className="overflow-x-auto pt-2">
           {isLoading ? (
-            <div className="py-12 flex items-center justify-center gap-2 text-slate-500 text-xs">
-              <Loader2 className="w-5 h-5 animate-spin text-[#8B1D2C]" />
-              <span>Loading leave records...</span>
-            </div>
+            <SkeletonTable rows={5} cols={7} hasHeader={false} />
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>

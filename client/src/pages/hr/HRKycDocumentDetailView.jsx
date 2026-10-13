@@ -26,9 +26,11 @@ import {
   verifyEmployeeDocument,
   deleteEmployeeDocument
 } from '../../services/hrService';
+import { PageSkeleton } from '../../components/common/Skeleton';
 
 export const HRKycDocumentDetailView = () => {
-  const { docId } = useParams();
+  const { docId, id } = useParams();
+  const targetDocId = docId || id;
   const navigate = useNavigate();
 
   const [document, setDocument] = useState(null);
@@ -47,11 +49,11 @@ export const HRKycDocumentDetailView = () => {
   };
 
   const fetchDocument = async () => {
-    if (!docId) return;
+    if (!targetDocId) return;
     setIsLoading(true);
     setErrorMessage('');
     try {
-      const res = await getEmployeeDocumentById(docId);
+      const res = await getEmployeeDocumentById(targetDocId);
       const data = res?.data || res;
       setDocument(data);
     } catch (err) {
@@ -64,12 +66,12 @@ export const HRKycDocumentDetailView = () => {
 
   useEffect(() => {
     fetchDocument();
-  }, [docId]);
+  }, [targetDocId]);
 
   const handleVerify = async () => {
     setIsSubmitting(true);
     try {
-      await verifyEmployeeDocument(docId, { status: 'verified', remarks: 'Verified by HR' });
+      await verifyEmployeeDocument(targetDocId, { status: 'verified', remarks: 'Verified by HR' });
       showToast('Document successfully verified and marked Active!');
       await fetchDocument();
     } catch (err) {
@@ -83,7 +85,7 @@ export const HRKycDocumentDetailView = () => {
     const reason = rejectReason.trim() || 'Document illegible or invalid details';
     setIsSubmitting(true);
     try {
-      await verifyEmployeeDocument(docId, {
+      await verifyEmployeeDocument(targetDocId, {
         status: 'rejected',
         remarks: reason
       });
@@ -101,7 +103,7 @@ export const HRKycDocumentDetailView = () => {
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to permanently delete this document record?')) return;
     try {
-      await deleteEmployeeDocument(docId);
+      await deleteEmployeeDocument(targetDocId);
       alert('Document deleted successfully.');
       navigate('/hr/employees?tab=kyc');
     } catch (err) {
@@ -111,9 +113,8 @@ export const HRKycDocumentDetailView = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto py-16 flex flex-col items-center justify-center gap-3 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-        <span className="text-xs font-semibold">Loading document verification details...</span>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <PageSkeleton />
       </div>
     );
   }

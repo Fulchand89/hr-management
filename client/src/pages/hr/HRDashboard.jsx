@@ -28,6 +28,7 @@ import {
   getEmployeeDashboard,
   getAdminDailyAttendance
 } from '../../services/hrService';
+import { DashboardSkeleton } from '../../components/common/Skeleton';
 
 export const HRDashboard = ({
   attendanceStatus = 'NOT_PUNCHED_IN',
@@ -98,9 +99,11 @@ export const HRDashboard = ({
 
   // Staff Attendance state
   const [staffAttendance, setStaffAttendance] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch dynamic personal and HR workforce dashboard metrics
   const fetchDashboard = useCallback(async () => {
+    setIsLoading(true);
     try {
       const [hrRes, empRes, staffRes] = await Promise.all([
         getHRDashboard().catch(() => null),
@@ -179,6 +182,8 @@ export const HRDashboard = ({
       }
     } catch (err) {
       console.error('Failed to load dashboard metrics:', err?.message);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -196,6 +201,10 @@ export const HRDashboard = ({
     if (onNavigateToAttendance) onNavigateToAttendance();
     else navigate('/hr/attendance');
   };
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="space-y-6">

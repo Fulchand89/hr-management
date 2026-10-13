@@ -269,7 +269,20 @@ export const HRHolidayManagementView = () => {
 
       {/* Holiday Cards List matching user screenshot */}
       <div className="space-y-2.5">
-        {filteredHolidays.length === 0 ? (
+        {isLoading ? (
+          [1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex items-center justify-between gap-4 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-slate-200 shrink-0" />
+                <div className="space-y-2">
+                  <div className="h-4 w-40 bg-slate-200 rounded" />
+                  <div className="h-3 w-24 bg-slate-100 rounded" />
+                </div>
+              </div>
+              <div className="h-6 w-20 bg-slate-200 rounded-full" />
+            </div>
+          ))
+        ) : filteredHolidays.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-2xs space-y-3">
             <Calendar className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="text-sm font-bold text-slate-700">No holidays found for {selectedYear}</h3>

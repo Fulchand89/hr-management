@@ -19,11 +19,13 @@ const resignationRoutes = require('./resignation.routes');
 const referralRoutes = require('./referral.routes');
 const appraisalRoutes = require('./appraisal.routes');
 const assetRoutes = require('./asset.routes');
-const { sequelize } = require('../config/db');
+const { sequelize, sequelize2 } = require('../config/db');
 
 // Health Check Endpoint
 router.get('/health', async (req, res) => {
   let dbStatus = 'disconnected';
+  let db2Status = 'not_configured';
+
   try {
     await sequelize.authenticate();
     dbStatus = 'connected';
@@ -31,11 +33,21 @@ router.get('/health', async (req, res) => {
     dbStatus = `error: ${err.message}`;
   }
 
+  if (sequelize2) {
+    try {
+      await sequelize2.authenticate();
+      db2Status = 'connected';
+    } catch (err) {
+      db2Status = `error: ${err.message}`;
+    }
+  }
+
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()),
     database: dbStatus,
+    database_secondary: db2Status,
     environment: process.env.NODE_ENV || 'development'
   });
 });

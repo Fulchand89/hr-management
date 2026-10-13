@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CalendarClock,
   Clock,
@@ -7,7 +7,6 @@ import {
   XCircle,
   AlertCircle,
   Search,
-  Filter,
   Plus,
   RefreshCw,
   ArrowRight,
@@ -15,31 +14,24 @@ import {
   Calendar,
   UserCheck,
   ShieldCheck,
-  MessageSquare,
   Eye,
-  X,
-  FileClock,
-  ChevronRight
+  X
 } from 'lucide-react';
 
 import { getMyAttendanceCorrections } from '../../services/employeeService';
 import { useAuth } from '../../context/AuthContext';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { user, token } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { token } = useAuth();
 
   // Search, filter & list states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'approved' | 'rejected'
-  const [dateFilter, setDateFilter] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [correctionRequests, setCorrectionRequests] = useState([]);
-  const [toastMessage, setToastMessage] = useState('');
-
-  // Modals
   const [selectedCorrectionDetail, setSelectedCorrectionDetail] = useState(null);
 
   // Redirect to dedicated new request route if action=new or new=1 in URL
@@ -138,13 +130,8 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
   // Filtered requests list
   const filteredRequests = useMemo(() => {
     return correctionRequests.filter((r) => {
-      // Status filter
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
 
-      // Date filter
-      if (dateFilter && r.rawDate && !r.rawDate.startsWith(dateFilter)) return false;
-
-      // Text search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesDate = r.date.toLowerCase().includes(q) || r.dayName.toLowerCase().includes(q);
@@ -159,79 +146,52 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
 
       return true;
     });
-  }, [correctionRequests, statusFilter, dateFilter, searchQuery]);
-
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 4000);
-  };
+  }, [correctionRequests, statusFilter, searchQuery]);
 
   return (
-    <div className="space-y-6">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-top-2 duration-200">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{toastMessage}</span>
+    <div className="space-y-6 max-w-7xl mx-auto font-sans">
+      {/* ── 1. Page Header & Actions ─────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+            Attendance Corrections
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Track timing regularizations, missed clock-ins & HR approval decisions
+          </p>
         </div>
-      )}
 
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#5C101B] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg border border-slate-800">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full bg-[#8B1D2C] opacity-30 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 right-48 -mb-10 w-48 h-48 rounded-full bg-amber-500 opacity-20 blur-2xl pointer-events-none" />
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              if (onBack) onBack();
+              else navigate('/employee/my-attendance');
+            }}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-500" />
+            <span>Back to Attendance</span>
+          </button>
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-rose-200 backdrop-blur-xs flex items-center gap-1.5">
-                <FileClock className="w-3.5 h-3.5" />
-                Regularization & Corrections
-              </span>
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                HR Approval Workflow
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
-              Attendance Correction Requests
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
-              Submit punch timing adjustments for missed clock-ins, on-duty visits, or technical errors and track real-time HR approval status.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
-            <button
-              type="button"
-              onClick={() => {
-                if (onBack) onBack();
-                else navigate('/employee/my-attendance');
-              }}
-              className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Attendance</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/employee/attendance-correction/new')}
-              className="px-4 sm:px-5 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-md shadow-[#8B1D2C]/40 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Request Correction</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/employee/attendance-correction/new')}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-xs cursor-pointer transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Request Correction</span>
+          </button>
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── 2. KPI Summary Cards ─────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Total Requests */}
         <div
           onClick={() => setStatusFilter('all')}
-          className={`bg-white rounded-2xl p-5 border shadow-2xs hover:border-slate-300 transition-all cursor-pointer ${
-            statusFilter === 'all' ? 'border-[#8B1D2C] ring-2 ring-[#8B1D2C]/10' : 'border-slate-200/80'
+          className={`bg-white rounded-2xl p-4 border shadow-2xs transition-all cursor-pointer ${
+            statusFilter === 'all' ? 'border-[#8B1D2C] ring-2 ring-[#8B1D2C]/10' : 'border-slate-200/80 hover:border-slate-300'
           }`}
         >
           <div className="flex items-center justify-between">
@@ -244,24 +204,21 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
             <span className="text-2xl font-black text-slate-900 font-mono">
               {String(counts.all).padStart(2, '0')}
             </span>
-            <span className="text-xs text-slate-400 font-medium">All applications</span>
-          </div>
-          <div className="mt-2 text-[11px] font-semibold text-slate-500 flex items-center gap-1">
-            <span>Overall submissions</span>
+            <span className="text-xs text-slate-400 font-medium">All submissions</span>
           </div>
         </div>
 
-        {/* Pending HR Review */}
+        {/* Pending Review */}
         <div
           onClick={() => setStatusFilter('pending')}
-          className={`bg-white rounded-2xl p-5 border shadow-2xs hover:border-amber-300 transition-all cursor-pointer ${
-            statusFilter === 'pending' ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-slate-200/80'
+          className={`bg-white rounded-2xl p-4 border shadow-2xs transition-all cursor-pointer ${
+            statusFilter === 'pending' ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-slate-200/80 hover:border-amber-300'
           }`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-amber-700">Pending Review</span>
             <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-              <Clock className="w-4 h-4 animate-spin-slow" />
+              <Clock className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
@@ -270,21 +227,17 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
             </span>
             <span className="text-xs text-amber-600 font-medium">Awaiting HR</span>
           </div>
-          <div className="mt-2 text-[11px] font-semibold text-amber-600 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            <span>Under evaluation</span>
-          </div>
         </div>
 
         {/* Approved by HR */}
         <div
           onClick={() => setStatusFilter('approved')}
-          className={`bg-white rounded-2xl p-5 border shadow-2xs hover:border-emerald-300 transition-all cursor-pointer ${
-            statusFilter === 'approved' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200/80'
+          className={`bg-white rounded-2xl p-4 border shadow-2xs transition-all cursor-pointer ${
+            statusFilter === 'approved' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200/80 hover:border-emerald-300'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-700">Approved by HR</span>
+            <span className="text-xs font-semibold text-emerald-700">Approved</span>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
               <CheckCircle2 className="w-4 h-4" />
             </div>
@@ -295,21 +248,17 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
             </span>
             <span className="text-xs text-emerald-600 font-medium">Regularized</span>
           </div>
-          <div className="mt-2 text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-            <UserCheck className="w-3 h-3" />
-            <span>Attendance adjusted</span>
-          </div>
         </div>
 
         {/* Rejected */}
         <div
           onClick={() => setStatusFilter('rejected')}
-          className={`bg-white rounded-2xl p-5 border shadow-2xs hover:border-rose-300 transition-all cursor-pointer ${
-            statusFilter === 'rejected' ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-slate-200/80'
+          className={`bg-white rounded-2xl p-4 border shadow-2xs transition-all cursor-pointer ${
+            statusFilter === 'rejected' ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-slate-200/80 hover:border-rose-300'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-700">Rejected Requests</span>
+            <span className="text-xs font-semibold text-rose-700">Rejected</span>
             <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
               <XCircle className="w-4 h-4" />
             </div>
@@ -320,21 +269,17 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
             </span>
             <span className="text-xs text-rose-600 font-medium">Declined</span>
           </div>
-          <div className="mt-2 text-[11px] font-semibold text-rose-600 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            <span>Check HR remarks</span>
-          </div>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-5">
+      {/* ── 3. Requests Table Card ───────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
         {/* Filter Controls Row */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-1 bg-slate-50 rounded-2xl border border-slate-200/80 w-fit">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Status Filter Buttons */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {[
-              { id: 'all', label: 'All Requests', count: counts.all },
+              { id: 'all', label: 'All', count: counts.all },
               { id: 'pending', label: 'Pending', count: counts.pending },
               { id: 'approved', label: 'Approved', count: counts.approved },
               { id: 'rejected', label: 'Rejected', count: counts.rejected }
@@ -348,12 +293,12 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                     active
                       ? 'bg-[#8B1D2C] text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                      : 'bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200/60'
                   }`}
                 >
                   <span>{tab.label}</span>
                   <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                       active ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                     }`}
                   >
@@ -364,118 +309,94 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
             })}
           </div>
 
-          {/* Search, Date Filter & Refresh */}
-          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
-            {/* Search Input */}
+          {/* Search & Refresh */}
+          <div className="flex items-center gap-2.5">
             <div className="relative flex-1 sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search date, punch, reason..."
+                placeholder="Search date, type, reason..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#8B1D2C] focus:ring-1 focus:ring-[#8B1D2C] transition-all bg-white"
+                className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#8B1D2C] transition-all bg-white"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3 h-3" />
                 </button>
               )}
             </div>
 
-            {/* Date month/year selector */}
-            <input
-              type="month"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 focus:outline-hidden focus:border-[#8B1D2C] bg-white cursor-pointer"
-              title="Filter by Month"
-            />
-            {dateFilter && (
-              <button
-                type="button"
-                onClick={() => setDateFilter('')}
-                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 text-xs"
-                title="Clear Month Filter"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-
-            {/* Reload Button */}
             <button
               type="button"
               onClick={loadCorrections}
               disabled={isLoading}
               title="Refresh requests"
-              className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-50"
+              className="p-2 rounded-xl border border-slate-200/80 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#8B1D2C]' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#8B1D2C]' : ''}`} />
             </button>
           </div>
         </div>
 
-        {/* Requests Table */}
+        {/* Requests Table Content */}
         {isLoading ? (
-          <div className="py-20 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-3">
-            <RefreshCw className="w-6 h-6 animate-spin text-[#8B1D2C]" />
-            <span className="font-semibold">Loading your attendance corrections...</span>
-          </div>
+          <SkeletonTable rows={5} cols={7} hasHeader={false} />
         ) : filteredRequests.length === 0 ? (
-          <div className="py-20 text-center">
-            <div className="w-16 h-16 rounded-3xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center mx-auto mb-4 border border-rose-100">
-              <CalendarClock className="w-8 h-8" />
+          <div className="py-16 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center mx-auto mb-3 border border-rose-100">
+              <CalendarClock className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-800">No Attendance Correction Requests</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-5 leading-relaxed">
-              {searchQuery || statusFilter !== 'all' || dateFilter
-                ? 'No requests match your selected filters. Try clearing filters to see your full history.'
-                : 'Need to adjust a missed punch or delayed attendance? Submit a correction request for HR review.'}
+            <h3 className="text-sm font-bold text-slate-800">No Attendance Correction Requests</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-4 leading-relaxed">
+              {searchQuery || statusFilter !== 'all'
+                ? 'No requests match your selected filters. Try clearing filters.'
+                : 'Need to adjust a missed punch? Submit a correction request for HR review.'}
             </p>
             <button
               type="button"
               onClick={() => navigate('/employee/attendance-correction/new')}
-              className="px-5 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer inline-flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
             >
-              <Plus className="w-4 h-4" />
-              <span>Submit New Correction Request</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Submit Correction</span>
             </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3 px-4">Attendance Date</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Time Adjustment</th>
-                  <th className="py-3 px-4">Reason Given</th>
-                  <th className="py-3 px-4">Approval Status</th>
-                  <th className="py-3 px-4">HR Feedback</th>
-                  <th className="py-3 px-4 text-right">Action</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-3 px-4 whitespace-nowrap">Attendance Date</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Category</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Time Adjustment</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Reason</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Status</th>
+                  <th className="py-3 px-4 whitespace-nowrap">HR Feedback</th>
+                  <th className="py-3 px-4 text-right whitespace-nowrap">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
+              <tbody className="divide-y divide-slate-100">
                 {filteredRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50/80 transition-colors group">
+                  <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Attendance Date */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="font-bold text-slate-900 flex items-center gap-2">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
                         <span>{req.date}</span>
                       </div>
-                      <div className="text-[11px] text-slate-400 pl-5.5">
+                      <div className="text-[11px] text-slate-400 pl-5">
                         {req.dayName} &bull; {req.submittedAt}
                       </div>
                     </td>
 
                     {/* Category */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="font-semibold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60 inline-flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200/60 inline-flex items-center gap-1 text-[11px]">
                         <Clock className="w-3 h-3 text-[#8B1D2C]" />
                         {req.punchType}
                       </span>
@@ -483,10 +404,10 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
 
                     {/* Time Adjustment */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 font-mono">
+                      <div className="flex items-center gap-1.5 font-mono">
                         <span className="text-slate-500 text-xs">{req.originalTime}</span>
                         <ArrowRight className="w-3 h-3 text-slate-400" />
-                        <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                        <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 text-xs">
                           {req.requestedTime}
                         </span>
                       </div>
@@ -502,7 +423,7 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
                     {/* Status Badge */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                           req.status === 'approved'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : req.status === 'rejected'
@@ -535,7 +456,7 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
                             {req.actionReason}
                           </p>
                           {req.reviewer && (
-                            <span className="text-[10px] text-slate-400">By {req.reviewer}</span>
+                            <span className="text-[10px] text-slate-400 block">By {req.reviewer}</span>
                           )}
                         </div>
                       ) : req.status === 'pending' ? (
@@ -545,12 +466,12 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
                       )}
                     </td>
 
-                    {/* Actions */}
+                    {/* Action */}
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => setSelectedCorrectionDetail(req)}
-                        className="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-100 hover:text-slate-900 text-slate-600 font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                        className="px-2.5 py-1 rounded-lg border border-slate-200/80 hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-1"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>View</span>
@@ -564,37 +485,37 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
         )}
       </div>
 
-      {/* Detail Drawer Modal */}
+      {/* ── 4. Detail Modal ─────────────────────────────────────────── */}
       {selectedCorrectionDetail && (
-        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
           <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
             onClick={() => setSelectedCorrectionDetail(null)}
           />
 
-          <div className="relative bg-white rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 sm:p-7 shadow-2xl border border-slate-100 z-10 animate-in fade-in zoom-in-95 duration-150 space-y-5">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center font-bold">
-                  <CalendarClock className="w-5 h-5" />
+          <div className="relative bg-white rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl border border-slate-100 z-10 animate-in fade-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center font-bold">
+                  <CalendarClock className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Attendance Correction Details</h3>
-                  <p className="text-xs text-slate-500">Request ID #{selectedCorrectionDetail.id}</p>
+                  <h3 className="text-sm font-bold text-slate-900">Correction Request Details</h3>
+                  <p className="text-[11px] text-slate-400">Request #{selectedCorrectionDetail.id}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedCorrectionDetail(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Status Pill Card */}
             <div
-              className={`p-4 rounded-2xl border flex items-center justify-between ${
+              className={`p-3.5 rounded-2xl border flex items-center justify-between ${
                 selectedCorrectionDetail.status === 'approved'
                   ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800'
                   : selectedCorrectionDetail.status === 'rejected'
@@ -603,8 +524,8 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
               }`}
             >
               <div>
-                <span className="text-xs font-semibold block">Application Status</span>
-                <span className="text-sm font-black capitalize">
+                <span className="text-[10px] font-semibold block uppercase">Status</span>
+                <span className="text-xs font-bold capitalize">
                   {selectedCorrectionDetail.status === 'approved'
                     ? 'Approved by HR'
                     : selectedCorrectionDetail.status === 'rejected'
@@ -612,30 +533,30 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
                     : 'Pending HR Review'}
                 </span>
               </div>
-              <div className="text-right text-xs">
+              <div className="text-right text-[11px]">
                 <span className="text-slate-500 block">Submitted On</span>
                 <span className="font-semibold text-slate-800">{selectedCorrectionDetail.submittedAt}</span>
               </div>
             </div>
 
             {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-3.5 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs">
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs">
               <div>
-                <span className="text-slate-400 block font-medium">Attendance Date</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Date</span>
                 <span className="font-bold text-slate-900 mt-0.5 block">{selectedCorrectionDetail.date}</span>
               </div>
               <div>
-                <span className="text-slate-400 block font-medium">Category</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Category</span>
                 <span className="font-bold text-slate-900 mt-0.5 block">{selectedCorrectionDetail.punchType}</span>
               </div>
               <div>
-                <span className="text-slate-400 block font-medium">Recorded Time</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Recorded Time</span>
                 <span className="font-mono font-semibold text-slate-700 mt-0.5 block">
                   {selectedCorrectionDetail.originalTime}
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block font-medium">Requested Correction</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Requested Time</span>
                 <span className="font-mono font-bold text-emerald-700 mt-0.5 block">
                   {selectedCorrectionDetail.requestedTime}
                 </span>
@@ -644,8 +565,8 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
 
             {/* Employee Reason */}
             <div>
-              <span className="text-xs font-bold text-slate-700 block mb-1.5">Submitted Reason</span>
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed">
+              <span className="text-xs font-bold text-slate-700 block mb-1">Reason Submitted</span>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-800 leading-relaxed">
                 {selectedCorrectionDetail.reason}
               </div>
             </div>
@@ -653,27 +574,27 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
             {/* HR Decision & Feedback */}
             {selectedCorrectionDetail.actionReason && (
               <div>
-                <span className="text-xs font-bold text-slate-700 block mb-1.5">HR Official Feedback</span>
-                <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
-                  <div className="flex items-center gap-1.5 font-bold mb-1">
+                <span className="text-xs font-bold text-slate-700 block mb-1">HR Feedback</span>
+                <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
+                  <div className="flex items-center gap-1 font-bold mb-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-[#8B1D2C]" />
                     <span>Review Remark</span>
                   </div>
                   <p>{selectedCorrectionDetail.actionReason}</p>
                   {selectedCorrectionDetail.reviewer && (
-                    <span className="block mt-2 text-[11px] text-amber-700 font-semibold">
-                      Action Taken By: {selectedCorrectionDetail.reviewer}
+                    <span className="block mt-1.5 text-[10px] text-amber-700 font-semibold">
+                      Reviewed by: {selectedCorrectionDetail.reviewer}
                     </span>
                   )}
                 </div>
               </div>
             )}
 
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={() => setSelectedCorrectionDetail(null)}
-                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
+                className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -681,7 +602,6 @@ export const EmployeeAttendanceCorrectionView = ({ onBack }) => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

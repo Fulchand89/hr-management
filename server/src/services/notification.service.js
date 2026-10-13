@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Notification } = require('../models');
+const { Notification, User } = require('../models');
 const { NotFoundError, ForbiddenError } = require('../utils/apiError');
 const logger = require('../config/logger');
 
@@ -82,13 +82,14 @@ const markAllAsRead = async (userId) => {
 /**
  * 5. Create a notification (internal — called by other services)
  */
-const createNotification = async (userId, { title, message, type = 'info' }) => {
+const createNotification = async (userId, { title, message, type = 'info', actionUrl = null }) => {
   try {
     const notification = await Notification.create({
       userId,
       title,
       message,
       type,
+      actionUrl,
       isRead: false
     });
     return notification;
@@ -98,10 +99,58 @@ const createNotification = async (userId, { title, message, type = 'info' }) => 
   }
 };
 
+/**
+ * 6. Send notification to all active HR and Admin personnel
+ */
+const notifyHRAndAdmins = async ({ title, message, type = 'info', actionUrl = null, excludeUserId = null }) => {
+  try {
+    const hrUsers = await User.findAll({
+      where: {
+        role: { [Op.in]: ['hr', 'admin', 'HR', 'ADMIN'] },
+        status: { [Op.ne]: 'terminated' }
+      },
+      attributes: ['id', 'email', 'firstName', 'lastName', 'role']
+    });
+
+    if (!hrUsers || hrUsers.length === 0) return [];
+
+    const recipients = hrUsers.filter((u) => !excludeUserId || u.id !== excludeUserId);
+    if (recipients.length === 0) return [];
+
+    const records = recipients.map((u) => ({
+      userId: u.id,
+      title,
+      message,
+      type,
+      actionUrl,
+      isRead: false
+    }));
+
+    const created = await Notification.bulkCreate(records);
+
+    // Also emit real-time WebSocket events to HR and Admin rooms
+    try {
+      const socketService = require('./socket.service');
+      if (socketService) {
+        socketService.emitToRole('hr', 'notification', { title, message, type, actionUrl });
+        socketService.emitToRole('admin', 'notification', { title, message, type, actionUrl });
+      }
+    } catch {
+      // socket emission is optional
+    }
+
+    return created;
+  } catch (err) {
+    logger.warn('Failed to notify HR and Admins:', err.message);
+    return [];
+  }
+};
+
 module.exports = {
   getMyNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
-  createNotification
+  createNotification,
+  notifyHRAndAdmins
 };

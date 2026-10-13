@@ -22,6 +22,7 @@ const { USER_STATUS } = require('../constants/status');
 const { ROLES } = require('../constants/roles');
 const { NotFoundError, ConflictError, BadRequestError } = require('../utils/apiError');
 const { sendWelcomeEmail } = require('./email.service');
+const { notifyHRAndAdmins } = require('./notification.service');
 const logger = require('../config/logger');
 
 /**
@@ -485,14 +486,19 @@ const updateEmployee = async (id, payload, actor = null) => {
 
   await employee.save();
 
-  // Log activity
+  // Log activity with clear audit attribution (HR / Admin vs General)
+  const isBankUpdated = payload.bankAccountNumber !== undefined || payload.bankName !== undefined || payload.bankIfsc !== undefined;
+  const actorTitle = actor ? `${actor.firstName} ${actor.lastName || ''} (${actor.role || 'HR'})`.trim() : 'HR / Admin';
+
   await ActivityLog.create({
     userId: actor ? actor.id : employee.id,
-    action: 'UPDATE_EMPLOYEE',
+    action: isBankUpdated ? 'BANK_DETAILS_UPDATED' : 'UPDATE_EMPLOYEE',
     module: 'EMPLOYEE',
     targetId: employee.id,
     ipAddress: 'INTERNAL',
-    details: `Updated details for employee ${employee.firstName} ${employee.lastName} (${employee.employeeCode})`
+    details: isBankUpdated
+      ? `Bank account details updated by ${actorTitle} for employee ${employee.firstName} ${employee.lastName} (${employee.employeeCode})`
+      : `Updated details for employee ${employee.firstName} ${employee.lastName} (${employee.employeeCode})`
   }).catch((err) => logger.warn('ActivityLog warning:', err.message));
 
   return employee.toSafeJSON();
@@ -692,8 +698,29 @@ const getMyProfile = async (userId) => {
  * 8. Update logged-in employee's own editable profile fields (self-service)
  */
 const updateMyProfile = async (userId, payload) => {
-  // Strict whitelist — employee cannot change admin-controlled fields
-  const ALLOWED_FIELDS = ['phone', 'address', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation', 'bankAccountNumber', 'bankName', 'bankIfsc'];
+  const employee = await User.findByPk(userId);
+  if (!employee) {
+    throw new NotFoundError(`Employee with ID ${userId} not found`);
+  }
+
+  const isHRorAdmin = ['hr', 'admin', 'HR', 'ADMIN'].includes(employee.role);
+
+  // Strict whitelist for normal employees
+  const ALLOWED_FIELDS = [
+    'phone',
+    'address',
+    'emergencyContactName',
+    'emergencyContactPhone',
+    'emergencyContactRelation',
+    'bankAccountNumber',
+    'bankName',
+    'bankIfsc'
+  ];
+
+  // HR & Admin can also update their own portal login credentials
+  if (isHRorAdmin) {
+    ALLOWED_FIELDS.push('firstName', 'lastName', 'email', 'password');
+  }
 
   const updateData = {};
   ALLOWED_FIELDS.forEach((field) => {
@@ -707,11 +734,101 @@ const updateMyProfile = async (userId, payload) => {
     updateData.emergencyContactName = payload.emergencyContact;
   }
 
+  // Handle HR / Admin email change with uniqueness check
+  if (isHRorAdmin && payload.email) {
+    const cleanEmail = payload.email.trim().toLowerCase();
+    if (cleanEmail !== employee.email) {
+      const existingEmail = await User.findOne({ where: { email: cleanEmail } });
+      if (existingEmail && existingEmail.id !== userId) {
+        throw new ConflictError(`Email '${cleanEmail}' is already registered with another user`);
+      }
+      employee.email = cleanEmail;
+      employee.refreshToken = null;
+      updateData.email = cleanEmail;
+    }
+  }
+
+  // Handle HR / Admin password change (bcrypt hashed automatically by User model hook)
+  if (isHRorAdmin && payload.password && typeof payload.password === 'string' && payload.password.trim()) {
+    if (payload.password.trim().length < 8) {
+      throw new BadRequestError('New password must be at least 8 characters long');
+    }
+    employee.password = payload.password.trim();
+    employee.refreshToken = null;
+    updateData.password = employee.password;
+  }
+
+  // Handle HR / Admin name update
+  if (isHRorAdmin && payload.firstName) {
+    employee.firstName = payload.firstName.trim();
+    updateData.firstName = employee.firstName;
+  }
+  if (isHRorAdmin && payload.lastName !== undefined) {
+    employee.lastName = payload.lastName.trim();
+    updateData.lastName = employee.lastName;
+  }
+
+  // Apply scalar profile fields
+  const standardFields = ['phone', 'address', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation', 'bankAccountNumber', 'bankName', 'bankIfsc'];
+  standardFields.forEach((field) => {
+    if (updateData[field] !== undefined) {
+      employee[field] = updateData[field];
+    }
+  });
+
   if (Object.keys(updateData).length === 0) {
     throw new BadRequestError('No valid fields provided to update');
   }
 
-  await User.update(updateData, { where: { id: userId } });
+  await employee.save();
+
+  // Human-readable labels for updated fields
+  const fieldLabels = {
+    phone: 'Phone Number',
+    address: 'Residential Address',
+    emergencyContactName: 'Emergency Contact Name',
+    emergencyContactPhone: 'Emergency Contact Phone',
+    emergencyContactRelation: 'Emergency Contact Relation',
+    bankAccountNumber: 'Bank Account Number',
+    bankName: 'Bank Name',
+    bankIfsc: 'Bank IFSC Code'
+  };
+
+  const changedFieldNames = Object.keys(updateData)
+    .map((k) => fieldLabels[k] || k)
+    .join(', ');
+
+  const hasBankUpdate = ['bankAccountNumber', 'bankName', 'bankIfsc'].some((k) => updateData[k] !== undefined);
+
+  const empFullName = `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 'Employee';
+  const empCode = employee.employeeCode ? ` (${employee.employeeCode})` : '';
+
+  const notifTitle = hasBankUpdate
+    ? `Profile Updated: ${empFullName}${empCode}`
+    : `Profile Updated: ${empFullName}`;
+
+  const notifMessage = `Profile Updated: ${empFullName}${empCode} has updated personal profile details: ${changedFieldNames}.`;
+
+  // Send persistent real-time notification to all active HR & Admin personnel
+  await notifyHRAndAdmins({
+    title: notifTitle,
+    message: notifMessage,
+    type: 'info',
+    actionUrl: `/hr/employees/${userId}`,
+    excludeUserId: userId
+  }).catch((err) => logger.warn('Failed to notify HR of profile update:', err.message));
+
+  await ActivityLog.create({
+    userId,
+    action: hasBankUpdate ? 'BANK_DETAILS_UPDATED' : 'PROFILE_UPDATED',
+    module: 'EMPLOYEE',
+    targetId: userId,
+    ipAddress: 'INTERNAL',
+    details: hasBankUpdate
+      ? `Employee ${empFullName} updated bank account details: ${changedFieldNames}`
+      : `Updated fields: ${changedFieldNames}`
+  }).catch(() => {});
+
   return getMyProfile(userId);
 };
 
@@ -849,6 +966,19 @@ const uploadEmployeeDocument = async (userId, payload, file) => {
     ipAddress: 'INTERNAL',
     details: `Uploaded KYC document: ${title} (${documentType})`
   }).catch(() => {});
+
+  // Send persistent notification to HR & Admin personnel
+  const uploader = await User.findByPk(userId);
+  const uploaderName = uploader ? `${uploader.firstName} ${uploader.lastName || ''}`.trim() : 'Employee';
+  const uploaderCode = uploader?.employeeCode ? ` (${uploader.employeeCode})` : '';
+
+  await notifyHRAndAdmins({
+    title: `New KYC Document Uploaded: ${uploaderName}`,
+    message: `${uploaderName}${uploaderCode} has uploaded '${title.trim()}' for KYC verification.`,
+    type: 'info',
+    actionUrl: `/hr/employees/kyc/${doc.id}`,
+    excludeUserId: userId
+  }).catch((err) => logger.warn('Failed to notify HR of KYC upload:', err.message));
 
   return doc;
 };

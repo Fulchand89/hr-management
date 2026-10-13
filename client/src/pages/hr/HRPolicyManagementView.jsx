@@ -40,6 +40,7 @@ import {
   sendPolicyReminders
 } from '../../services/policyService';
 import CompanyHandbookModal from '../../components/common/CompanyHandbookModal';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Categories' },
@@ -391,10 +392,7 @@ export const HRPolicyManagementView = () => {
 
       {/* ── Content Area: Tabbed Views ─────────────────────────────────── */}
       {isLoading ? (
-        <div className="p-16 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200/80">
-          <Loader2 className="w-7 h-7 animate-spin text-[#8B1D2C]" />
-          <p className="text-xs font-semibold text-slate-500">Loading company policies...</p>
-        </div>
+        <SkeletonTable rows={5} cols={5} hasHeader={false} />
       ) : activeTab === 'documents' ? (
         /* ── Simple Uploaded Documents View ── */
         <div className="space-y-4">

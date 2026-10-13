@@ -8,7 +8,6 @@ import {
   Bell,
   User,
   LogOut,
-  ShieldCheck,
   ChevronDown,
   Menu,
   X,
@@ -170,19 +169,19 @@ export const HRLayout = ({
   // Active route matching
   const currentPath = location.pathname;
   const isDashboard = currentPath === '/hr' || currentPath.startsWith('/hr/dashboard');
-  const isAttendance = currentPath.startsWith('/hr/attendance') && !currentPath.includes('correction');
+  const isAttendance = (currentPath.startsWith('/hr/attendance') && !currentPath.includes('correction') && !currentPath.includes('staff')) || currentPath.startsWith('/hr/timer');
   const isMyAttendance = currentPath.startsWith('/hr/my-attendance') || currentPath.startsWith('/hr/myattendance');
-  const isStaffAttendance = currentPath.startsWith('/hr/staff-attendance');
-  const isEmployees = currentPath.startsWith('/hr/employees') || currentPath.startsWith('/hr/employee-management');
-  const isPayroll = currentPath.startsWith('/hr/payroll');
-  const isPersonalLeaves = currentPath.startsWith('/hr/leaves');
-  const isAttendanceCorrection = currentPath.startsWith('/hr/attendance-correction');
-  const isStaffLeaves = (currentPath.startsWith('/hr/leave-requests') || currentPath.startsWith('/hr/leave-detail')) && !currentPath.includes('LEV-101');
+  const isStaffAttendance = currentPath.startsWith('/hr/staff-attendance') || currentPath.startsWith('/hr/attendance/staff');
+  const isEmployees = currentPath.startsWith('/hr/employees') || currentPath.startsWith('/hr/employee') || currentPath.startsWith('/hr/kyc') || currentPath.startsWith('/hr/documents');
+  const isPayroll = currentPath.startsWith('/hr/payroll') || currentPath.startsWith('/hr/payslip');
+  const isPersonalLeaves = currentPath.startsWith('/hr/leaves') && !currentPath.includes('requests') && !currentPath.includes('approval');
+  const isAttendanceCorrection = currentPath.startsWith('/hr/attendance-correction') || currentPath.startsWith('/hr/corrections');
+  const isStaffLeaves = currentPath.startsWith('/hr/leave-requests') || currentPath.startsWith('/hr/leave-detail') || currentPath.startsWith('/hr/leave-approval');
   const isHolidayManagement = currentPath.startsWith('/hr/holiday') || currentPath.startsWith('/hr/holidays');
-  const isPolicies = currentPath.startsWith('/hr/policies');
-  const isAppraisals = currentPath.startsWith('/hr/appraisals');
+  const isPolicies = currentPath.startsWith('/hr/policies') || currentPath.startsWith('/hr/policy');
+  const isAppraisals = currentPath.startsWith('/hr/appraisals') || currentPath.startsWith('/hr/appraisal') || currentPath.startsWith('/hr/performance');
   const isExit = currentPath.startsWith('/hr/exit') || currentPath.startsWith('/hr/resignation');
-  const isReports = currentPath.startsWith('/hr/reports');
+  const isReports = currentPath.startsWith('/hr/reports') || currentPath.startsWith('/hr/report');
   const isNotifications = currentPath.startsWith('/hr/notifications');
   const isProfile = currentPath.startsWith('/hr/profile');
 

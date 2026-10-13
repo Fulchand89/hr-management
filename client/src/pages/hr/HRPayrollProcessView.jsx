@@ -271,43 +271,55 @@ export const HRPayrollProcessView = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="p-2.5 bg-white border border-slate-200/80 rounded-lg">
-                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Eligible Staff</span>
-                <span className="text-base font-bold text-slate-900 mt-0.5 block">
-                  {preflight?.totalEligible ?? '--'}
-                </span>
-                <span className="text-[10px] text-emerald-600 font-medium">Active / Probation</span>
+            {preflightLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 animate-pulse">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="p-2.5 bg-white border border-slate-200/80 rounded-lg space-y-2">
+                    <div className="h-2.5 bg-slate-200 rounded w-16" />
+                    <div className="h-5 bg-slate-200 rounded w-10" />
+                    <div className="h-2 bg-slate-100 rounded w-20" />
+                  </div>
+                ))}
               </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-2.5 bg-white border border-slate-200/80 rounded-lg">
+                  <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Eligible Staff</span>
+                  <span className="text-base font-bold text-slate-900 mt-0.5 block">
+                    {preflight?.totalEligible ?? '--'}
+                  </span>
+                  <span className="text-[10px] text-emerald-600 font-medium">Active / Probation</span>
+                </div>
 
-              <div className="p-2.5 bg-white border border-slate-200/80 rounded-lg">
-                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Unclosed Shifts</span>
-                <span className={`text-base font-bold mt-0.5 block ${preflight?.unclosedAttendances > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-                  {preflight?.unclosedAttendances ?? 0}
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">
-                  {preflight?.unclosedAttendances > 0 ? 'Auto-closed at midnight' : 'All finalized'}
-                </span>
-              </div>
+                <div className="p-2.5 bg-white border border-slate-200/80 rounded-lg">
+                  <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Unclosed Shifts</span>
+                  <span className={`text-base font-bold mt-0.5 block ${preflight?.unclosedAttendances > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                    {preflight?.unclosedAttendances ?? 0}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {preflight?.unclosedAttendances > 0 ? 'Auto-closed at midnight' : 'All finalized'}
+                  </span>
+                </div>
 
-              <div className="p-2.5 bg-white border border-slate-200/80 rounded-lg">
-                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Pending Leaves</span>
-                <span className={`text-base font-bold mt-0.5 block ${preflight?.pendingLeaves > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-                  {preflight?.pendingLeaves ?? 0}
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">Awaiting HR approval</span>
-              </div>
+                <div className="p-2.5 bg-white border border-slate-200/80 rounded-lg">
+                  <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Pending Leaves</span>
+                  <span className={`text-base font-bold mt-0.5 block ${preflight?.pendingLeaves > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                    {preflight?.pendingLeaves ?? 0}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">Awaiting HR approval</span>
+                </div>
 
-              <div className="p-2.5 bg-white border border-slate-200/80 rounded-lg">
-                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Existing Drafts</span>
-                <span className="text-base font-bold text-slate-900 mt-0.5 block">
-                  {preflight?.alreadyGeneratedCount ?? 0}
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">
-                  {preflight?.alreadyGeneratedCount > 0 ? 'Will be refreshed' : 'Ready to compute'}
-                </span>
+                <div className="p-2.5 bg-white border border-slate-200/80 rounded-lg">
+                  <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">Existing Drafts</span>
+                  <span className="text-base font-bold text-slate-900 mt-0.5 block">
+                    {preflight?.alreadyGeneratedCount ?? 0}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {preflight?.alreadyGeneratedCount > 0 ? 'Will be refreshed' : 'Ready to compute'}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             {preflight?.missingStructureCount > 0 && (
               <div className="flex items-center gap-2 p-2 bg-amber-50/70 border border-amber-200 rounded-lg text-[11px] text-amber-800">

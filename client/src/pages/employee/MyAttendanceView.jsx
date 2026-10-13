@@ -10,59 +10,33 @@ import {
   XCircle,
   Clock,
   Calendar,
-  Filter,
-  Loader2,
+  ArrowRight
 } from 'lucide-react';
 import AttendanceDetailModal from './AttendanceDetailModal';
 import {
   getMyAttendanceHistory,
-  getHolidays,
-  getMyAttendanceCorrections
+  getHolidays
 } from '../../services/employeeService';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'calendar'
-  const [activeTab, setActiveTab] = useState('timesheet'); // 'timesheet' | 'corrections'
   const [selectedRecordDate, setSelectedRecordDate] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 10;
-
-  // Corrections state
-  const [correctionRequests, setCorrectionRequests] = useState([]);
-  const [correctionFilter, setCorrectionFilter] = useState('all');
-  const [isCorrectionsLoading, setIsCorrectionsLoading] = useState(false);
-
-  const loadCorrections = useCallback(async () => {
-    setIsCorrectionsLoading(true);
-    try {
-      const res = await getMyAttendanceCorrections();
-      const records = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      setCorrectionRequests(records);
-    } catch {
-      setCorrectionRequests([]);
-    } finally {
-      setIsCorrectionsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadCorrections();
-  }, [loadCorrections]);
 
   const selectedMonth = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
   const currentMonthNum = currentDate.getMonth() + 1;
   const currentYearNum = currentDate.getFullYear();
 
-  // Full attendance logs
+  // Attendance logs & summary data
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [summaryData, setSummaryData] = useState(null);
-
-
 
   const loadHistory = useCallback(async () => {
     setIsLoading(true);
@@ -89,7 +63,7 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
         const formatted = data.records.map((r) => {
           const recDate = new Date(r.date);
           const dayNum = recDate.getDate();
-          const dayName = recDate.toLocaleDateString('en-US', { weekday: 'long' });
+          const dayName = recDate.toLocaleDateString('en-US', { weekday: 'short' });
           const dateStr = recDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
           const hours = parseFloat(r.totalHours) || 0;
           const otMinutes = Math.max(0, Math.round((hours - 8) * 60));
@@ -161,16 +135,7 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
   const presentCount = summaryData?.presentDays ?? attendanceLogs.filter((l) => l.status === 'Present' || l.status === 'Late').length;
   const absentCount = summaryData?.absentDays ?? attendanceLogs.filter((l) => l.status === 'Absent').length;
   const halfDayCount = summaryData?.halfDays ?? attendanceLogs.filter((l) => l.status === 'Half Day').length;
-  const leaveCount = attendanceLogs.filter((l) => l.status === 'Leave' || l.status === 'Weekend').length;
-
-  const pendingCorrectionsCount = correctionRequests.filter((c) => c.status === 'pending').length;
-  const approvedCorrectionsCount = correctionRequests.filter((c) => c.status === 'approved').length;
-  const rejectedCorrectionsCount = correctionRequests.filter((c) => c.status === 'rejected').length;
-
-  const filteredCorrections = correctionRequests.filter((c) => {
-    if (correctionFilter === 'all') return true;
-    return c.status?.toLowerCase() === correctionFilter;
-  });
+  const leaveCount = attendanceLogs.filter((l) => l.status === 'Leave' || l.status === 'Weekend' || l.status === 'Holiday').length;
 
   const handleOpenDetail = (dateString, record) => {
     setSelectedRecordDate(dateString);
@@ -195,133 +160,55 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Controls & Sub-tab Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* Sub-tab Navigation */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl w-fit border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setActiveTab('timesheet')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === 'timesheet'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <TableIcon className="w-3.5 h-3.5" />
-            <span>Monthly Timesheet</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/employee/attendance-correction')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === 'corrections'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Correction Requests</span>
-            {pendingCorrectionsCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-900 font-bold">
-                {pendingCorrectionsCount}
-              </span>
-            )}
-          </button>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* ── 1. Page Header & Action Controls ────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">My Attendance</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Monthly punch records, working hours & audit logs
+          </p>
         </div>
 
-        {/* Right Action Controls */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {activeTab === 'timesheet' ? (
-            <>
-              {/* Month Selector & Controls */}
-              <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={handlePrevMonth}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="px-3 text-xs font-bold text-slate-800">{selectedMonth}</span>
-                <button
-                  type="button"
-                  onClick={handleNextMonth}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Month Selector */}
+          <div className="flex items-center bg-white rounded-xl border border-slate-200/80 p-1 shadow-2xs">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              title="Previous Month"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="px-3 text-xs font-bold text-slate-800 whitespace-nowrap min-w-[110px] text-center">
+              {selectedMonth}
+            </span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              title="Next Month"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
 
-              {/* View Mode Toggle: Table vs Calendar */}
-              <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('table')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                    viewMode === 'table'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <TableIcon className="w-3.5 h-3.5" /> Table
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('calendar')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                    viewMode === 'calendar'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <CalendarIcon className="w-3.5 h-3.5" /> Calendar
-                </button>
-              </div>
-
-              {/* Export Button */}
-              <button
-                type="button"
-                onClick={handleExportCSV}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer transition-colors"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Export Timesheet</span>
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={loadCorrections}
-                className="p-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-2xs cursor-pointer"
-                title="Refresh requests"
-              >
-                <Loader2 className={`w-3.5 h-3.5 ${isCorrectionsLoading ? 'animate-spin' : ''}`} />
-              </button>
-              {['all', 'pending', 'approved', 'rejected'].map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setCorrectionFilter(f)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${
-                    correctionFilter === f
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Primary Request Correction Button */}
+          {/* Export CSV Button */}
           <button
             type="button"
-            onClick={() => navigate('/employee/attendance-correction/new')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 cursor-pointer transition-all"
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer transition-colors whitespace-nowrap"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
+          </button>
+
+          {/* Request Correction Button */}
+          <button
+            type="button"
+            onClick={() => onRequestCorrection ? onRequestCorrection() : navigate('/employee/attendance-correction/new')}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-xs cursor-pointer transition-all whitespace-nowrap"
           >
             <Clock className="w-3.5 h-3.5" />
             <span>Request Correction</span>
@@ -329,504 +216,358 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
         </div>
       </div>
 
-      {activeTab === 'timesheet' ? (
-        <>
-          {/* 4 Stat Overview KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Present */}
-        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 flex items-center justify-between">
+      {/* ── 2. Stat Overview Cards ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Present Days */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-2xl font-black text-slate-900 block font-mono">
               {String(presentCount).padStart(2, '0')}
             </span>
-            <span className="text-xs font-semibold text-emerald-800 mt-0.5 flex items-center gap-1">
+            <span className="text-xs font-semibold text-emerald-700 mt-0.5 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500" /> Present Days
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center font-bold">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
 
-        {/* Absent */}
-        <div className="bg-rose-50/80 border border-rose-200/80 rounded-2xl p-4 flex items-center justify-between">
+        {/* Absent Days */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-2xl font-black text-slate-900 block font-mono">
               {String(absentCount).padStart(2, '0')}
             </span>
-            <span className="text-xs font-semibold text-rose-800 mt-0.5 flex items-center gap-1">
+            <span className="text-xs font-semibold text-rose-700 mt-0.5 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-rose-500" /> Absent Days
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-100/80 text-rose-700 flex items-center justify-center font-bold">
-            <XCircle className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+            <XCircle className="w-4 h-4" />
           </div>
         </div>
 
-        {/* Half Day */}
-        <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 flex items-center justify-between">
+        {/* Half Days */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-2xl font-black text-slate-900 block font-mono">
               {String(halfDayCount).padStart(2, '0')}
             </span>
-            <span className="text-xs font-semibold text-amber-800 mt-0.5 flex items-center gap-1">
+            <span className="text-xs font-semibold text-amber-700 mt-0.5 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-amber-500" /> Half Days
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-100/80 text-amber-700 flex items-center justify-center font-bold">
-            <Clock className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+            <Clock className="w-4 h-4" />
           </div>
         </div>
 
-        {/* Leaves / Holidays */}
-        <div className="bg-blue-50/80 border border-blue-200/80 rounded-2xl p-4 flex items-center justify-between">
+        {/* Holidays / Off */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-2xl font-black text-slate-900 block font-mono">
               {String(leaveCount).padStart(2, '0')}
             </span>
-            <span className="text-xs font-semibold text-blue-800 mt-0.5 flex items-center gap-1">
+            <span className="text-xs font-semibold text-blue-700 mt-0.5 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-blue-500" /> Holidays / Off
             </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-100/80 text-blue-700 flex items-center justify-center font-bold">
-            <Calendar className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <Calendar className="w-4 h-4" />
           </div>
         </div>
       </div>
 
-      {/* Main Content: Table View vs Calendar View */}
-      {isLoading ? (
-        <div className="bg-white rounded-3xl p-12 border border-slate-200/80 shadow-2xs flex items-center justify-center gap-2 text-slate-500 text-xs">
-          <Loader2 className="w-5 h-5 animate-spin text-[#8B1D2C]" />
-          <span>Loading attendance history for {selectedMonth}...</span>
-        </div>
-      ) : viewMode === 'table' ? (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 whitespace-nowrap">Attendance Log Sheet</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Showing records for {selectedMonth} &bull; 10 records per page</p>
-            </div>
-            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full w-fit">
-              Total {attendanceLogs.length} Logged Days &bull; Page {currentPage} of {totalPages}
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Day</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Punch In</th>
-                  <th className="py-3 px-4">Punch Out</th>
-                  <th className="py-3 px-4">Effective Hours</th>
-                  <th className="py-3 px-4">Break</th>
-                  <th className="py-3 px-4">Overtime</th>
-                  <th className="py-3 px-4 text-right">Audit</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {currentLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="py-12 text-center">
-                      <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                      <h4 className="text-sm font-bold text-slate-700">No Attendance Records Found</h4>
-                      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                        No clock-in/out records exist for {selectedMonth}. Your logs will appear here once recorded.
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  currentLogs.map((log, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-900">{log.date}</td>
-                    <td className="py-3 px-4 text-slate-500">{log.day}</td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                          log.status === 'Present'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : log.status === 'Holiday'
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                            : log.status === 'Absent'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : log.status === 'Half Day'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : log.status === 'Late'
-                            ? 'bg-orange-50 text-orange-700 border-orange-200'
-                            : log.status === 'Leave'
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            log.status === 'Present'
-                              ? 'bg-emerald-500'
-                              : log.status === 'Holiday'
-                              ? 'bg-indigo-500'
-                              : log.status === 'Absent'
-                              ? 'bg-rose-500'
-                              : log.status === 'Half Day'
-                              ? 'bg-amber-500'
-                              : log.status === 'Late'
-                              ? 'bg-orange-500'
-                              : log.status === 'Leave'
-                              ? 'bg-blue-500'
-                              : 'bg-slate-400'
-                          }`}
-                        />
-                        {log.status === 'Holiday' && log.holidayName ? log.holidayName : log.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-700">{log.in}</td>
-                    <td className="py-3 px-4 font-mono text-slate-700">{log.out}</td>
-                    <td className="py-3 px-4 font-bold text-slate-900">{log.duration}</td>
-                    <td className="py-3 px-4 text-slate-500">{log.break}</td>
-                    <td className="py-3 px-4 font-mono text-emerald-600 font-semibold">{log.overtime}</td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDetail(log.date, log)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                        >
-                          Timeline
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/employee/attendance-correction/new?date=${log.date || ''}`)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 transition-colors cursor-pointer whitespace-nowrap"
-                          title="Request Attendance Correction"
-                        >
-                          Correct
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pt-4 border-t border-slate-100">
-            <p className="text-xs text-slate-500">
-              Showing <span className="font-bold text-slate-800 font-mono">{startIndex + 1}</span> to{' '}
-              <span className="font-bold text-slate-800 font-mono">
-                {Math.min(endIndex, attendanceLogs.length)}
-              </span>{' '}
-              of <span className="font-bold text-slate-800 font-mono">{attendanceLogs.length}</span> days
+      {/* ── 3. Main Attendance Sheet ─────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+        {/* Table Top Toolbar */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Attendance Log Sheet</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Showing records for {selectedMonth} &bull; Total {attendanceLogs.length} logged days
             </p>
+          </div>
 
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <button
-                type="button"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
-                  currentPage === 1
-                    ? 'border-slate-100 text-slate-300 cursor-not-allowed bg-slate-50/50'
-                    : 'border-slate-200 text-slate-700 hover:bg-slate-50 bg-white shadow-2xs'
-                }`}
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Prev</span>
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  type="button"
-                  onClick={() => handlePageChange(pageNum)}
-                  className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    currentPage === pageNum
-                      ? 'bg-[#8B1D2C] text-white shadow-xs'
-                      : 'border border-slate-200 text-slate-700 hover:bg-slate-50 bg-white'
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
-                  currentPage === totalPages
-                    ? 'border-slate-100 text-slate-300 cursor-not-allowed bg-slate-50/50'
-                    : 'border-slate-200 text-slate-700 hover:bg-slate-50 bg-white shadow-2xs'
-                }`}
-              >
-                <span>Next</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+          {/* View Mode Toggle: Table vs Calendar */}
+          <div className="flex items-center bg-slate-100/80 rounded-xl p-1 border border-slate-200/60 w-fit">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <TableIcon className="w-3.5 h-3.5" /> Table
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                viewMode === 'calendar'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <CalendarIcon className="w-3.5 h-3.5" /> Calendar
+            </button>
           </div>
         </div>
-      ) : (
-        /* Calendar View */
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs">
-          <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">
-            <div>Sun</div>
-            <div>Mon</div>
-            <div>Tue</div>
-            <div>Wed</div>
-            <div>Thu</div>
-            <div>Fri</div>
-            <div>Sat</div>
-          </div>
 
-          <div className="grid grid-cols-7 gap-2">
-            {attendanceLogs
-              .slice()
-              .reverse()
-              .map((item) => (
-                <div
-                  key={item.dayNum}
-                  onClick={() => handleOpenDetail(item.date)}
-                  className="h-24 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex flex-col justify-between cursor-pointer transition-all hover:shadow-xs group hover:border-[#8B1D2C]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-slate-800 group-hover:text-[#8B1D2C]">
-                      {item.dayNum}
-                    </span>
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        item.status === 'Present'
-                          ? 'bg-emerald-500'
-                          : item.status === 'Holiday'
-                          ? 'bg-indigo-500'
-                          : item.status === 'Absent'
-                          ? 'bg-rose-500'
-                          : item.status === 'Half Day'
-                          ? 'bg-amber-500'
-                          : item.status === 'Late'
-                          ? 'bg-orange-500'
-                          : item.status === 'Leave'
-                          ? 'bg-blue-500'
-                          : 'bg-slate-300'
-                      }`}
-                    />
-                  </div>
+        {/* Content: Loading Skeleton vs Table vs Calendar */}
+        {isLoading ? (
+          <SkeletonTable rows={7} cols={8} hasHeader={false} />
+        ) : viewMode === 'table' ? (
+          <div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="py-3 px-4 whitespace-nowrap">Date</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Day</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Punch In</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Punch Out</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Working Hours</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Break</th>
+                    <th className="py-3 px-4 whitespace-nowrap">Overtime</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {currentLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" className="py-12 text-center">
+                        <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <h4 className="text-xs font-bold text-slate-700">No Attendance Records Found</h4>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          No clock-in/out logs exist for {selectedMonth}.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    currentLogs.map((log, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">{log.date}</td>
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{log.day}</td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                              log.status === 'Present'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : log.status === 'Holiday'
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : log.status === 'Absent'
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : log.status === 'Half Day'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : log.status === 'Late'
+                                ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                : log.status === 'Leave'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                log.status === 'Present'
+                                  ? 'bg-emerald-500'
+                                  : log.status === 'Holiday'
+                                  ? 'bg-indigo-500'
+                                  : log.status === 'Absent'
+                                  ? 'bg-rose-500'
+                                  : log.status === 'Half Day'
+                                  ? 'bg-amber-500'
+                                  : log.status === 'Late'
+                                  ? 'bg-orange-500'
+                                  : log.status === 'Leave'
+                                  ? 'bg-blue-500'
+                                  : 'bg-slate-400'
+                              }`}
+                            />
+                            {log.status === 'Holiday' && log.holidayName ? log.holidayName : log.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">{log.in}</td>
+                        <td className="py-3 px-4 font-mono text-slate-700 whitespace-nowrap">{log.out}</td>
+                        <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">{log.duration}</td>
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{log.break}</td>
+                        <td className="py-3 px-4 font-mono text-emerald-600 font-semibold whitespace-nowrap">{log.overtime}</td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDetail(log.date, log)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 border border-slate-200/60 transition-colors cursor-pointer"
+                            >
+                              Timeline
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/employee/attendance-correction/new?date=${log.date || ''}`)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8B1D2C] hover:bg-rose-50 border border-rose-200/60 transition-colors cursor-pointer"
+                            >
+                              Correct
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-                  <div className="space-y-0.5">
-                    <span
-                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold max-w-full truncate ${
-                        item.status === 'Present'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : item.status === 'Holiday'
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : item.status === 'Absent'
-                          ? 'bg-rose-50 text-rose-700'
-                          : item.status === 'Half Day'
-                          ? 'bg-amber-50 text-amber-700'
-                          : item.status === 'Late'
-                          ? 'bg-orange-50 text-orange-700'
-                          : item.status === 'Leave'
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'bg-slate-100 text-slate-500'
+            {/* Pagination Controls */}
+            {attendanceLogs.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-t border-slate-100 text-xs">
+                <p className="text-slate-500">
+                  Showing <span className="font-bold text-slate-800 font-mono">{startIndex + 1}</span> to{' '}
+                  <span className="font-bold text-slate-800 font-mono">
+                    {Math.min(endIndex, attendanceLogs.length)}
+                  </span>{' '}
+                  of <span className="font-bold text-slate-800 font-mono">{attendanceLogs.length}</span> records
+                </p>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                      currentPage === 1
+                        ? 'border-slate-100 text-slate-300 cursor-not-allowed bg-slate-50/50'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50 bg-white shadow-2xs'
+                    }`}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Prev</span>
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        currentPage === pageNum
+                          ? 'bg-[#8B1D2C] text-white shadow-xs'
+                          : 'border border-slate-200 text-slate-700 hover:bg-slate-50 bg-white'
                       }`}
                     >
-                      {item.status === 'Holiday' && item.holidayName ? item.holidayName : item.status}
-                    </span>
-                    {item.in !== '--:--' && (
-                      <p className="text-[10px] font-mono text-slate-500 truncate">{item.in}</p>
-                    )}
-                  </div>
+                      {pageNum}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                      currentPage === totalPages
+                        ? 'border-slate-100 text-slate-300 cursor-not-allowed bg-slate-50/50'
+                        : 'border-slate-200 text-slate-700 hover:bg-slate-50 bg-white shadow-2xs'
+                    }`}
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              ))}
-          </div>
-        </div>
-      )}
-    </>
-  ) : (
-    /* Correction Requests Sub-Tab */
-    <div className="space-y-4">
-      {/* 4 Stat Overview for Correction Requests */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between">
-          <div>
-            <span className="text-2xl font-black text-slate-900 block font-mono">
-              {String(correctionRequests.length).padStart(2, '0')}
-            </span>
-            <span className="text-xs font-semibold text-slate-600 mt-0.5">
-              Total Requests
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-200/80 text-slate-700 flex items-center justify-center font-bold">
-            <Clock className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 flex items-center justify-between">
-          <div>
-            <span className="text-2xl font-black text-slate-900 block font-mono">
-              {String(pendingCorrectionsCount).padStart(2, '0')}
-            </span>
-            <span className="text-xs font-semibold text-amber-800 mt-0.5">
-              Pending Review
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-100/80 text-amber-700 flex items-center justify-center font-bold">
-            <Clock className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 flex items-center justify-between">
-          <div>
-            <span className="text-2xl font-black text-slate-900 block font-mono">
-              {String(approvedCorrectionsCount).padStart(2, '0')}
-            </span>
-            <span className="text-xs font-semibold text-emerald-800 mt-0.5">
-              Approved
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center font-bold">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-rose-50/80 border border-rose-200/80 rounded-2xl p-4 flex items-center justify-between">
-          <div>
-            <span className="text-2xl font-black text-slate-900 block font-mono">
-              {String(rejectedCorrectionsCount).padStart(2, '0')}
-            </span>
-            <span className="text-xs font-semibold text-rose-800 mt-0.5">
-              Rejected
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-100/80 text-rose-700 flex items-center justify-center font-bold">
-            <XCircle className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Correction Requests List Card */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Attendance Correction Requests</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Track status of your submitted clock-in/out adjustment requests</p>
-          </div>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full w-fit">
-            {filteredCorrections.length} Filtered Requests
-          </span>
-        </div>
-
-        {isCorrectionsLoading ? (
-          <div className="py-16 text-center text-slate-500 text-xs flex items-center justify-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-[#8B1D2C]" />
-            <span>Loading correction requests...</span>
-          </div>
-        ) : filteredCorrections.length === 0 ? (
-          <div className="py-16 text-center">
-            <Clock className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h4 className="text-sm font-bold text-slate-700">No Attendance Correction Requests Found</h4>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto mb-4">
-              You haven't submitted any attendance corrections matching this filter.
-            </p>
-            {onRequestCorrection && (
-              <button
-                type="button"
-                onClick={() => onRequestCorrection(null)}
-                className="px-4 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer inline-flex items-center gap-2"
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Submit New Correction Request</span>
-              </button>
+              </div>
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">System Time</th>
-                  <th className="py-3 px-4">Requested Time</th>
-                  <th className="py-3 px-4">Reason</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">HR Feedback</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredCorrections.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-900 whitespace-nowrap">
-                      {req.date ? new Date(req.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '--'}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
-                        {req.punchType || 'Check In Time'}
+          /* Calendar View */
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 pb-2 border-b border-slate-100">
+              <div>Sun</div>
+              <div>Mon</div>
+              <div>Tue</div>
+              <div>Wed</div>
+              <div>Thu</div>
+              <div>Fri</div>
+              <div>Sat</div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2">
+              {attendanceLogs
+                .slice()
+                .reverse()
+                .map((item) => (
+                  <div
+                    key={item.dayNum}
+                    onClick={() => handleOpenDetail(item.date)}
+                    className="min-h-[75px] bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl p-2 flex flex-col justify-between cursor-pointer transition-all hover:shadow-xs group hover:border-[#8B1D2C]"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-800 group-hover:text-[#8B1D2C]">
+                        {item.dayNum}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
-                      {req.originalTime || 'Not Logged'}
-                    </td>
-                    <td className="py-3 px-4 font-mono font-bold text-emerald-700 whitespace-nowrap">
-                      {req.requestedTime || '--'}
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={req.reason}>
-                      {req.reason || '--'}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                          req.status === 'approved'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : req.status === 'rejected'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        className={`w-2 h-2 rounded-full ${
+                          item.status === 'Present'
+                            ? 'bg-emerald-500'
+                            : item.status === 'Holiday'
+                            ? 'bg-indigo-500'
+                            : item.status === 'Absent'
+                            ? 'bg-rose-500'
+                            : item.status === 'Half Day'
+                            ? 'bg-amber-500'
+                            : item.status === 'Late'
+                            ? 'bg-orange-500'
+                            : item.status === 'Leave'
+                            ? 'bg-blue-500'
+                            : 'bg-slate-300'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="mt-1 space-y-0.5">
+                      <span
+                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold max-w-full truncate ${
+                          item.status === 'Present'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : item.status === 'Holiday'
+                            ? 'bg-indigo-50 text-indigo-700'
+                            : item.status === 'Absent'
+                            ? 'bg-rose-50 text-rose-700'
+                            : item.status === 'Half Day'
+                            ? 'bg-amber-50 text-amber-700'
+                            : item.status === 'Late'
+                            ? 'bg-orange-50 text-orange-700'
+                            : item.status === 'Leave'
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'bg-slate-100 text-slate-500'
                         }`}
                       >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            req.status === 'approved'
-                              ? 'bg-emerald-500'
-                              : req.status === 'rejected'
-                              ? 'bg-rose-500'
-                              : 'bg-amber-500'
-                          }`}
-                        />
-                        {req.status ? req.status.charAt(0).toUpperCase() + req.status.slice(1) : 'Pending'}
+                        {item.status === 'Holiday' && item.holidayName ? item.holidayName : item.status}
                       </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
-                      {req.actionReason ? (
-                        <span className="text-slate-800 font-medium">{req.actionReason}</span>
-                      ) : req.status === 'pending' ? (
-                        <span className="text-slate-400 italic">Under HR Review</span>
-                      ) : (
-                        <span className="text-slate-400">--</span>
+                      {item.in !== '--:--' && (
+                        <p className="text-[10px] font-mono text-slate-500 truncate">{item.in}</p>
                       )}
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+            </div>
           </div>
         )}
       </div>
-    </div>
-  )}
 
-  {/* Attendance Detail Modal */}
-  <AttendanceDetailModal
-    isOpen={isDetailModalOpen}
-    onClose={() => {
-      setIsDetailModalOpen(false);
-      setSelectedRecord(null);
-    }}
-    selectedDate={selectedRecordDate}
-    record={selectedRecord}
-    onRequestCorrection={(rec) => onRequestCorrection?.(rec)}
-  />
-</div>
+      {/* ── 4. Attendance Detail Modal ─────────────────────────────── */}
+      <AttendanceDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedRecord(null);
+        }}
+        selectedDate={selectedRecordDate}
+        record={selectedRecord}
+        onRequestCorrection={(rec) => onRequestCorrection?.(rec)}
+      />
+    </div>
   );
 };
 

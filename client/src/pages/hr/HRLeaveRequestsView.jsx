@@ -19,6 +19,7 @@ import {
 
 import { getAdminLeaveRequests } from '../../services/hrService';
 import { useAuth } from '../../context/AuthContext';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const HRLeaveRequestsView = () => {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export const HRLeaveRequestsView = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [applicantTypeFilter, setApplicantTypeFilter] = useState('all'); // 'all' | 'staff' | 'hr'
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [leaveRequests, setLeaveRequests] = useState([]);
 
@@ -306,8 +307,11 @@ export const HRLeaveRequestsView = () => {
 
       {/* Main Table */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        {isLoading ? (
+          <SkeletonTable rows={6} cols={6} hasHeader={false} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                 <th className="py-3.5 px-5">Applicant</th>
@@ -424,6 +428,7 @@ export const HRLeaveRequestsView = () => {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

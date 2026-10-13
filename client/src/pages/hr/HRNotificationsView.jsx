@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   CheckCircle2,
@@ -9,6 +10,8 @@ import {
   ChevronRight,
   CheckCheck,
   Loader2,
+  User,
+  ExternalLink,
 } from 'lucide-react';
 import {
   getMyNotifications,
@@ -17,6 +20,7 @@ import {
 } from '../../services/hrService';
 
 export const HRNotificationsView = ({ onBack }) => {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -36,8 +40,19 @@ export const HRNotificationsView = ({ onBack }) => {
       if (rawList.length > 0) {
         const formatted = rawList.map((n) => {
           let category = 'Company';
-          if (n.type?.toLowerCase().includes('leave')) category = 'Leaves';
-          else if (n.type?.toLowerCase().includes('attendance')) category = 'Attendance';
+          const typeStr = (n.type || '').toLowerCase();
+          const titleStr = (n.title || '').toLowerCase();
+
+          if (typeStr.includes('leave')) category = 'Leaves';
+          else if (typeStr.includes('attendance')) category = 'Attendance';
+          else if (
+            typeStr.includes('profile') ||
+            typeStr.includes('document') ||
+            titleStr.includes('profile') ||
+            titleStr.includes('kyc')
+          ) {
+            category = 'Personnel';
+          }
 
           const timeAgo = n.createdAt
             ? new Date(n.createdAt).toLocaleDateString('en-GB', {
@@ -54,6 +69,7 @@ export const HRNotificationsView = ({ onBack }) => {
             message: n.message,
             time: timeAgo,
             category,
+            actionUrl: n.actionUrl || null,
             read: !!n.isRead
           };
         });
@@ -107,6 +123,8 @@ export const HRNotificationsView = ({ onBack }) => {
         return <Clock className="w-4 h-4 text-amber-600" />;
       case 'Leaves':
         return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
+      case 'Personnel':
+        return <User className="w-4 h-4 text-purple-600" />;
       case 'Company':
       default:
         return <Calendar className="w-4 h-4 text-blue-600" />;
@@ -119,6 +137,8 @@ export const HRNotificationsView = ({ onBack }) => {
         return 'text-amber-500 bg-amber-50';
       case 'Leaves':
         return 'text-emerald-500 bg-emerald-50';
+      case 'Personnel':
+        return 'text-purple-500 bg-purple-50';
       case 'Company':
       default:
         return 'text-blue-500 bg-blue-50';
@@ -166,7 +186,7 @@ export const HRNotificationsView = ({ onBack }) => {
 
         {/* Category Pills */}
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl overflow-x-auto w-fit">
-          {['All', 'Attendance', 'Leaves', 'Company'].map((cat) => {
+          {['All', 'Personnel', 'Attendance', 'Leaves', 'Company'].map((cat) => {
             const count =
               cat === 'All'
                 ? notifications.length
@@ -204,9 +224,16 @@ export const HRNotificationsView = ({ onBack }) => {
       {/* Notifications List */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-3">
         {isLoading ? (
-          <div className="py-12 flex items-center justify-center gap-2 text-slate-500 text-xs">
-            <Loader2 className="w-5 h-5 animate-spin text-[#8B1D2C]" />
-            <span>Loading notifications...</span>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-4 rounded-2xl border border-slate-100 flex items-start gap-4 animate-pulse">
+                <div className="w-10 h-10 rounded-xl bg-slate-200 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-slate-200 rounded w-1/3" />
+                  <div className="h-3 bg-slate-100 rounded w-4/5" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="py-12 text-center text-slate-400 text-xs font-medium">
@@ -216,7 +243,12 @@ export const HRNotificationsView = ({ onBack }) => {
           filteredNotifications.map((notif) => (
             <div
               key={notif.id}
-              onClick={() => handleMarkAsRead(notif.id)}
+              onClick={() => {
+                handleMarkAsRead(notif.id);
+                if (notif.actionUrl) {
+                  navigate(notif.actionUrl);
+                }
+              }}
               className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-4 ${
                 notif.read
                   ? 'bg-white border-slate-100 hover:bg-slate-50/60'
@@ -245,12 +277,20 @@ export const HRNotificationsView = ({ onBack }) => {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">{notif.message}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
-                    {notif.category}
-                  </span>
-                  {!notif.read && (
-                    <span className="w-2 h-2 rounded-full bg-[#8B1D2C]" title="Unread" />
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                      {notif.category}
+                    </span>
+                    {!notif.read && (
+                      <span className="w-2 h-2 rounded-full bg-[#8B1D2C]" title="Unread" />
+                    )}
+                  </div>
+                  {notif.actionUrl && (
+                    <span className="text-[11px] font-bold text-[#8B1D2C] hover:underline flex items-center gap-1">
+                      <span>View</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </span>
                   )}
                 </div>
               </div>

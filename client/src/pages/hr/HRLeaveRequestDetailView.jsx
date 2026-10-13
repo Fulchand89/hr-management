@@ -29,6 +29,7 @@ import {
   actionLeaveRequest
 } from '../../services/hrService';
 import { useAuth } from '../../context/AuthContext';
+import { PageSkeleton } from '../../components/common/Skeleton';
 
 export const HRLeaveRequestDetailView = ({ request: propRequest, onBack }) => {
   const navigate = useNavigate();
@@ -211,14 +212,8 @@ export const HRLeaveRequestDetailView = ({ request: propRequest, onBack }) => {
 
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto py-20 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center mx-auto shadow-xs">
-          <Loader2 className="w-6 h-6 animate-spin" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-slate-800">Retrieving Application File</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Fetching employee leave quota & audit history...</p>
-        </div>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <PageSkeleton />
       </div>
     );
   }

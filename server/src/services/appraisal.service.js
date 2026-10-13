@@ -43,18 +43,27 @@ const createAppraisalReview = async (payload, reviewer) => {
     throw new NotFoundError('Employee not found');
   }
 
-  const previousSalary = parseFloat(employee.salary || 0.0);
+  let previousSalary = parseFloat(employee.salary || 0.0);
+  if (previousSalary === 0 && employee.salaryStructure) {
+    previousSalary = parseFloat(employee.salaryStructure.netSalary || (employee.salaryStructure.ctc ? employee.salaryStructure.ctc / 12 : 0) || 0.0);
+  }
+
   let computedNewSalary = previousSalary;
   let computedHike = 0.0;
 
   if (newSalary !== undefined && newSalary !== null && parseFloat(newSalary) > 0) {
-    computedNewSalary = parseFloat(newSalary);
+    let inputNew = parseFloat(newSalary);
+    if (previousSalary > 0 && inputNew > previousSalary * 4) {
+      // Annual amount was passed, normalize to monthly
+      inputNew = Math.round(inputNew / 12);
+    }
+    computedNewSalary = inputNew;
     if (previousSalary > 0) {
       computedHike = ((computedNewSalary - previousSalary) / previousSalary) * 100;
     }
   } else if (hikePercentage !== undefined && hikePercentage !== null) {
     computedHike = parseFloat(hikePercentage);
-    computedNewSalary = previousSalary * (1 + computedHike / 100);
+    computedNewSalary = Math.round(previousSalary * (1 + computedHike / 100));
   }
 
   const tScore = parseFloat(technicalScore) || 0;
@@ -98,17 +107,17 @@ const createAppraisalReview = async (payload, reviewer) => {
       }
       await employee.update(userUpdates, { transaction });
 
-      // Synchronize SalaryStructure (Standard ratio: 50% Basic, 30% HRA, 20% Special Allowance)
-      const monthlyGross = computedNewSalary / 12;
-      const basic = monthlyGross * 0.5;
-      const hra = monthlyGross * 0.3;
-      const special = monthlyGross * 0.2;
-      const pf = basic * 0.12;
+      // Synchronize SalaryStructure (computedNewSalary is monthly gross)
+      const monthlyGross = computedNewSalary;
+      const basic = Math.round(monthlyGross * 0.5);
+      const hra = Math.round(monthlyGross * 0.3);
+      const special = Math.round(monthlyGross * 0.2);
+      const pf = Math.round(basic * 0.12);
       const net = monthlyGross - pf;
 
       const structPayload = {
         userId,
-        ctc: computedNewSalary,
+        ctc: computedNewSalary * 12,
         basicSalary: basic,
         hra,
         specialAllowance: special,
@@ -128,10 +137,10 @@ const createAppraisalReview = async (payload, reviewer) => {
     await Notification.create(
       {
         userId,
-        title: 'Performance Appraisal Completed',
-        message: `Your performance appraisal for ${review.cycleName} has been processed with an overall score of ${overallScore}/5.0.`,
+        title: '🎉 Performance Appraisal Completed & Approved',
+        message: `Congratulations! Your appraisal for ${review.cycleName} has been approved with a ${computedHike > 0 ? `+${computedHike.toFixed(0)}% salary hike` : 'rating'} (${overallScore}/5.0). Revised monthly salary: ₹${computedNewSalary.toLocaleString('en-IN')}.`,
         type: 'appraisal',
-        actionUrl: '/employee/performance'
+        actionUrl: '/employee/appraisals'
       },
       { transaction }
     );

@@ -26,6 +26,7 @@ import {
   uploadMyDocument,
   deleteMyDocument
 } from '../../services/employeeService';
+import { PageSkeleton } from '../../components/common/Skeleton';
 
 export const EmployeeKycDocumentsView = ({ onBack }) => {
   const [documents, setDocuments] = useState([]);
@@ -237,12 +238,7 @@ export const EmployeeKycDocumentsView = ({ onBack }) => {
         </div>
       </div>
 
-      {loading && (
-        <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-          <p className="text-xs font-semibold text-slate-500">Loading your compliance documents...</p>
-        </div>
-      )}
+      {loading && <PageSkeleton />}
 
       {!loading && errorMsg && (
         <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-center">

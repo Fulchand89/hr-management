@@ -246,9 +246,16 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
       {/* Notifications List */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-3">
         {isLoading ? (
-          <div className="py-12 flex items-center justify-center gap-2 text-slate-500 text-xs">
-            <Loader2 className="w-5 h-5 animate-spin text-[#8B1D2C]" />
-            <span>Loading notifications...</span>
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-4 rounded-2xl border border-slate-100 flex items-start gap-4 animate-pulse">
+                <div className="w-10 h-10 rounded-xl bg-slate-200 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-slate-200 rounded w-1/3" />
+                  <div className="h-3 bg-slate-100 rounded w-4/5" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="py-12 text-center text-slate-400 text-xs font-medium">

@@ -19,6 +19,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { getPolicyById, acknowledgePolicy } from '../../services/policyService';
+import { PageSkeleton } from '../../components/common/Skeleton';
 import { useAuth } from '../../context/AuthContext';
 
 const CATEGORY_NAMES = {
@@ -94,12 +95,7 @@ export const EmployeePolicyDetailView = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="p-20 flex flex-col items-center justify-center gap-3 bg-white rounded-3xl border border-slate-200/80 max-w-4xl mx-auto my-8">
-        <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-        <p className="text-xs font-bold text-slate-500">Loading policy details...</p>
-      </div>
-    );
+    return <PageSkeleton statsCount={0} tableRows={4} className="max-w-4xl" />;
   }
 
   if (!policy) {

@@ -14,6 +14,7 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { getPolicies } from '../../services/policyService';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 const CATEGORIES = [
   { id: 'all', label: 'All Documents' },
@@ -149,10 +150,7 @@ export const EmployeePolicyDocumentsView = () => {
       {/* ── Clean Document Table ───────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="p-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
-            <Loader2 className="w-6 h-6 animate-spin text-[#8B1D2C]" />
-            <span>Loading policy documents...</span>
-          </div>
+          <SkeletonTable rows={5} cols={5} hasHeader={false} />
         ) : filteredDocs.length === 0 ? (
           <div className="p-16 text-center space-y-2">
             <FolderOpen className="w-8 h-8 mx-auto text-slate-300" />

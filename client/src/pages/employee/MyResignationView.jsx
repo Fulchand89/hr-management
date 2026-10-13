@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { getMyResignation, withdrawResignation } from '../../services/employeeService';
 import ApplyResignationModal from './ApplyResignationModal';
+import { PageSkeleton } from '../../components/common/Skeleton';
 
 export const MyResignationView = ({ onBack }) => {
   const [resignation, setResignation] = useState(null);
@@ -198,6 +199,10 @@ export const MyResignationView = ({ onBack }) => {
     { key: 'admin', name: 'Admin & Facilities', icon: Lock, defaultDesc: 'ID card & access permissions return' },
     { key: 'manager', name: 'Reporting Manager', icon: ShieldCheck, defaultDesc: 'Knowledge transfer (KT) & sprint handover' }
   ];
+
+  if (loading) {
+    return <PageSkeleton statsCount={3} tableRows={4} className="max-w-6xl" />;
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12 font-sans text-slate-800">

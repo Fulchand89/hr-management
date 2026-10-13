@@ -9,21 +9,22 @@ const {
   LeaveBalance,
   LeaveType,
   Holiday,
-  Department
+  Department,
+  AppraisalReview
 } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('../config/logger');
 
 /**
  * Get full dashboard summary for a logged-in employee
- * Aggregates: attendance, leave balance, notifications, upcoming holidays, resignation status
+ * Aggregates: attendance, leave balance, notifications, upcoming holidays, resignation status, appraisals
  */
 const getEmployeeDashboard = async (userId) => {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
 
   // Run all queries in parallel for speed
-  const [todayAttendance, leaveBalances, unreadCount, upcomingHolidays, monthHistory, myResignation] = await Promise.all([
+  const [todayAttendance, leaveBalances, unreadCount, upcomingHolidays, monthHistory, myResignation, latestAppraisal] = await Promise.all([
     // 1. Today's attendance status
     attendanceService.getTodayStatus(userId).catch((err) => {
       logger.warn('Dashboard: attendance fetch error:', err.message);
@@ -61,7 +62,20 @@ const getEmployeeDashboard = async (userId) => {
     }).catch(() => null),
 
     // 6. Resignation status (if any)
-    resignationService.getMyResignation(userId).catch(() => null)
+    resignationService.getMyResignation(userId).catch(() => null),
+
+    // 7. Latest performance appraisal review
+    AppraisalReview.findOne({
+      where: { userId },
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: User,
+          as: 'reviewer',
+          attributes: ['id', 'firstName', 'lastName']
+        }
+      ]
+    }).catch(() => null)
   ]);
 
   // Format leave balances
@@ -148,6 +162,20 @@ const getEmployeeDashboard = async (userId) => {
         lastName: myResignation.reviewer.lastName,
         email: myResignation.reviewer.email
       } : null
+    } : null,
+    latestAppraisal: latestAppraisal ? {
+      id: latestAppraisal.id,
+      cycleName: latestAppraisal.cycleName,
+      overallScore: Number(latestAppraisal.overallScore || 0),
+      hikePercentage: Number(latestAppraisal.hikePercentage || 0),
+      newSalary: Number(latestAppraisal.newSalary || 0),
+      previousSalary: Number(latestAppraisal.previousSalary || 0),
+      effectiveDate: latestAppraisal.effectiveDate,
+      comments: latestAppraisal.comments || latestAppraisal.feedbackStrengths || '',
+      createdAt: latestAppraisal.createdAt,
+      reviewerName: latestAppraisal.reviewer
+        ? `${latestAppraisal.reviewer.firstName} ${latestAppraisal.reviewer.lastName || ''}`.trim()
+        : 'HR Management'
     } : null
   };
 };

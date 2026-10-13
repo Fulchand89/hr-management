@@ -26,9 +26,11 @@ import {
   ShieldCheck,
   FileText,
   Check,
-  X
+  X,
+  CreditCard
 } from 'lucide-react';
-import { getEmployeeById, getEmployeeDocuments, verifyEmployeeDocument } from '../../services/hrService';
+import { getEmployeeById, getEmployeeDocuments, verifyEmployeeDocument, updateEmployee } from '../../services/hrService';
+import { ProfileSkeleton } from '../../components/common/Skeleton';
 
 export const HREmployeeProfileDetailView = () => {
   const { id } = useParams();
@@ -38,6 +40,55 @@ export const HREmployeeProfileDetailView = () => {
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Bank Account Edit Modal State (HR Management)
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [bankForm, setBankForm] = useState({ bankName: '', bankAccountNumber: '', bankIfsc: '' });
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankError, setBankError] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3500);
+  };
+
+  const handleOpenBankModal = () => {
+    setBankForm({
+      bankName: profile?.bankName || '',
+      bankAccountNumber: profile?.bankAccountNumber || '',
+      bankIfsc: profile?.bankIfsc || ''
+    });
+    setBankError('');
+    setIsBankModalOpen(true);
+  };
+
+  const handleSaveBankDetails = async (e) => {
+    e.preventDefault();
+    setBankError('');
+    setBankLoading(true);
+    try {
+      await updateEmployee(profile.id, {
+        bankName: bankForm.bankName.trim(),
+        bankAccountNumber: bankForm.bankAccountNumber.trim(),
+        bankIfsc: bankForm.bankIfsc.trim().toUpperCase()
+      });
+
+      setProfile((prev) => ({
+        ...prev,
+        bankName: bankForm.bankName.trim(),
+        bankAccountNumber: bankForm.bankAccountNumber.trim(),
+        bankIfsc: bankForm.bankIfsc.trim().toUpperCase()
+      }));
+
+      setIsBankModalOpen(false);
+      showToast('Salary bank details updated successfully!');
+    } catch (err) {
+      setBankError(err?.response?.data?.message || 'Failed to update bank details');
+    } finally {
+      setBankLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -193,12 +244,7 @@ export const HREmployeeProfileDetailView = () => {
       </div>
 
       {/* Loading Skeleton */}
-      {isLoading && (
-        <div className="p-16 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col items-center justify-center gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-          <p className="text-xs font-semibold text-slate-500">Loading comprehensive profile record...</p>
-        </div>
-      )}
+      {isLoading && <ProfileSkeleton />}
 
       {/* Error Alert */}
       {!isLoading && errorMessage && (
@@ -445,6 +491,72 @@ export const HREmployeeProfileDetailView = () => {
             )}
           </div>
 
+          {/* Salary Bank Account & Disbursement Details */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-[#8B1D2C]" />
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Salary Bank Account & Disbursement Details
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenBankModal}
+                className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-[#8B1D2C] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span>Edit Bank Details</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Bank Name
+                </span>
+                <span className="text-sm font-bold text-slate-900 block">
+                  {profile.bankName || 'Not Provided'}
+                </span>
+                <span className="text-[10px] text-slate-400">Direct Deposit Institution</span>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Account Number
+                </span>
+                <span className="text-sm font-bold text-slate-900 font-mono block">
+                  {profile.bankAccountNumber ? (
+                    profile.bankAccountNumber.length >= 4 
+                      ? `•••• •••• ${profile.bankAccountNumber.slice(-4)} (${profile.bankAccountNumber})` 
+                      : profile.bankAccountNumber
+                  ) : (
+                    'Not Provided'
+                  )}
+                </span>
+                <span className="text-[10px] text-slate-400">Primary Salary Credit Account</span>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  IFSC Code
+                </span>
+                <span className="text-sm font-bold text-slate-900 font-mono tracking-wider block">
+                  {profile.bankIfsc || 'Not Provided'}
+                </span>
+                <span className="text-[10px] text-slate-400">Branch Routing Code</span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-slate-600 text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>HR &amp; Employees can both update these details. Any change is strictly logged with real-time audit notifications.</span>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payroll Ready</span>
+            </div>
+          </div>
+
           {/* KYC & Compliance Documents Section */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
@@ -546,6 +658,106 @@ export const HREmployeeProfileDetailView = () => {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Toast Feedback */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-2xl border border-slate-700 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* EDIT BANK DETAILS MODAL (HR) */}
+      {isBankModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-50 text-[#8B1D2C]">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Update Employee Bank Account</h3>
+                  <p className="text-xs text-slate-500">Edit payroll disbursement details for {profile?.firstName} {profile?.lastName}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBankModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {bankError && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{bankError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveBankDetails} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Bank Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. HDFC Bank, State Bank of India"
+                  value={bankForm.bankName}
+                  onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Account Number</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter full bank account number"
+                  value={bankForm.bankAccountNumber}
+                  onChange={(e) => setBankForm({ ...bankForm, bankAccountNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">IFSC Code</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. HDFC0001234"
+                  value={bankForm.bankIfsc}
+                  onChange={(e) => setBankForm({ ...bankForm, bankIfsc: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-[11px] leading-relaxed">
+                <strong>Audit Note:</strong> Updating this record will be logged with your HR credentials and timestamped for regulatory and payroll tracking.
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsBankModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={bankLoading}
+                  className="px-5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {bankLoading ? 'Saving...' : 'Save Bank Details'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

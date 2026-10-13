@@ -22,6 +22,7 @@ import {
   verifyEmployeeDocument,
   deleteEmployeeDocument
 } from '../../services/hrService';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const HRKycVerificationView = ({ onDocumentUpdated }) => {
   const navigate = useNavigate();
@@ -263,10 +264,7 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
       {/* ── Simple Documents Table ─────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-2 text-slate-400">
-            <Loader2 className="w-6 h-6 animate-spin text-[#8B1D2C]" />
-            <span className="text-xs font-semibold">Loading documents...</span>
-          </div>
+          <SkeletonTable rows={6} cols={5} hasHeader={false} />
         ) : filteredDocuments.length === 0 ? (
           <div className="p-12 text-center text-slate-400 space-y-1.5">
             <FileText className="w-8 h-8 mx-auto text-slate-300" />

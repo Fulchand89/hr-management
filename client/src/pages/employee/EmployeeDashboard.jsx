@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Clock,
   Calendar,
@@ -10,6 +11,7 @@ import {
   ArrowRight,
   TrendingUp,
   Award,
+  Star,
   ChevronRight,
   CalendarDays,
   ShieldCheck,
@@ -17,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getDashboard } from '../../services/employeeService';
+import { DashboardSkeleton } from '../../components/common/Skeleton';
 
 export const EmployeeDashboard = ({
   attendanceStatus = 'NOT_PUNCHED_IN',
@@ -36,6 +39,7 @@ export const EmployeeDashboard = ({
   onRequestCorrection,
   onSelectAttendanceRecord,
 }) => {
+  const navigate = useNavigate();
   const { user, token } = useAuth();
   const userName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
@@ -70,6 +74,10 @@ export const EmployeeDashboard = ({
   // Upcoming holidays
   const [upcomingHolidays, setUpcomingHolidays] = useState([]);
   const [availableLeaveDays, setAvailableLeaveDays] = useState(0);
+
+  // Latest appraisal review status (if completed)
+  const [latestAppraisal, setLatestAppraisal] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return;
@@ -107,12 +115,22 @@ export const EmployeeDashboard = ({
           );
           setAvailableLeaveDays(totalRemaining);
         }
+
+        if (data?.latestAppraisal) {
+          setLatestAppraisal(data.latestAppraisal);
+        }
       } catch (err) {
         console.error('Failed to load dashboard:', err?.message);
+      } finally {
+        setLoading(false);
       }
     };
     fetchDashboard();
   }, [token]);
+
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
@@ -407,29 +425,43 @@ export const EmployeeDashboard = ({
               Quick Shortcuts
             </h3>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={onOpenApplyLeave}
-                className="p-3 sm:p-3.5 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-100 text-left transition-colors cursor-pointer group"
+                className="p-3 rounded-2xl bg-rose-50/60 hover:bg-rose-100/60 border border-rose-100 text-left transition-colors cursor-pointer group"
               >
                 <div className="w-8 h-8 rounded-xl bg-[#8B1D2C] text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform shrink-0">
                   <CalendarDays className="w-4 h-4" />
                 </div>
-                <div className="text-xs font-bold text-slate-900 whitespace-nowrap">Apply Leave</div>
-                <div className="text-[11px] text-slate-500 whitespace-nowrap">Fast submission</div>
+                <div className="text-xs font-bold text-slate-900 truncate">Apply Leave</div>
+                <div className="text-[10px] text-slate-500 truncate">Fast request</div>
               </button>
 
               <button
                 type="button"
                 onClick={onNavigateToMyAttendance}
-                className="p-3 sm:p-3.5 rounded-2xl bg-sky-50/60 hover:bg-sky-100/60 border border-sky-100 text-left transition-colors cursor-pointer group"
+                className="p-3 rounded-2xl bg-sky-50/60 hover:bg-sky-100/60 border border-sky-100 text-left transition-colors cursor-pointer group"
               >
                 <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform shrink-0">
                   <Clock className="w-4 h-4" />
                 </div>
-                <div className="text-xs font-bold text-slate-900 whitespace-nowrap">Attendance Log</div>
-                <div className="text-[11px] text-slate-500 whitespace-nowrap">Monthly calendar</div>
+                <div className="text-xs font-bold text-slate-900 truncate">Attendance</div>
+                <div className="text-[10px] text-slate-500 truncate">Monthly log</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/employee/appraisals')}
+                className="p-3 rounded-2xl bg-emerald-50/60 hover:bg-emerald-100/60 border border-emerald-100 text-left transition-colors cursor-pointer group"
+              >
+                <div className="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center mb-2 shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div className="text-xs font-bold text-slate-900 truncate">Appraisals</div>
+                <div className="text-[10px] text-emerald-700 font-semibold truncate">
+                  {latestAppraisal ? `+${latestAppraisal.hikePercentage}% Hike` : 'Review cycle'}
+                </div>
               </button>
             </div>
           </div>

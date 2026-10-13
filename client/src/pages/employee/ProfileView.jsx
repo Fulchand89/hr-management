@@ -26,6 +26,7 @@ import {
   uploadAvatar as apiUploadAvatar,
   getLeaveBalance
 } from '../../services/employeeService';
+import { ProfileSkeleton } from '../../components/common/Skeleton';
 
 export const ProfileView = ({ onBack, onLogout }) => {
   const navigate = useNavigate();
@@ -62,6 +63,14 @@ export const ProfileView = ({ onBack, onLogout }) => {
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [bankForm, setBankForm] = useState({
+    bankName: '',
+    bankAccountNumber: '',
+    bankIfsc: ''
+  });
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankError, setBankError] = useState('');
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -155,6 +164,7 @@ export const ProfileView = ({ onBack, onLogout }) => {
           emergencyContactRelation: u.emergencyContactRelation || 'Family',
           bankName: u.bankName || 'Not Provided',
           accountNo: maskedAcc,
+          rawAccountNo: rawAcc,
           ifsc: u.bankIfsc || 'Not Provided',
           leaves: formattedLeaves
         });
@@ -199,6 +209,54 @@ export const ProfileView = ({ onBack, onLogout }) => {
       setEditError(err?.response?.data?.message || 'Failed to update contact details');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleUpdateBankDetails = async (e) => {
+    e.preventDefault();
+    setBankLoading(true);
+    setBankError('');
+
+    if (!bankForm.bankName.trim()) {
+      setBankError('Bank Name is required.');
+      setBankLoading(false);
+      return;
+    }
+    if (!bankForm.bankAccountNumber.trim() || bankForm.bankAccountNumber.trim().length < 8) {
+      setBankError('Bank account number must be at least 8 digits.');
+      setBankLoading(false);
+      return;
+    }
+    if (!bankForm.bankIfsc.trim() || bankForm.bankIfsc.trim().length < 6) {
+      setBankError('Please enter a valid IFSC code.');
+      setBankLoading(false);
+      return;
+    }
+
+    try {
+      await updateMyProfile({
+        bankName: bankForm.bankName.trim(),
+        bankAccountNumber: bankForm.bankAccountNumber.trim(),
+        bankIfsc: bankForm.bankIfsc.trim().toUpperCase()
+      });
+
+      const rawAcc = bankForm.bankAccountNumber.trim();
+      const maskedAcc = rawAcc.length >= 4 ? `•••• •••• ${rawAcc.slice(-4)}` : rawAcc;
+
+      setProfile((prev) => ({
+        ...prev,
+        bankName: bankForm.bankName.trim(),
+        accountNo: maskedAcc,
+        rawAccountNo: rawAcc,
+        ifsc: bankForm.bankIfsc.trim().toUpperCase()
+      }));
+
+      setIsBankModalOpen(false);
+      showToast('Salary bank details updated successfully! HR has received real-time notification.');
+    } catch (err) {
+      setBankError(err?.response?.data?.message || 'Failed to update bank details');
+    } finally {
+      setBankLoading(false);
     }
   };
 
@@ -256,21 +314,16 @@ export const ProfileView = ({ onBack, onLogout }) => {
     }
   };
 
+  if (isLoading || !profile) {
+    return <ProfileSkeleton />;
+  }
+
   const apiBase = import.meta.env.VITE_API_URL
     ? import.meta.env.VITE_API_URL.replace(/\/api\/v1\/?$/, '')
     : 'http://localhost:5000';
   const resolvedAvatar = profile.avatar
     ? (profile.avatar.startsWith('http') ? profile.avatar : `${apiBase}${profile.avatar.startsWith('/') ? '' : '/'}${profile.avatar}`)
     : null;
-
-  if (isLoading) {
-    return (
-      <div className="max-w-4xl mx-auto py-12 flex flex-col items-center justify-center space-y-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-        <p className="text-xs text-slate-500 font-medium">Loading profile...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
@@ -520,14 +573,32 @@ export const ProfileView = ({ onBack, onLogout }) => {
 
       {/* 4. Bank Information */}
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs space-y-4">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-            <CreditCard className="w-4 h-4" />
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
+              <CreditCard className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Salary Bank Account</h3>
+              <p className="text-[11px] text-slate-400">Account on file for monthly salary credits</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">Salary Bank Account</h3>
-            <p className="text-[11px] text-slate-400">Account on file for salary credits</p>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setBankForm({
+                bankName: profile.bankName === 'Not Provided' ? '' : profile.bankName,
+                bankAccountNumber: profile.rawAccountNo || '',
+                bankIfsc: profile.ifsc === 'Not Provided' ? '' : profile.ifsc
+              });
+              setBankError('');
+              setIsBankModalOpen(true);
+            }}
+            className="text-xs font-bold text-[#8B1D2C] hover:underline cursor-pointer flex items-center gap-1"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            <span>Edit Bank Details</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -748,6 +819,98 @@ export const ProfileView = ({ onBack, onLogout }) => {
                   className="px-5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold transition-all cursor-pointer disabled:opacity-50"
                 >
                   {pwdLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT BANK DETAILS MODAL */}
+      {isBankModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-50 text-[#8B1D2C]">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Update Salary Bank Account</h3>
+                  <p className="text-xs text-slate-500">Changes will immediately alert HR administration</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBankModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {bankError && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{bankError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateBankDetails} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Bank Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. HDFC Bank, State Bank of India"
+                  value={bankForm.bankName}
+                  onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Account Number</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter full bank account number"
+                  value={bankForm.bankAccountNumber}
+                  onChange={(e) => setBankForm({ ...bankForm, bankAccountNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">IFSC Code</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. HDFC0001234"
+                  value={bankForm.bankIfsc}
+                  onChange={(e) => setBankForm({ ...bankForm, bankIfsc: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-800 text-[11px] leading-relaxed">
+                <strong>Note:</strong> Editing your bank credentials will trigger an immediate real-time alert to all active HRs with your updated details to ensure accurate payroll disbursement.
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsBankModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={bankLoading}
+                  className="px-5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {bankLoading ? 'Saving...' : 'Save Bank Details'}
                 </button>
               </div>
             </form>

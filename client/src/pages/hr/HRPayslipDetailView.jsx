@@ -15,6 +15,7 @@ import {
   User
 } from 'lucide-react';
 import { getPayslipDetails, downloadPayslipPDF } from '../../services/hrService';
+import { PageSkeleton } from '../../components/common/Skeleton';
 
 export const HRPayslipDetailView = () => {
   const { id } = useParams();
@@ -138,14 +139,7 @@ export const HRPayslipDetailView = () => {
       </div>
 
       {/* Loading State */}
-      {loading && (
-        <div className="p-16 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col items-center justify-center gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-          <p className="text-xs font-semibold text-slate-500">
-            Fetching employee salary voucher...
-          </p>
-        </div>
-      )}
+      {loading && <PageSkeleton />}
 
       {/* Error State */}
       {!loading && errorMessage && (

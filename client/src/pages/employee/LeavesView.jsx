@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import ApplyLeaveModal from './ApplyLeaveModal';
 import LeaveDetailModal from './LeaveDetailModal';
+import { PageSkeleton } from '../../components/common/Skeleton';
 import {
   getMyLeaves,
   getLeaveBalance,
@@ -145,6 +146,10 @@ export const LeavesView = ({ onBack }) => {
     setSelectedLeave(leave);
     setIsDetailModalOpen(true);
   };
+
+  if (isBalancesLoading && leavesList.length === 0) {
+    return <PageSkeleton statsCount={3} tableRows={5} />;
+  }
 
   return (
     <div className="space-y-6">

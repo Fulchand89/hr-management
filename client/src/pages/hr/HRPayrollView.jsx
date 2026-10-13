@@ -34,6 +34,7 @@ import HRPayrollProcessModal from './HRPayrollProcessModal';
 import HRPayrollAdjustModal from './HRPayrollAdjustModal';
 import HRDisburseModal from './HRDisburseModal';
 import HRPayslipModal from './HRPayslipModal';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const HRPayrollView = () => {
   const navigate = useNavigate();
@@ -407,15 +408,9 @@ export const HRPayrollView = () => {
 
       {/* 4. Staff Payroll Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
-        {/* Loading Spinner */}
+        {/* Loading Skeleton */}
         {loading && (
-          <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-[#8B1D2C]" />
-            <p className="text-xs font-semibold text-slate-500">
-              Loading staff payroll records for{' '}
-              {monthsList.find((m) => m.value === selectedMonth)?.label} {selectedYear}...
-            </p>
-          </div>
+          <SkeletonTable rows={6} cols={7} hasHeader={false} />
         )}
 
         {/* Error Alert */}

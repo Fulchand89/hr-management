@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const { User } = require('../models');
 const { BadRequestError } = require('../utils/apiError');
+const { notifyHRAndAdmins } = require('../services/notification.service');
 
 /**
  * 1. POST /api/v1/employees - Register new employee
@@ -175,7 +176,19 @@ const uploadMyAvatar = async (req, res, next) => {
 
     const avatarUrl = `/uploads/${req.file.filename}`;
 
+    const employee = await User.findByPk(req.user.id);
     await User.update({ avatar: avatarUrl }, { where: { id: req.user.id } });
+
+    const empFullName = employee ? `${employee.firstName} ${employee.lastName || ''}`.trim() : 'Employee';
+    const empCode = employee?.employeeCode ? ` (${employee.employeeCode})` : '';
+
+    await notifyHRAndAdmins({
+      title: `Profile Photo Updated: ${empFullName}`,
+      message: `${empFullName}${empCode} has uploaded a new profile photo.`,
+      type: 'info',
+      actionUrl: `/hr/employees/${req.user.id}`,
+      excludeUserId: req.user.id
+    }).catch(() => {});
 
     return ApiResponse.success(res, {
       message: 'Avatar uploaded successfully',

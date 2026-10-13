@@ -19,7 +19,8 @@ import {
   Sparkles,
   Users,
   IdCard,
-  UserPlus
+  UserPlus,
+  CreditCard
 } from 'lucide-react';
 import {
   createEmployee,
@@ -57,6 +58,9 @@ export const HRAddEmployeeView = ({ isEdit = false }) => {
     joiningDate: new Date().toISOString().split('T')[0],
     salary: '',
     status: 'active',
+    bankName: '',
+    bankAccountNumber: '',
+    bankIfsc: '',
     password: isEditMode ? '' : 'Employee@123'
   });
 
@@ -90,6 +94,9 @@ export const HRAddEmployeeView = ({ isEdit = false }) => {
             joiningDate: emp.joiningDate ? new Date(emp.joiningDate).toISOString().split('T')[0] : '',
             salary: emp.salary != null ? String(emp.salary) : '',
             status: emp.status || 'active',
+            bankName: emp.bankName || '',
+            bankAccountNumber: emp.bankAccountNumber || '',
+            bankIfsc: emp.bankIfsc || '',
             password: ''
           });
         }

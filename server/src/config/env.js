@@ -15,7 +15,7 @@ const env = {
   APP_URL: process.env.APP_URL || 'http://localhost:5000',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000',
 
-  // Database
+  // Database (Primary)
   DB: {
     DIALECT: process.env.DB_DIALECT || 'mysql',
     HOST: process.env.DB_HOST || '127.0.0.1',
@@ -29,6 +29,24 @@ const env = {
       min: parseInt(process.env.DB_POOL_MIN, 10) || 0,
       acquire: parseInt(process.env.DB_POOL_ACQUIRE, 10) || 30000,
       idle: parseInt(process.env.DB_POOL_IDLE, 10) || 10000,
+    }
+  },
+
+  // Database 2 (Secondary - Hostinger Remote)
+  DB2: {
+    ENABLED: process.env.DB2_ENABLED === 'true' || Boolean(process.env.DB2_HOST),
+    DIALECT: process.env.DB2_DIALECT || 'mysql',
+    HOST: process.env.DB2_HOST || 'srv1823.hstgr.io',
+    PORT: parseInt(process.env.DB2_PORT, 10) || 3306,
+    NAME: process.env.DB2_NAME || 'u879279162_camelcaravan',
+    USER: process.env.DB2_USER || 'u879279162_camelcaravan',
+    PASSWORD: process.env.DB2_PASSWORD || '',
+    LOGGING: process.env.DB2_LOGGING === 'true',
+    POOL: {
+      max: parseInt(process.env.DB2_POOL_MAX, 10) || 10,
+      min: parseInt(process.env.DB2_POOL_MIN, 10) || 0,
+      acquire: parseInt(process.env.DB2_POOL_ACQUIRE, 10) || 30000,
+      idle: parseInt(process.env.DB2_POOL_IDLE, 10) || 10000,
     }
   },
 

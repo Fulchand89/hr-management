@@ -370,9 +370,15 @@ const HRStaffAttendance = () => {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
-              <tr>
-                <td colSpan="5" className="py-12 text-center text-slate-400 text-sm">Loading attendance...</td>
-              </tr>
+              [...Array(6)].map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                  <td className="py-3 px-6"><div className="h-4 bg-slate-200 rounded w-36" /></td>
+                  <td className="py-3 px-6"><div className="h-4 bg-slate-200 rounded w-20" /></td>
+                  <td className="py-3 px-6"><div className="h-4 bg-slate-200 rounded w-16" /></td>
+                  <td className="py-3 px-6"><div className="h-4 bg-slate-200 rounded w-16" /></td>
+                  <td className="py-3 px-6"><div className="h-4 bg-slate-200 rounded w-16" /></td>
+                </tr>
+              ))
             ) : filteredDaily.length === 0 ? (
               <tr>
                 <td colSpan="5" className="py-12 text-center text-slate-400 text-sm">No records found for {date}</td>

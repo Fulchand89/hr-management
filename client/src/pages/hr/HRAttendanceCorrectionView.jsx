@@ -17,6 +17,7 @@ import {
   actionAttendanceCorrection
 } from '../../services/hrService';
 import { useAuth } from '../../context/AuthContext';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const HRAttendanceCorrectionView = () => {
   const navigate = useNavigate();
@@ -308,10 +309,7 @@ export const HRAttendanceCorrectionView = () => {
       {/* Main Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="p-16 text-center text-slate-400 text-xs">
-            <RefreshCw className="w-8 h-8 mx-auto mb-2 text-[#8B1D2C] animate-spin" />
-            Loading attendance correction requests...
-          </div>
+          <SkeletonTable rows={6} cols={7} hasHeader={false} />
         ) : filteredList.length === 0 ? (
           <div className="p-16 text-center text-slate-400 text-xs space-y-2">
             <Clock className="w-10 h-10 mx-auto text-slate-300" />

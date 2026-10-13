@@ -20,9 +20,9 @@ import EmployeeHandbookView from './EmployeeHandbookView';
 import EmployeePolicyDocumentsView from './EmployeePolicyDocumentsView';
 import MyAppraisalView from './MyAppraisalView';
 import MyResignationView from './MyResignationView';
+import EmployeeKycDocumentsView from './EmployeeKycDocumentsView';
 import SignInView from './SignInView';
 
-import { Bell, X, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   getTodayAttendance,
@@ -30,9 +30,7 @@ import {
   startBreak as apiStartBreak,
   endBreak as apiEndBreak,
   punchOut as apiPunchOut,
-  getUnreadCount,
-  getMyNotifications,
-  markNotificationRead
+  getUnreadCount
 } from '../../services/employeeService';
 
 export const EmployeeApp = () => {
@@ -54,8 +52,6 @@ export const EmployeeApp = () => {
   const [breakSeconds, setBreakSeconds] = useState(0);
   const [timeline, setTimeline] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [activeToast, setActiveToast] = useState(null);
-  const [seenToastIds, setSeenToastIds] = useState(new Set());
 
   // Load today's attendance from API on mount
   const loadTodayAttendance = useCallback(async () => {
@@ -74,66 +70,16 @@ export const EmployeeApp = () => {
     }
   }, []);
 
-  // Load unread notification count & trigger real-time toast for unread alerts
+  // Load unread notification count
   const loadUnreadCount = useCallback(async () => {
     try {
       const res = await getUnreadCount();
-      const count = res.data?.unreadCount ?? res.data ?? 0;
+      const count = res?.data?.unreadCount ?? res?.data ?? 0;
       setUnreadCount(count);
-
-      if (count > 0) {
-        const notifRes = await getMyNotifications(1, 5);
-        const rawList = Array.isArray(notifRes?.data)
-          ? notifRes.data
-          : Array.isArray(notifRes?.data?.notifications)
-          ? notifRes.data.notifications
-          : Array.isArray(notifRes?.notifications)
-          ? notifRes.notifications
-          : Array.isArray(notifRes)
-          ? notifRes
-          : [];
-        const unreadList = rawList.filter((n) => !n.isRead);
-        if (unreadList.length > 0) {
-          const latest = unreadList[0];
-          setSeenToastIds((prev) => {
-            if (!prev.has(latest.id)) {
-              setActiveToast(latest);
-              return new Set([...prev, latest.id]);
-            }
-            return prev;
-          });
-        }
-      }
     } catch {
       setUnreadCount(0);
     }
   }, []);
-
-  // Auto-dismiss active toast after 9 seconds
-  useEffect(() => {
-    if (!activeToast) return;
-    const timer = setTimeout(() => {
-      setActiveToast(null);
-    }, 9000);
-    return () => clearTimeout(timer);
-  }, [activeToast]);
-
-  const handleToastAction = async (toast) => {
-    if (!toast) return;
-    try {
-      if (toast.id) {
-        await markNotificationRead(toast.id);
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
-    } catch {
-      // optimistic fallback
-    }
-    setActiveToast(null);
-    const target =
-      toast.actionUrl ||
-      (toast.type === 'resignation' ? '/employee/resignation' : '/employee/notifications');
-    navigate(target);
-  };
 
   useEffect(() => {
     if (!token) return;
@@ -252,15 +198,50 @@ export const EmployeeApp = () => {
     ) {
       return 'attendance-correction';
     }
-    if (path.includes('/my-attendance') || path.includes('/myattendance')) return 'my-attendance';
-    if (path.includes('/attendance')) return 'attendance';
-    if (path.includes('/leaves')) return 'leaves';
-    if (path.includes('/salary') || path.includes('/payslips')) return 'salary';
-    if (path.includes('/policies')) return 'policies';
-    if (path.includes('/appraisals') || path.includes('/performance')) return 'appraisals';
-    if (path.includes('/resignation') || path.includes('/exit')) return 'resignation';
-    if (path.includes('/notifications')) return 'notifications';
-    if (path.includes('/profile')) return 'profile';
+    if (
+      path.includes('/my-attendance') ||
+      path.includes('/myattendance') ||
+      path.includes('/attendance-log') ||
+      path.includes('/attendance-history')
+    ) {
+      return 'my-attendance';
+    }
+    if (
+      path.includes('/attendance') ||
+      path.includes('/live-attendance') ||
+      path.includes('/timer') ||
+      path.includes('/punch')
+    ) {
+      return 'attendance';
+    }
+    if (path.includes('/leaves') || path.includes('/my-leaves') || path.includes('/apply-leave')) return 'leaves';
+    if (
+      path.includes('/salary') ||
+      path.includes('/payslips') ||
+      path.includes('/payslip') ||
+      path.includes('/payroll')
+    ) {
+      return 'salary';
+    }
+    if (path.includes('/kyc') || path.includes('/documents') || path.includes('/my-documents')) return 'profile';
+    if (path.includes('/policies') || path.includes('/handbook')) return 'policies';
+    if (
+      path.includes('/appraisals') ||
+      path.includes('/performance') ||
+      path.includes('/appraisal') ||
+      path.includes('/reviews')
+    ) {
+      return 'appraisals';
+    }
+    if (
+      path.includes('/resignation') ||
+      path.includes('/exit') ||
+      path.includes('/resignations')
+    ) {
+      return 'resignation';
+    }
+    if (path.includes('/notifications') || path.includes('/notification')) return 'notifications';
+    if (path.includes('/profile') || path.includes('/my-profile')) return 'profile';
     return 'dashboard';
   };
 
@@ -372,6 +353,9 @@ export const EmployeeApp = () => {
             />
           }
         />
+        <Route path="live-attendance" element={<Navigate to="/employee/attendance" replace />} />
+        <Route path="timer" element={<Navigate to="/employee/attendance" replace />} />
+        <Route path="punch" element={<Navigate to="/employee/attendance" replace />} />
 
         {/* My Monthly Attendance View */}
         <Route
@@ -392,6 +376,8 @@ export const EmployeeApp = () => {
             />
           }
         />
+        <Route path="attendance-log" element={<Navigate to="/employee/my-attendance" replace />} />
+        <Route path="attendance-history" element={<Navigate to="/employee/my-attendance" replace />} />
 
         {/* Attendance Correction Dedicated Routes */}
         <Route
@@ -429,6 +415,9 @@ export const EmployeeApp = () => {
             />
           }
         />
+        <Route path="my-leaves" element={<Navigate to="/employee/leaves" replace />} />
+        <Route path="leave-requests" element={<Navigate to="/employee/leaves" replace />} />
+        <Route path="apply-leave" element={<Navigate to="/employee/leaves" replace />} />
 
         {/* Notifications Hub View */}
         <Route
@@ -440,6 +429,7 @@ export const EmployeeApp = () => {
             />
           }
         />
+        <Route path="notification" element={<Navigate to="/employee/notifications" replace />} />
 
         {/* Profile View */}
         <Route
@@ -451,6 +441,7 @@ export const EmployeeApp = () => {
             />
           }
         />
+        <Route path="my-profile" element={<Navigate to="/employee/profile" replace />} />
 
         {/* Salary & Compensation (Strictly Read-Only) */}
         <Route
@@ -460,6 +451,32 @@ export const EmployeeApp = () => {
         <Route
           path="payslips"
           element={<EmployeeSalaryView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="payslip"
+          element={<EmployeeSalaryView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="payroll"
+          element={<EmployeeSalaryView onBack={() => navigate('/employee/dashboard')} />}
+        />
+
+        {/* Employee KYC & Identity Compliance Documents */}
+        <Route
+          path="kyc"
+          element={<EmployeeKycDocumentsView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="documents"
+          element={<EmployeeKycDocumentsView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="kyc-documents"
+          element={<EmployeeKycDocumentsView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="my-documents"
+          element={<EmployeeKycDocumentsView onBack={() => navigate('/employee/dashboard')} />}
         />
 
         {/* Company Policies & Handbook Dedicated Sub-routes */}
@@ -472,8 +489,16 @@ export const EmployeeApp = () => {
           element={<EmployeeHandbookView />}
         />
         <Route
+          path="handbook"
+          element={<Navigate to="/employee/policies/handbook" replace />}
+        />
+        <Route
           path="policies/documents"
           element={<EmployeePolicyDocumentsView />}
+        />
+        <Route
+          path="policy-documents"
+          element={<Navigate to="/employee/policies/documents" replace />}
         />
         <Route
           path="policies/:id"
@@ -486,7 +511,15 @@ export const EmployeeApp = () => {
           element={<MyAppraisalView onBack={() => navigate('/employee/dashboard')} />}
         />
         <Route
+          path="appraisal"
+          element={<MyAppraisalView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
           path="performance"
+          element={<MyAppraisalView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="reviews"
           element={<MyAppraisalView onBack={() => navigate('/employee/dashboard')} />}
         />
 
@@ -496,17 +529,21 @@ export const EmployeeApp = () => {
           element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
         />
         <Route
+          path="resignations"
+          element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
           path="exit"
+          element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="exit-management"
           element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
         />
 
         {/* Removed Referrals & Rewards Redirects */}
         <Route path="referrals" element={<Navigate to="/employee/dashboard" replace />} />
         <Route path="rewards" element={<Navigate to="/employee/dashboard" replace />} />
-
-        {/* Removed KYC & Documents Redirects */}
-        <Route path="kyc" element={<Navigate to="/employee/dashboard" replace />} />
-        <Route path="documents" element={<Navigate to="/employee/dashboard" replace />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />
@@ -537,54 +574,6 @@ export const EmployeeApp = () => {
           navigate(`/employee/attendance-correction/new?date=${targetDate}`);
         }}
       />
-
-      {/* Real-time Floating Notification Toast */}
-      {activeToast && (
-        <div className="fixed top-20 right-6 z-50 max-w-sm w-full bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl p-4 border border-slate-700/80 animate-in slide-in-from-top-3 fade-in duration-200">
-          <div className="flex items-start gap-3">
-            <span
-              className={`p-2 rounded-xl shrink-0 ${
-                activeToast.type === 'resignation'
-                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              }`}
-            >
-              <Bell className="w-5 h-5" />
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <h4 className="text-xs font-bold text-white truncate">{activeToast.title}</h4>
-                <button
-                  type="button"
-                  onClick={() => setActiveToast(null)}
-                  className="text-slate-400 hover:text-white p-0.5 rounded cursor-pointer transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <p className="text-xs text-slate-300 mt-1 leading-relaxed line-clamp-3">
-                {activeToast.message}
-              </p>
-              <div className="mt-2.5 flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => handleToastAction(activeToast)}
-                  className="text-xs font-bold text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  View Details <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveToast(null)}
-                  className="text-[11px] text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </EmployeeLayout>
   );
 };

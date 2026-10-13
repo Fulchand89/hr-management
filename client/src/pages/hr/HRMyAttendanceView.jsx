@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import HRAttendanceDetailModal from './HRAttendanceDetailModal';
 import { getMyAttendanceHistory, getHolidays } from '../../services/hrService';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const HRMyAttendanceView = ({ onBack }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -281,10 +282,7 @@ export const HRMyAttendanceView = ({ onBack }) => {
 
       {/* Main Content: Table View vs Calendar View */}
       {isLoading ? (
-        <div className="bg-white rounded-3xl p-12 border border-slate-200/80 shadow-2xs flex items-center justify-center gap-2 text-slate-500 text-xs">
-          <Loader2 className="w-5 h-5 animate-spin text-[#8B1D2C]" />
-          <span>Loading attendance history for {selectedMonth}...</span>
-        </div>
+        <SkeletonTable rows={8} cols={6} />
       ) : viewMode === 'table' ? (
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">

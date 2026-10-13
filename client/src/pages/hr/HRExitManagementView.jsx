@@ -1,52 +1,42 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  LogOut,
+  ChevronLeft,
   Search,
   Filter,
   CheckCircle2,
   Clock,
-  AlertCircle,
-  Calendar,
-  Users,
-  ShieldCheck,
   FileText,
   Printer,
-  ChevronRight,
-  Eye,
-  Edit3,
   Loader2,
   Check,
   X,
-  Building2,
-  UserMinus,
-  Sparkles,
-  Download,
-  AlertTriangle,
-  FileCheck
+  AlertCircle
 } from 'lucide-react';
 import {
-  getAllEmployees,
   getAllResignations,
   updateResignationStatus,
   updateClearanceStatus
 } from '../../services/hrService';
-import { useAuth } from '../../context/AuthContext';
+import { SkeletonTable } from '../../components/common/Skeleton';
 
 export const HRExitManagementView = () => {
-  const { user } = useAuth();
-  const [employees, setEmployees] = useState([]);
+  const navigate = useNavigate();
+
   const [isLoading, setIsLoading] = useState(true);
+  const [resignationList, setResignationList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [toastMessage, setToastMessage] = useState('');
-  const [resignationList, setResignationList] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Modals state
   const [selectedExit, setSelectedExit] = useState(null);
   const [isClearanceModalOpen, setIsClearanceModalOpen] = useState(false);
   const [isLetterModalOpen, setIsLetterModalOpen] = useState(false);
   const [letterType, setLetterType] = useState('relieving'); // 'relieving' | 'experience'
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rejectingRecordId, setRejectingRecordId] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -56,22 +46,13 @@ export const HRExitManagementView = () => {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [empRes, resignRes] = await Promise.all([
-        getAllEmployees({ limit: 100 }).catch(() => ({ data: [] })),
-        getAllResignations().catch(() => ({ data: [] }))
-      ]);
-
-      const empData = Array.isArray(empRes?.data?.data)
-        ? empRes.data.data
-        : (Array.isArray(empRes?.data) ? empRes.data : (Array.isArray(empRes) ? empRes : []));
-      setEmployees(empData);
-
-      const resignData = Array.isArray(resignRes?.data?.data)
-        ? resignRes.data.data
-        : (Array.isArray(resignRes?.data) ? resignRes.data : (Array.isArray(resignRes) ? resignRes : []));
+      const res = await getAllResignations();
+      const resignData = Array.isArray(res?.data?.data)
+        ? res.data.data
+        : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
       setResignationList(resignData);
     } catch (err) {
-      console.error('Failed to load exit management data:', err);
+      console.error('Failed to load resignations:', err);
     } finally {
       setIsLoading(false);
     }
@@ -86,9 +67,6 @@ export const HRExitManagementView = () => {
     return resignationList.map((raw) => {
       const emp = raw.employee || {};
       const lwd = raw.approvedLastWorkingDay || raw.requestedLastWorkingDay || raw.resignationDate;
-      const fnfDate = new Date(lwd);
-      fnfDate.setDate(fnfDate.getDate() + 45);
-      const fnfDueDate = fnfDate.toISOString().split('T')[0];
 
       const clearances = raw.clearances || [];
       const clearanceMap = {
@@ -102,37 +80,34 @@ export const HRExitManagementView = () => {
       return {
         id: raw.id,
         raw,
-        employeeCode: emp.employeeCode || emp.employeeId || 'EMP-01',
-        employeeName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee',
+        employeeCode: emp.employeeCode || emp.employeeId || '--',
+        employeeName: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email || 'Employee',
         designation: emp.designationDetails?.title || 'Staff',
-        department: emp.departmentDetails?.name || 'Operations',
-        resignationDate: raw.resignationDate,
-        lastWorkingDay: lwd,
-        reason: raw.reason,
-        status: raw.status, // 'pending' | 'under_review' | 'approved' | 'rejected' | 'completed'
+        department: emp.departmentDetails?.name || 'General',
+        resignationDate: raw.resignationDate ? raw.resignationDate.split('T')[0] : '--',
+        lastWorkingDay: lwd ? lwd.split('T')[0] : '--',
+        reason: raw.reason || 'Not specified',
+        status: raw.status || 'pending', // 'pending' | 'approved' | 'rejected' | 'completed'
         clearances,
         clearance: clearanceMap,
-        fnfDueDate,
-        fnfAmount: Number(raw.settlementAmount || 0),
         fnfPaid: raw.status === 'completed'
       };
     });
   }, [resignationList]);
 
-  // Filtered Resignations
+  // Filtered records
   const filteredRecords = useMemo(() => {
     return formattedRecords.filter((rec) => {
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        !searchQuery.trim() ||
-        rec.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        rec.employeeCode.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        rec.employeeName.toLowerCase().includes(q) ||
+        rec.employeeCode.toLowerCase().includes(q) ||
+        rec.department.toLowerCase().includes(q);
 
       const matchesStatus =
         selectedStatusFilter === 'all' ||
-        (selectedStatusFilter === 'pending' && (rec.status === 'pending' || rec.status === 'under_review')) ||
-        (selectedStatusFilter === 'approved' && rec.status === 'approved') ||
-        (selectedStatusFilter === 'cleared' && Object.values(rec.clearance).every(Boolean)) ||
-        (selectedStatusFilter === 'fnf_pending' && !rec.fnfPaid);
+        rec.status.toLowerCase() === selectedStatusFilter.toLowerCase();
 
       return matchesSearch && matchesStatus;
     });
@@ -146,35 +121,36 @@ export const HRExitManagementView = () => {
         status: 'approved',
         approvedLastWorkingDay: lastWorkingDay
       });
-      showToast('Resignation request approved. Notice period initiated.');
+      showToast('Resignation approved. Employee is now on notice period.');
       await loadData();
     } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to approve resignation');
+      showToast(err?.response?.data?.message || 'Failed to approve resignation');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // Reject Resignation
-  const handleRejectResignation = async (recId) => {
-    const reason = prompt('Please enter reason for rejection:');
-    if (!reason) return;
+  const handleConfirmReject = async () => {
+    if (!rejectingRecordId) return;
     setIsSubmitting(true);
     try {
-      await updateResignationStatus(recId, {
+      await updateResignationStatus(rejectingRecordId, {
         status: 'rejected',
-        rejectionReason: reason
+        rejectionReason: rejectionReason.trim() || 'Rejected by HR'
       });
-      showToast('Resignation request marked as rejected.');
+      showToast('Resignation request rejected.');
+      setRejectingRecordId(null);
+      setRejectionReason('');
       await loadData();
     } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to reject resignation');
+      showToast(err?.response?.data?.message || 'Failed to reject resignation');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Toggle Clearance in modal
+  // Toggle Department Clearance
   const handleToggleClearanceDept = async (dept) => {
     if (!selectedExit) return;
     const clearanceItem = selectedExit.clearances.find((c) => c.department === dept);
@@ -185,11 +161,11 @@ export const HRExitManagementView = () => {
     try {
       await updateClearanceStatus(selectedExit.id, clearanceItem.id, {
         status: nextStatus,
-        remarks: nextStatus === 'cleared' ? 'Cleared by HR Admin' : null
+        remarks: nextStatus === 'cleared' ? 'Cleared by HR' : null
       });
-      showToast(`Department ${dept.toUpperCase()} clearance marked as ${nextStatus}!`);
+      showToast(`${dept.toUpperCase()} clearance marked as ${nextStatus}!`);
       await loadData();
-      // Update selectedExit local state
+
       setSelectedExit((prev) => ({
         ...prev,
         clearances: prev.clearances.map((c) =>
@@ -201,116 +177,84 @@ export const HRExitManagementView = () => {
         }
       }));
     } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to update clearance');
+      showToast(err?.response?.data?.message || 'Failed to update clearance');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Mark FNF Processed
-  const handleMarkFNFPaid = async (recId, amount = 0) => {
+  // Mark Exit Completed (FNF Done)
+  const handleMarkExitCompleted = async (recId) => {
     setIsSubmitting(true);
     try {
       await updateResignationStatus(recId, {
-        status: 'completed',
-        settlementAmount: amount
+        status: 'completed'
       });
-      showToast('Full & Final Settlement (FNF) finalized and marked as completed!');
+      showToast('Exit and settlement successfully completed!');
       await loadData();
     } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to mark FNF paid');
+      showToast(err?.response?.data?.message || 'Failed to complete exit');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const pendingCount = formattedRecords.filter((r) => r.status === 'pending').length;
+  const activeNoticeCount = formattedRecords.filter((r) => r.status === 'approved').length;
+  const completedCount = formattedRecords.filter((r) => r.status === 'completed').length;
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto font-sans pb-12">
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-150">
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-semibold animate-in fade-in slide-in-from-bottom-3">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* ── Top Header Banner ────────────────────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Gupta Tech Web Exit Operations</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Exit &amp; Resignation Management
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
-            Live database tracker for employee resignations, 2-month notice periods, multi-department asset clearances, and 45-day Full &amp; Final (FNF) settlements.
-          </p>
-        </div>
-
-        {/* Quick Stat Pill */}
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3">
-            <Clock className="w-5 h-5 text-amber-600" />
-            <div>
-              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">Under Processing</span>
-              <span className="text-lg font-black">{formattedRecords.filter(r => r.status !== 'completed' && r.status !== 'rejected').length} Requests</span>
-            </div>
+          <button
+            type="button"
+            onClick={() => navigate('/hr/dashboard')}
+            className="p-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">Exit &amp; Resignation Management</h1>
+            <p className="text-xs text-slate-500">Track employee resignations, notice periods, and clearances</p>
           </div>
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <div>
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Completed Exits</span>
-              <span className="text-lg font-black">{formattedRecords.filter(r => r.status === 'completed').length} Employees</span>
-            </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="flex items-center gap-2">
+          <div className="px-3.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
+            <span>{pendingCount} Pending</span>
+          </div>
+          <div className="px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold flex items-center gap-1.5">
+            <span>{activeNoticeCount} Under Notice</span>
+          </div>
+          <div className="px-3.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{completedCount} Completed</span>
           </div>
         </div>
       </div>
 
-      {/* ── Policy Reference Card ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center gap-2 font-bold text-slate-900">
-            <Calendar className="w-4 h-4 text-rose-600" />
-            <span>Notice Period Policy</span>
-          </div>
-          <p className="text-slate-500 leading-relaxed text-[11px]">
-            Standard notice period is <strong>60 days (2 months)</strong> from formal resignation submission. Unapproved leaves extend the notice.
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center gap-2 font-bold text-slate-900">
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
-            <span>Asset &amp; No-Dues Clearance</span>
-          </div>
-          <p className="text-slate-500 leading-relaxed text-[11px]">
-            Clearance required from IT, Finance, HR, Admin, and Reporting Manager before exit letters and FNF release.
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center gap-2 font-bold text-slate-900">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>FNF 45-Day Settlement</span>
-          </div>
-          <p className="text-slate-500 leading-relaxed text-[11px]">
-            Final settlement is processed and credited within <strong>45 days</strong> following the approved Last Working Day.
-          </p>
-        </div>
-      </div>
-
-      {/* ── Filters & Search ─────────────────────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
+      {/* Filters & Search */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by employee name or code..."
+            placeholder="Search employee or code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
           />
         </div>
 
@@ -321,50 +265,46 @@ export const HRExitManagementView = () => {
             onChange={(e) => setSelectedStatusFilter(e.target.value)}
             className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
           >
-            <option value="all">All Resignation Records</option>
-            <option value="pending">Pending HR Review</option>
-            <option value="approved">Approved &amp; Under Notice</option>
-            <option value="cleared">Assets &amp; Dues Cleared</option>
-            <option value="fnf_pending">FNF Pending Payout</option>
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="completed">Completed</option>
+            <option value="rejected">Rejected</option>
           </select>
         </div>
       </div>
 
-      {/* ── Resignation & Exit Records Table ─────────────────────────────── */}
+      {/* Table Container */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden">
         {isLoading ? (
-          <div className="p-12 flex flex-col items-center justify-center gap-3 text-slate-400">
-            <Loader2 className="w-6 h-6 animate-spin text-[#8B1D2C]" />
-            <span className="text-xs font-semibold">Loading resignation records from database...</span>
-          </div>
+          <SkeletonTable rows={5} cols={6} hasHeader={false} />
         ) : filteredRecords.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 space-y-2">
-            <LogOut className="w-8 h-8 mx-auto text-slate-300" />
-            <p className="text-xs font-semibold">No resignation records matching the selected criteria.</p>
+          <div className="p-12 text-center text-slate-400 space-y-1">
+            <p className="text-xs font-semibold">No resignation records found.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   <th className="py-3.5 px-5">Employee</th>
                   <th className="py-3.5 px-4">Resignation Date</th>
-                  <th className="py-3.5 px-4">Notice Period &amp; LWD</th>
-                  <th className="py-3.5 px-4">Clearance Status</th>
-                  <th className="py-3.5 px-4">45-Day FNF Status</th>
+                  <th className="py-3.5 px-4">Last Working Day</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Clearance</th>
                   <th className="py-3.5 px-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
+              <tbody className="divide-y divide-slate-100">
                 {filteredRecords.map((rec) => {
                   const allClear = Object.values(rec.clearance).every(Boolean);
 
                   return (
-                    <tr key={rec.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr key={rec.id} className="hover:bg-slate-50/60 transition-colors">
                       {/* Employee */}
                       <td className="py-3.5 px-5">
                         <div>
-                          <span className="font-bold text-slate-900 block leading-tight">{rec.employeeName}</span>
+                          <span className="font-bold text-slate-900 block">{rec.employeeName}</span>
                           <span className="text-[11px] text-slate-400 font-mono">
                             {rec.employeeCode} &bull; {rec.designation}
                           </span>
@@ -372,96 +312,84 @@ export const HRExitManagementView = () => {
                       </td>
 
                       {/* Resignation Date */}
-                      <td className="py-3.5 px-4 font-mono">
-                        <span className="font-semibold text-slate-900 block">{rec.resignationDate}</span>
-                        <span className="text-[10px] text-slate-400 italic line-clamp-1">{rec.reason}</span>
+                      <td className="py-3.5 px-4">
+                        <span className="font-semibold text-slate-800 block">{rec.resignationDate}</span>
+                        <span className="text-[11px] text-slate-400 truncate max-w-[160px] block" title={rec.reason}>
+                          {rec.reason}
+                        </span>
                       </td>
 
-                      {/* Notice Period */}
+                      {/* Last Working Day */}
+                      <td className="py-3.5 px-4 font-semibold text-slate-800">
+                        {rec.lastWorkingDay}
+                      </td>
+
+                      {/* Status */}
                       <td className="py-3.5 px-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-[11px]">
-                            <span className="font-semibold text-slate-700">LWD: {rec.lastWorkingDay}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              rec.status === 'approved' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                              rec.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                              rec.status === 'rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
-                              'bg-blue-50 text-blue-700 border border-blue-200'
-                            }`}>
-                              {rec.status.toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                            rec.status === 'approved'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : rec.status === 'completed'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : rec.status === 'rejected'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {rec.status}
+                        </span>
                       </td>
 
                       {/* Clearance */}
                       <td className="py-3.5 px-4">
-                        {allClear ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <Check className="w-3 h-3" /> All Dues Cleared
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            <Clock className="w-3 h-3" /> Handover Incomplete
-                          </span>
-                        )}
-                      </td>
-
-                      {/* 45-Day FNF */}
-                      <td className="py-3.5 px-4 font-mono">
-                        {rec.fnfPaid ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <Check className="w-3 h-3" /> FNF Settled
-                          </span>
-                        ) : (
-                          <div>
-                            <span className="font-bold text-slate-900 block">Due: {rec.fnfDueDate}</span>
-                            <span className="text-[10px] text-rose-600 font-semibold">
-                              {rec.fnfAmount > 0 ? `₹${rec.fnfAmount.toLocaleString('en-IN')}` : 'Calculating...'}
-                            </span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3.5 px-5 text-right space-x-2">
-                        {rec.status === 'pending' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleApproveResignation(rec.id, rec.lastWorkingDay)}
-                              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all cursor-pointer"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRejectResignation(rec.id)}
-                              className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-all cursor-pointer"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-
                         <button
                           type="button"
                           onClick={() => {
                             setSelectedExit(rec);
                             setIsClearanceModalOpen(true);
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+                          className={`px-2.5 py-1 rounded-xl text-[11px] font-bold cursor-pointer transition-colors border ${
+                            allClear
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                          }`}
                         >
-                          Clearance
+                          {allClear ? '✓ All Cleared' : 'View Clearance'}
                         </button>
+                      </td>
 
-                        {!rec.fnfPaid && allClear && (
+                      {/* Actions */}
+                      <td className="py-3.5 px-5 text-right space-x-1.5">
+                        {rec.status === 'pending' && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={() => handleApproveResignation(rec.id, rec.lastWorkingDay)}
+                              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer transition-all disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={() => setRejectingRecordId(rec.id)}
+                              className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs cursor-pointer transition-all disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+
+                        {rec.status === 'approved' && allClear && (
                           <button
                             type="button"
-                            onClick={() => handleMarkFNFPaid(rec.id, rec.fnfAmount || 95000)}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs transition-all cursor-pointer"
+                            disabled={isSubmitting}
+                            onClick={() => handleMarkExitCompleted(rec.id)}
+                            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer transition-all disabled:opacity-50"
                           >
-                            Mark FNF Paid
+                            Complete Exit
                           </button>
                         )}
 
@@ -472,10 +400,10 @@ export const HRExitManagementView = () => {
                             setLetterType('relieving');
                             setIsLetterModalOpen(true);
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-xs transition-all cursor-pointer inline-flex items-center gap-1"
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-all inline-flex items-center gap-1"
                         >
-                          <FileText className="w-3 h-3" />
-                          <span>Letters</span>
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Letter</span>
                         </button>
                       </td>
                     </tr>
@@ -487,14 +415,13 @@ export const HRExitManagementView = () => {
         )}
       </div>
 
-      {/* ── ASSET & NO-DUES CLEARANCE MODAL ──────────────────────────────── */}
+      {/* ── DEPARTMENTAL CLEARANCE MODAL ───────────────────────── */}
       {isClearanceModalOpen && selectedExit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="fixed inset-0" onClick={() => setIsClearanceModalOpen(false)} />
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 z-10 p-6 space-y-6">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="text-lg font-black text-slate-900">Departmental Exit Clearance</h3>
+                <h3 className="font-bold text-slate-900 text-sm">Departmental Exit Clearance</h3>
                 <p className="text-xs text-slate-500">
                   {selectedExit.employeeName} ({selectedExit.employeeCode})
                 </p>
@@ -502,20 +429,23 @@ export const HRExitManagementView = () => {
               <button
                 type="button"
                 onClick={() => setIsClearanceModalOpen(false)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-1 rounded-xl text-slate-400 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Checklist */}
-            <div className="space-y-3">
+            <p className="text-[11px] text-slate-500">
+              Click on any department to toggle its clearance status:
+            </p>
+
+            <div className="space-y-2">
               {[
-                { dept: 'it', title: 'IT & Hardware Assets', desc: 'Laptop, chargers, monitors, security tokens' },
-                { dept: 'admin', title: 'Admin & Facilities', desc: 'ID access card, drawer keys, biometric revoking' },
-                { dept: 'finance', title: 'Finance & Accounts', desc: 'No pending salary advances, travel claims settled' },
-                { dept: 'manager', title: 'Manager Knowledge Handover', desc: 'Project documentation, codebase, client access transfer' },
-                { dept: 'hr', title: 'HR & Personnel Exit', desc: 'Exit interview completed, insurance policy deactivation' }
+                { dept: 'it', title: 'IT & Hardware Assets', desc: 'Laptop, charger & account access' },
+                { dept: 'admin', title: 'Admin & Facilities', desc: 'ID card & office keys' },
+                { dept: 'finance', title: 'Finance & Accounts', desc: 'Dues & claims settled' },
+                { dept: 'manager', title: 'Manager Handover', desc: 'Project documentation & tasks handover' },
+                { dept: 'hr', title: 'HR Clearance', desc: 'Exit formalities & records' }
               ].map(({ dept, title, desc }) => {
                 const isCleared = selectedExit.clearance[dept];
 
@@ -523,21 +453,21 @@ export const HRExitManagementView = () => {
                   <div
                     key={dept}
                     onClick={() => handleToggleClearanceDept(dept)}
-                    className={`p-3.5 rounded-2xl border transition-all flex items-start justify-between gap-3 cursor-pointer ${
+                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
                       isCleared
-                        ? 'bg-emerald-50/60 border-emerald-200'
-                        : 'bg-slate-50/80 border-slate-200/80 hover:bg-slate-100/60'
+                        ? 'bg-emerald-50/70 border-emerald-200'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <div className="space-y-0.5">
-                      <span className={`text-xs font-bold block ${isCleared ? 'text-emerald-900' : 'text-slate-900'}`}>
+                    <div>
+                      <span className={`text-xs font-bold block ${isCleared ? 'text-emerald-900' : 'text-slate-800'}`}>
                         {title}
                       </span>
-                      <span className="text-[11px] text-slate-500 leading-tight block">{desc}</span>
+                      <span className="text-[10px] text-slate-400 block">{desc}</span>
                     </div>
 
                     <div
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border transition-all ${
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border transition-all ${
                         isCleared
                           ? 'bg-emerald-600 text-white border-emerald-600'
                           : 'bg-white border-slate-300 text-transparent'
@@ -550,102 +480,138 @@ export const HRExitManagementView = () => {
               })}
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-100">
+            <div className="flex justify-end pt-3 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setIsClearanceModalOpen(false)}
-                className="px-5 py-2.5 rounded-2xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 cursor-pointer"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── LETTERS MODAL ────────────────────────────────────────────────── */}
+      {/* ── LETTERS MODAL ─────────────────────────────────────── */}
       {isLetterModalOpen && selectedExit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="fixed inset-0" onClick={() => setIsLetterModalOpen(false)} />
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 z-10 p-6 space-y-6">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="text-lg font-black text-slate-900">
-                  {letterType === 'relieving' ? 'Relieving Certificate' : 'Service & Experience Letter'}
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {letterType === 'relieving' ? 'Relieving Letter' : 'Experience Letter'}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Formal exit document for {selectedExit.employeeName}
+                  Document preview for {selectedExit.employeeName}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsLetterModalOpen(false)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-1 rounded-xl text-slate-400 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Letter Preview Frame */}
-            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-serif leading-relaxed text-slate-800 space-y-4 max-h-96 overflow-y-auto">
-              <div className="text-center border-b border-slate-200 pb-3">
-                <span className="font-sans font-black text-sm tracking-wide text-slate-900 block">
-                  GUPTA TECH WEB WORKFORCE SOLUTIONS
-                </span>
-                <span className="font-sans text-[10px] text-slate-500">
-                  Noida Sector 62 • support@guptatechweb.com • HR Operations
-                </span>
-              </div>
-
-              <div className="text-right text-[11px] font-mono text-slate-500">
+            {/* Letter Content Preview */}
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-serif leading-relaxed text-slate-800 space-y-3 max-h-80 overflow-y-auto">
+              <div className="text-right text-[11px] font-sans text-slate-500">
                 Date: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
               </div>
 
-              <div>
-                <p className="font-bold font-sans text-xs">TO WHOMSOEVER IT MAY CONCERN</p>
-              </div>
+              <p className="font-sans font-bold text-xs uppercase">To Whomsoever It May Concern</p>
 
               <p>
-                This is to certify that <strong>{selectedExit.employeeName}</strong> (Employee ID: {selectedExit.employeeCode}) was employed with Gupta Tech Web as <strong>{selectedExit.designation}</strong> in the {selectedExit.department} department.
+                This is to certify that <strong>{selectedExit.employeeName}</strong> (Employee Code: {selectedExit.employeeCode}) was employed with the company as <strong>{selectedExit.designation}</strong> in the {selectedExit.department} department.
               </p>
 
               <p>
-                Their formal resignation has been accepted by the management and they were relieved of their duties at the close of working hours on <strong>{selectedExit.lastWorkingDay}</strong> after completing the handover and notice obligations.
+                Their resignation has been formally accepted, and they were relieved of their duties on <strong>{selectedExit.lastWorkingDay}</strong> after fulfilling the handover requirements.
               </p>
 
               <p>
-                During their tenure, we found them to be diligent, dedicated, and professional. All company property, assets, and liabilities have been settled in full.
+                During their tenure, their conduct and performance were found to be satisfactory. We wish them all the best in their future endeavors.
               </p>
 
-              <p>We wish them all the best in their future professional endeavors.</p>
-
-              <div className="pt-6 font-sans text-xs">
-                <p className="font-bold text-slate-900">For Gupta Tech Web Solutions</p>
-                <p className="text-slate-500 text-[11px]">Authorized Signatory • Human Resources</p>
+              <div className="pt-4 font-sans text-xs">
+                <p className="font-bold text-slate-900">Human Resources Department</p>
+                <p className="text-slate-500 text-[10px]">Authorized Signatory</p>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLetterType(letterType === 'relieving' ? 'experience' : 'relieving')}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
-                >
-                  Switch to {letterType === 'relieving' ? 'Experience Letter' : 'Relieving Certificate'}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setLetterType(letterType === 'relieving' ? 'experience' : 'relieving')}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+              >
+                Switch to {letterType === 'relieving' ? 'Experience Letter' : 'Relieving Letter'}
+              </button>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-5 py-2.5 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Letter</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Document</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── REJECTION REASON MODAL ─────────────────────────────── */}
+      {rejectingRecordId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm">Reject Resignation</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectingRecordId(null);
+                  setRejectionReason('');
+                }}
+                className="p-1 rounded-xl text-slate-400 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <label className="font-bold text-slate-700 block">Reason for Rejection</label>
+              <textarea
+                rows={3}
+                required
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter rejection remarks for the employee..."
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 text-xs text-slate-800"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectingRecordId(null);
+                  setRejectionReason('');
+                }}
+                className="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleConfirmReject}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSubmitting ? 'Rejecting...' : 'Confirm Reject'}
+              </button>
             </div>
           </div>
         </div>
