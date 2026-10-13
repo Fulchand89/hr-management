@@ -54,7 +54,19 @@ export const HRSignInView = ({ onSignIn }) => {
         navigate('/hr/dashboard');
       }
     } catch (err) {
-      setError(err?.response?.data?.message || 'Invalid credentials. Please try again.');
+      let msg = 'Invalid credentials. Please try again.';
+      if (err?.response?.data?.message) {
+        msg = err.response.data.message;
+      } else if (err?.response?.status === 404) {
+        msg = 'API server endpoint not found (404). Please ensure backend is deployed and VITE_API_URL is configured in Vercel.';
+      } else if (err?.response?.status >= 500) {
+        msg = `Backend server error (${err.response.status}). Check backend logs and database connection.`;
+      } else if (err?.message && (err.message.includes('Network') || err.message.includes('ERR_NETWORK') || err.code === 'ERR_NETWORK')) {
+        msg = 'Cannot connect to authentication server. Please check your network or VITE_API_URL.';
+      } else if (err?.message) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       setIsLoading(false);
     }

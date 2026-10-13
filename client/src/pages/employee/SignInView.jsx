@@ -106,11 +106,18 @@ export const SignInView = () => {
       const userData = await login(cleanIdentifier, password);
       handleRedirectAfterLogin(userData?.role);
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        (err?.message && err.message.includes('Network')
-          ? 'Cannot connect to authentication server. Please check your network.'
-          : 'Invalid credentials. Please verify your corporate email and password.');
+      let msg = 'Invalid credentials. Please verify your corporate email and password.';
+      if (err?.response?.data?.message) {
+        msg = err.response.data.message;
+      } else if (err?.response?.status === 404) {
+        msg = 'API server endpoint not found (404). Please ensure your backend is deployed and VITE_API_URL is set in Vercel environment variables.';
+      } else if (err?.response?.status >= 500) {
+        msg = `Backend server error (${err.response.status}). Please check backend logs and database connection.`;
+      } else if (err?.message && (err.message.includes('Network') || err.message.includes('ERR_NETWORK') || err.code === 'ERR_NETWORK')) {
+        msg = 'Cannot connect to backend server. Please verify your network and backend URL.';
+      } else if (err?.message) {
+        msg = err.message;
+      }
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -127,7 +134,18 @@ export const SignInView = () => {
       const userData = await login(email, pwd);
       handleRedirectAfterLogin(userData?.role);
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Login failed';
+      let msg = err?.response?.data?.message;
+      if (!msg) {
+        if (err?.response?.status === 404) {
+          msg = 'API server endpoint not found (404). Please ensure backend is deployed and VITE_API_URL is configured in Vercel.';
+        } else if (err?.response?.status >= 500) {
+          msg = `Backend server error (${err.response.status}). Check backend logs and database.`;
+        } else if (err?.message && (err.message.includes('Network') || err.code === 'ERR_NETWORK')) {
+          msg = 'Cannot connect to backend server. Verify VITE_API_URL.';
+        } else {
+          msg = err?.message || 'Login failed';
+        }
+      }
       setError(msg);
     } finally {
       setIsLoading(false);
