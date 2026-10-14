@@ -2,8 +2,10 @@ import axios from 'axios';
 
 const getBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL;
-  if (!envUrl) return '/api/v1';
-  const trimmed = envUrl.replace(/\/+$/, '');
+  if (!envUrl || typeof envUrl !== 'string' || envUrl === 'undefined' || envUrl === 'null' || !envUrl.trim()) {
+    return '/api/v1';
+  }
+  const trimmed = envUrl.trim().replace(/\/+$/, '');
   return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
 };
 

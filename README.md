@@ -64,21 +64,43 @@ npm run dev
 
 ---
 
-## ⚡ Deployment on Vercel (One-Click Fullstack)
+## ⚡ Deployment on Vercel
 
-The repository is configured for direct **Fullstack Deployment on Vercel**:
-1. Push your changes to GitHub:
+### Option A: One-Click Fullstack Deployment (Recommended)
+Deploy both the React frontend and Express serverless API together in **one single Vercel project**:
+1. Push your latest code to GitHub:
    ```bash
    git add .
-   git commit -m "feat: configure Vercel fullstack deployment"
+   git commit -m "fix(vercel): configure clean serverless rewrites and api endpoint"
    git push origin main
    ```
 2. Go to **[vercel.com](https://vercel.com)** -> Click **Add New Project** -> Import `hr-management`.
-3. Keep default settings (Root directory: `./`).
+3. In Project Settings:
+   - **Root Directory**: `./` (Leave default, do **NOT** change to `client`)
+   - **Framework Preset**: Other / Vite
+   - **Environment Variables**: Leave `VITE_API_URL` empty (it automatically routes to `/api/v1` via Vercel rewrites).
 4. Click **Deploy**.
-   * Frontend (Vite SPA) is built into static assets.
+   * Frontend SPA is built into static assets from `client/dist`.
    * Backend REST API runs as a serverless function via `api/index.js`.
    * Automatically connects to the cloud Hostinger MySQL database.
+
+---
+
+### Option B: Frontend on Vercel + Backend on Render / Railway / Hostinger
+If you deployed only the `client/` folder on Vercel, or set Vercel Root Directory to `client`:
+1. Deploy your backend on Render, Railway, or VPS.
+2. In your Vercel Project Dashboard:
+   - Go to **Settings** -> **Environment Variables**.
+   - Add: `VITE_API_URL` = `https://your-backend-api.onrender.com/api/v1`
+3. Go to **Deployments** -> Click **...** (three dots) -> **Redeploy** (Required because Vite compiles env variables into the JavaScript bundle at build time).
+
+---
+
+### 🔍 Troubleshooting "API server endpoint not found (404)"
+If you see `API server endpoint not found (404)` on login:
+1. **If using Option A (Fullstack)**: Ensure Vercel's **Root Directory** is `./` (NOT `client`), and that `VITE_API_URL` is NOT set to an unreachable external domain in Vercel environment variables.
+2. **If using Option B (Separate Backend)**: Ensure `VITE_API_URL` is set in Vercel Environment Variables and you did a **Redeploy** after setting it.
+3. Test your live backend health directly in your browser: `https://<your-domain>/api/v1/health` or `https://<your-backend>/api/v1/health`.
 
 ---
 

@@ -54,6 +54,12 @@ export const HRSignInView = ({ onSignIn }) => {
         navigate('/hr/dashboard');
       }
     } catch (err) {
+      console.error('[HR SignIn Error]:', {
+        requestedUrl: (err?.config?.baseURL || '') + (err?.config?.url || ''),
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message
+      });
       let msg = 'Invalid credentials. Please try again.';
       if (err?.response?.data?.message) {
         msg = err.response.data.message;

@@ -1,45 +1,22 @@
 {
   "version": 2,
-  "builds": [
+  "outputDirectory": "client/dist",
+  "rewrites": [
     {
-      "src": "server/api/index.js",
-      "use": "@vercel/node"
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "server/api/index.js"
+      "source": "/api",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/api",
-      "dest": "server/api/index.js"
+      "source": "/uploads/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/uploads/(.*)",
-      "dest": "server/api/index.js"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/client/assets/$1"
-    },
-    {
-      "src": "/logo.png",
-      "dest": "/client/logo.png"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/client/index.html"
+      "source": "/((?!api|uploads).*)",
+      "destination": "/index.html"
     }
   ]
 }

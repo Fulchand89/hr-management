@@ -106,6 +106,12 @@ export const SignInView = () => {
       const userData = await login(cleanIdentifier, password);
       handleRedirectAfterLogin(userData?.role);
     } catch (err) {
+      console.error('[SignIn Error]:', {
+        requestedUrl: (err?.config?.baseURL || '') + (err?.config?.url || ''),
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message
+      });
       let msg = 'Invalid credentials. Please verify your corporate email and password.';
       if (err?.response?.data?.message) {
         msg = err.response.data.message;
@@ -134,6 +140,12 @@ export const SignInView = () => {
       const userData = await login(email, pwd);
       handleRedirectAfterLogin(userData?.role);
     } catch (err) {
+      console.error('[QuickLogin Error]:', {
+        requestedUrl: (err?.config?.baseURL || '') + (err?.config?.url || ''),
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message
+      });
       let msg = err?.response?.data?.message;
       if (!msg) {
         if (err?.response?.status === 404) {

@@ -73,10 +73,11 @@ app.use('/uploads', express.static(path.resolve(__dirname, '../', env.UPLOAD.DIR
 // Apply General Rate Limiter to API
 app.use('/api', apiLimiter);
 
-// Welcome root endpoint
-app.get('/', (req, res) => {
+// Welcome root endpoint (support both / and /api)
+app.get(['/', '/api'], (req, res) => {
   res.json({
     name: env.APP_NAME,
+    status: 'online',
     version: '1.0.0',
     documentation: '/api/docs',
     swaggerJson: '/api/docs.json',
@@ -94,6 +95,11 @@ app.get('/', (req, res) => {
       notifications: '/api/v1/notifications'
     }
   });
+});
+
+// Health check shortcuts
+app.get(['/health', '/api/health'], (req, res) => {
+  res.redirect('/api/v1/health');
 });
 
 // Setup Swagger API Documentation UI and raw JSON endpoint
