@@ -1,74 +1,63 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { login as loginApi, register as registerApi, logout as logoutApi, getMyProfile } from '../services/employeeService';
+import {
+  getAuthToken,
+  getAuthUser,
+  saveAuthSession,
+  clearAuthSession,
+  isHRPortal
+} from '../services/authStorage';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const location = useLocation();
+  const [user, setUser] = useState(() => getAuthUser());
+  const [token, setToken] = useState(() => getAuthToken());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session from localStorage on initial page load (No auto-logins)
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+  // Synchronize session whenever location portal boundary changes or on initial load
+  const syncSession = useCallback(async () => {
+    try {
+      const currentToken = getAuthToken();
+      const currentUser = getAuthUser();
 
-        if (
-          storedToken &&
-          storedUser &&
-          storedToken !== 'undefined' &&
-          storedToken !== 'null' &&
-          storedUser !== 'undefined' &&
-          storedUser !== 'null'
-        ) {
-          const parsed = JSON.parse(storedUser);
-          setToken(storedToken);
-          setUser(parsed);
+      setToken(currentToken);
+      setUser(currentUser);
 
-          // Fetch fresh profile from API in background to ensure role & permissions are synchronized with database
-          try {
-            const profileRes = await getMyProfile();
-            const freshUser = profileRes?.data || profileRes;
-            if (freshUser && freshUser.id) {
-              localStorage.setItem('user', JSON.stringify(freshUser));
-              setUser(freshUser);
-            }
-          } catch {
-            // Keep parsed user if background fetch fails
+      if (currentToken && currentUser && currentUser.id) {
+        // Fetch fresh profile in background to verify active token and permissions
+        try {
+          const profileRes = await getMyProfile();
+          const freshUser = profileRes?.data || profileRes;
+          if (freshUser && freshUser.id) {
+            saveAuthSession(currentToken, freshUser);
+            setUser(freshUser);
           }
-        } else {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setToken(null);
-          setUser(null);
+        } catch {
+          // Keep cached user if network temporarily unavailable
         }
-      } catch {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setToken(null);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    initAuth();
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    syncSession();
+  }, [location.pathname, syncSession]);
+
   // Standard Login action with email & password
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, portalHint) => {
     const res = await loginApi(email, password);
     const newToken = res?.data?.accessToken || res?.token || res?.accessToken || res?.data?.token;
     const userData = res?.data?.user || res?.data || res?.user;
 
-    if (newToken) {
-      localStorage.setItem('token', newToken);
+    if (newToken && userData) {
+      const activePortal = portalHint || (isHRPortal() ? 'hr' : 'employee');
+      saveAuthSession(newToken, userData, activePortal);
       setToken(newToken);
-    }
-    if (userData) {
-      localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
     }
     return userData;
@@ -80,26 +69,23 @@ export const AuthProvider = ({ children }) => {
     const newToken = res?.data?.accessToken || res?.token || res?.accessToken || res?.data?.token;
     const userData = res?.data?.user || res?.data || res?.user;
 
-    if (newToken) {
-      localStorage.setItem('token', newToken);
+    if (newToken && userData) {
+      saveAuthSession(newToken, userData, 'employee');
       setToken(newToken);
-    }
-    if (userData) {
-      localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
     }
     return userData;
   }, []);
 
-  // Secure Logout action
-  const logout = useCallback(async () => {
+  // Secure Logout action (scoped to active portal)
+  const logout = useCallback(async (portalHint) => {
     try {
       await logoutApi();
     } catch {
       // Ignore API logout error if session was already expired
     } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      const activePortal = portalHint || (isHRPortal() ? 'hr' : 'employee');
+      clearAuthSession(activePortal);
       setToken(null);
       setUser(null);
     }
@@ -108,7 +94,7 @@ export const AuthProvider = ({ children }) => {
   const isLoggedIn = Boolean(token && user);
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoggedIn, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoggedIn, isLoading, login, register, logout, syncSession }}>
       {children}
     </AuthContext.Provider>
   );

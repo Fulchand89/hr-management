@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
 // Desktop Layout & Pages
@@ -20,6 +20,9 @@ import EmployeeHandbookView from './EmployeeHandbookView';
 import EmployeePolicyDocumentsView from './EmployeePolicyDocumentsView';
 import MyAppraisalView from './MyAppraisalView';
 import MyResignationView from './MyResignationView';
+import HRExitLetterView from '../hr/HRExitLetterView';
+import HRApplyLeaveView from '../hr/HRApplyLeaveView';
+import HRLeaveDetailView from '../hr/HRLeaveDetailView';
 import EmployeeKycDocumentsView from './EmployeeKycDocumentsView';
 import SignInView from './SignInView';
 
@@ -32,6 +35,7 @@ import {
   punchOut as apiPunchOut,
   getUnreadCount
 } from '../../services/employeeService';
+import { getAttendanceSnapshot, setAttendanceSnapshot } from '../../services/authStorage';
 
 export const EmployeeApp = () => {
   const navigate = useNavigate();
@@ -45,30 +49,78 @@ export const EmployeeApp = () => {
   const [isApplyLeaveModalOpen, setIsApplyLeaveModalOpen] = useState(false);
   const [isAttendanceDetailModalOpen, setIsAttendanceDetailModalOpen] = useState(false);
 
-  // Attendance state driven by API
-  const [attendanceData, setAttendanceData] = useState(null);
-  const [attendanceStatus, setAttendanceStatus] = useState('NOT_PUNCHED_IN');
-  const [workingSeconds, setWorkingSeconds] = useState(0);
-  const [breakSeconds, setBreakSeconds] = useState(0);
-  const [timeline, setTimeline] = useState([]);
+  // Attendance state driven by API with user-scoped cache restoration on refresh
+  const initialCache = getAttendanceSnapshot(user?.id);
+  const [attendanceData, setAttendanceData] = useState(() => initialCache);
+  const [attendanceStatus, setAttendanceStatus] = useState(() => initialCache?.status || initialCache?.attendanceStatus || 'NOT_PUNCHED_IN');
+  const [timeline, setTimeline] = useState(() => initialCache?.timeline || []);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const [workingSeconds, setWorkingSeconds] = useState(() => {
+    if (!initialCache) return 0;
+    const base = Number(initialCache.workingSeconds) || 0;
+    const cachedAt = initialCache.cachedAt || Date.now();
+    if (initialCache.status === 'WORKING') {
+      const elapsed = Math.max(0, Math.floor((Date.now() - cachedAt) / 1000));
+      return base + elapsed;
+    }
+    return base;
+  });
+
+  const [breakSeconds, setBreakSeconds] = useState(() => {
+    if (!initialCache) return 0;
+    const base = Number(initialCache.breakSeconds) || 0;
+    const cachedAt = initialCache.cachedAt || Date.now();
+    if (initialCache.status === 'ON_BREAK') {
+      const elapsed = Math.max(0, Math.floor((Date.now() - cachedAt) / 1000));
+      return base + elapsed;
+    }
+    return base;
+  });
+
+  // Reference for drift-free, tab-throttle immune wall-clock ticking
+  const timerBaselineRef = useRef({
+    status: initialCache?.status || initialCache?.attendanceStatus || 'NOT_PUNCHED_IN',
+    workingSec: initialCache?.workingSeconds || 0,
+    breakSec: initialCache?.breakSeconds || 0,
+    syncTime: Date.now()
+  });
 
   // Load today's attendance from API on mount
   const loadTodayAttendance = useCallback(async () => {
     try {
       const res = await getTodayAttendance();
-      const data = res.data;
+      const data = res?.data ?? res ?? null;
       if (data) {
+        const status = data.status || data.attendanceStatus || 'NOT_PUNCHED_IN';
+        const workSec = Number(data.workingSeconds) || 0;
+        const brkSec = Number(data.breakSeconds) || 0;
+
         setAttendanceData(data);
-        setAttendanceStatus(data.status || data.attendanceStatus || 'NOT_PUNCHED_IN');
-        setWorkingSeconds(data.workingSeconds || 0);
-        setBreakSeconds(data.breakSeconds || 0);
+        setAttendanceStatus(status);
+        setWorkingSeconds(workSec);
+        setBreakSeconds(brkSec);
         setTimeline(data.timeline || []);
+
+        timerBaselineRef.current = {
+          status,
+          workingSec: workSec,
+          breakSec: brkSec,
+          syncTime: Date.now()
+        };
+
+        setAttendanceSnapshot(user?.id, {
+          ...data,
+          status,
+          workingSeconds: workSec,
+          breakSeconds: brkSec,
+          cachedAt: Date.now()
+        });
       }
     } catch {
       // Offline / not logged in — retain graceful state
     }
-  }, []);
+  }, [user?.id]);
 
   // Load unread notification count
   const loadUnreadCount = useCallback(async () => {
@@ -93,6 +145,7 @@ export const EmployeeApp = () => {
 
     const onWindowFocus = () => {
       loadUnreadCount();
+      loadTodayAttendance();
     };
     window.addEventListener('focus', onWindowFocus);
 
@@ -102,20 +155,21 @@ export const EmployeeApp = () => {
     };
   }, [token, loadTodayAttendance, loadUnreadCount]);
 
-  // Live Timer Effect
+  // Live Timer Effect with wall-clock synchronization (immune to browser background throttling)
   useEffect(() => {
-    let interval = null;
-    if (attendanceStatus === 'WORKING') {
-      interval = setInterval(() => {
-        setWorkingSeconds((prev) => prev + 1);
-      }, 1000);
-    } else if (attendanceStatus === 'ON_BREAK') {
-      interval = setInterval(() => {
-        setBreakSeconds((prev) => prev + 1);
-      }, 1000);
-    }
+    if (attendanceStatus !== 'WORKING' && attendanceStatus !== 'ON_BREAK') return;
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - timerBaselineRef.current.syncTime) / 1000);
+      if (attendanceStatus === 'WORKING') {
+        setWorkingSeconds(timerBaselineRef.current.workingSec + elapsed);
+      } else if (attendanceStatus === 'ON_BREAK') {
+        setBreakSeconds(timerBaselineRef.current.breakSec + elapsed);
+      }
+    }, 1000);
+
     return () => {
-      if (interval) clearInterval(interval);
+      clearInterval(interval);
     };
   }, [attendanceStatus]);
 
@@ -133,9 +187,18 @@ export const EmployeeApp = () => {
     try {
       const res = await apiPunchIn();
       const data = res?.data ?? res ?? {};
-      setAttendanceStatus(data.status || 'WORKING');
-      setWorkingSeconds(data.workingSeconds || 1);
+      const status = data.status || 'WORKING';
+      const workSec = Number(data.workingSeconds) || 1;
+      setAttendanceStatus(status);
+      setWorkingSeconds(workSec);
       setTimeline(data.timeline || []);
+
+      timerBaselineRef.current = {
+        status,
+        workingSec: workSec,
+        breakSec: 0,
+        syncTime: Date.now()
+      };
       await loadTodayAttendance();
     } catch (err) {
       console.error('Punch-in failed:', err?.response?.data?.message || err.message);
@@ -343,6 +406,8 @@ export const EmployeeApp = () => {
               grossWorkingHours={formatTime(workingSeconds + breakSeconds)}
               totalWorkingHours={formatTime(workingSeconds)}
               breakDuration={formatTime(breakSeconds)}
+              shift={attendanceData?.shift}
+              ipAddress={attendanceData?.raw?.ipAddress || attendanceData?.ipAddress}
               onBack={() => navigate('/employee/dashboard')}
               onPunchIn={handlePunchIn}
               onTakeBreak={handleTakeBreak}
@@ -415,9 +480,15 @@ export const EmployeeApp = () => {
             />
           }
         />
+        <Route path="leaves/apply" element={<HRApplyLeaveView />} />
+        <Route path="leaves/new" element={<HRApplyLeaveView />} />
+        <Route path="leaves/create" element={<HRApplyLeaveView />} />
+        <Route path="leaves/:id" element={<HRLeaveDetailView />} />
+        <Route path="leaves/detail/:id" element={<HRLeaveDetailView />} />
+        <Route path="leaves/view/:id" element={<HRLeaveDetailView />} />
+        <Route path="apply-leave" element={<Navigate to="/employee/leaves/apply" replace />} />
         <Route path="my-leaves" element={<Navigate to="/employee/leaves" replace />} />
         <Route path="leave-requests" element={<Navigate to="/employee/leaves" replace />} />
-        <Route path="apply-leave" element={<Navigate to="/employee/leaves" replace />} />
 
         {/* Notifications Hub View */}
         <Route
@@ -529,12 +600,28 @@ export const EmployeeApp = () => {
           element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
         />
         <Route
+          path="resignation/letter"
+          element={<HRExitLetterView />}
+        />
+        <Route
+          path="resignation/letter/:id"
+          element={<HRExitLetterView />}
+        />
+        <Route
           path="resignations"
           element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
         />
         <Route
           path="exit"
           element={<MyResignationView onBack={() => navigate('/employee/dashboard')} />}
+        />
+        <Route
+          path="exit/letter"
+          element={<HRExitLetterView />}
+        />
+        <Route
+          path="exit/letter/:id"
+          element={<HRExitLetterView />}
         />
         <Route
           path="exit-management"

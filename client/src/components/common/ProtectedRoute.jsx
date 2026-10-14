@@ -32,9 +32,10 @@ export const ProtectedRoute = ({ allowedRoles = [], children }) => {
     );
   }
 
-  // 2. Not logged in -> Redirect to SignIn page
+  // 2. Not logged in -> Redirect to Portal SignIn page
   if (!isLoggedIn || !token || !user) {
-    return <Navigate to="/signin" state={{ from: location }} replace />;
+    const isHr = location.pathname.startsWith('/hr');
+    return <Navigate to={isHr ? '/hr/signin' : '/signin'} state={{ from: location }} replace />;
   }
 
   // 3. Role-Based Access Control (RBAC) Check with case-insensitivity
@@ -54,15 +55,8 @@ export const ProtectedRoute = ({ allowedRoles = [], children }) => {
         ? '/hr/dashboard'
         : '/employee/dashboard';
 
-    const handleSwitchToHR = async () => {
-      try {
-        if (login) {
-          await login('hr@hrmanagement.com', 'HrPassword@123');
-          window.location.href = '/hr/dashboard';
-        }
-      } catch (err) {
-        window.location.href = '/hr/signin';
-      }
+    const handleSwitchToHR = () => {
+      window.location.href = '/hr/signin';
     };
 
     const handleLogoutSwitch = async () => {
@@ -96,7 +90,7 @@ export const ProtectedRoute = ({ allowedRoles = [], children }) => {
             onClick={handleSwitchToHR}
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold transition-all shadow-lg shadow-rose-900/30 cursor-pointer"
           >
-            💼 1-Click Switch to HR Portal &rarr;
+            💼 Go to HR Sign In &rarr;
           </button>
         </div>
 

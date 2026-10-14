@@ -552,18 +552,18 @@ export const ProfileView = ({ onBack, onLogout }) => {
             <span className="text-xs font-bold text-[#8B1D2C]">Year {new Date().getFullYear()}</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {profile.leaves.map((l, idx) => (
               <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-800">{l.name}</span>
-                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">
+                <div className="flex items-center justify-between text-xs gap-1">
+                  <span className="font-bold text-slate-800 truncate" title={l.name}>{l.name}</span>
+                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 shrink-0">
                     {l.code}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-1 pt-1">
                   <span className="text-xl font-black text-[#8B1D2C]">{l.remaining}</span>
-                  <span className="text-xs text-slate-400">/ {l.allocated} days left</span>
+                  <span className="text-xs text-slate-400 whitespace-nowrap">/ {l.allocated} days left</span>
                 </div>
               </div>
             ))}

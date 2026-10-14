@@ -39,12 +39,8 @@ export const SignInView = () => {
   });
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotSent, setForgotSent] = useState(false);
-  const [showDemoAccounts, setShowDemoAccounts] = useState(false);
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [copiedRole, setCopiedRole] = useState(null);
 
   // Redirect /signup to /signin
   useEffect(() => {
@@ -103,7 +99,7 @@ export const SignInView = () => {
         localStorage.removeItem('gtw_saved_email');
       }
 
-      const userData = await login(cleanIdentifier, password);
+      const userData = await login(cleanIdentifier, password, 'employee');
       handleRedirectAfterLogin(userData?.role);
     } catch (err) {
       console.error('[SignIn Error]:', {
@@ -123,40 +119,6 @@ export const SignInView = () => {
         msg = 'Cannot connect to backend server. Please verify your network and backend URL.';
       } else if (err?.message) {
         msg = err.message;
-      }
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Quick 1-Click Role Login
-  const handleQuickLogin = async (email, pwd) => {
-    setError('');
-    setIdentifier(email);
-    setPassword(pwd);
-    setIsLoading(true);
-    try {
-      const userData = await login(email, pwd);
-      handleRedirectAfterLogin(userData?.role);
-    } catch (err) {
-      console.error('[QuickLogin Error]:', {
-        requestedUrl: (err?.config?.baseURL || '') + (err?.config?.url || ''),
-        status: err?.response?.status,
-        data: err?.response?.data,
-        message: err?.message
-      });
-      let msg = err?.response?.data?.message;
-      if (!msg) {
-        if (err?.response?.status === 404) {
-          msg = 'API server endpoint not found (404). Please ensure backend is deployed and VITE_API_URL is configured in Vercel.';
-        } else if (err?.response?.status >= 500) {
-          msg = `Backend server error (${err.response.status}). Check backend logs and database.`;
-        } else if (err?.message && (err.message.includes('Network') || err.code === 'ERR_NETWORK')) {
-          msg = 'Cannot connect to backend server. Verify VITE_API_URL.';
-        } else {
-          msg = err?.message || 'Login failed';
-        }
       }
       setError(msg);
     } finally {
@@ -349,45 +311,6 @@ export const SignInView = () => {
               <p className="text-[11px] text-slate-400">
                 Please contact HR or your system administrator for corporate login credentials.
               </p>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDemoAccounts(!showDemoAccounts)}
-                  className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <span>{showDemoAccounts ? '▲ Hide Quick Login' : '▼ Staging Quick Login'}</span>
-                </button>
-
-                {showDemoAccounts && (
-                  <div className="mt-2 p-2 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-3 gap-1.5 animate-in fade-in duration-200">
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('hr@hrmanagement.com', 'HrPassword@123')}
-                      disabled={isLoading}
-                      className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-[#8B1D2C] text-xs font-bold text-center transition-colors cursor-pointer"
-                    >
-                      💼 HR
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('john.doe@hrmanagement.com', 'UserPassword@123')}
-                      disabled={isLoading}
-                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold text-center transition-colors cursor-pointer"
-                    >
-                      👤 Emp
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLogin('admin@hrmanagement.com', 'AdminPassword@123')}
-                      disabled={isLoading}
-                      className="px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 text-xs font-bold text-center transition-colors cursor-pointer"
-                    >
-                      👑 Admin
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>

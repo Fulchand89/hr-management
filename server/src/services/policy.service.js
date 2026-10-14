@@ -326,8 +326,6 @@ const ensureDefaultPolicies = async () => {
  * List all policies with user acknowledgment flag
  */
 const getPolicies = async ({ category, status, search, user }) => {
-  await ensureDefaultPolicies();
-
   const where = {};
 
   // Status filtering: Regular employee only sees 'published'
@@ -389,8 +387,6 @@ const getPolicies = async ({ category, status, search, user }) => {
  * Get single policy by ID
  */
 const getPolicyById = async (id, user) => {
-  await ensureDefaultPolicies();
-
   const policy = await CompanyPolicy.findByPk(id, {
     include: [
       {

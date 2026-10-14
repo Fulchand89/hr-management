@@ -21,6 +21,8 @@ export const AttendanceView = ({
   grossWorkingHours = '00:00:00',
   totalWorkingHours = '00:00:00',
   breakDuration = '00:00:00',
+  shift = null,
+  ipAddress = null,
   onBack,
   onPunchIn,
   onTakeBreak,
@@ -51,10 +53,12 @@ export const AttendanceView = ({
                     Request Correction
                   </button>
                 )}
-                <span className="px-2.5 sm:px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs flex items-center gap-1.5 whitespace-nowrap">
-                  <Clock className="w-3.5 h-3.5 text-[#8B1D2C]" />
-                  Standard Shift (9h)
-                </span>
+                {shift && (shift.name || shift.display) && (
+                  <span className="px-2.5 sm:px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-2xs flex items-center gap-1.5 whitespace-nowrap">
+                    <Clock className="w-3.5 h-3.5 text-[#8B1D2C]" />
+                    {shift.display || `${shift.name}${shift.startTime ? ` (${shift.startTime} - ${shift.endTime})` : ''}`}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -142,15 +146,17 @@ export const AttendanceView = ({
           </div>
 
           {/* Bottom Security / Location Audit Badge */}
-          <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-rose-500" />
-              Office Geofence: Primary Office Network
-            </span>
-            <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
-              <ShieldCheck className="w-4 h-4" /> Secure IP & Location Verified
-            </span>
-          </div>
+          {ipAddress && (
+            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-rose-500" />
+                Network IP: {ipAddress}
+              </span>
+              <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                <ShieldCheck className="w-4 h-4" /> Secure IP & Attendance Verified
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Right Column (5 Cols): Timeline & Shift Details */}
@@ -237,30 +243,38 @@ export const AttendanceView = ({
             </div>
           </div>
 
-          {/* Shift Rules & Policies Card */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900">Attendance Policies</h3>
-            <div className="space-y-3 text-xs text-slate-600">
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Grace Period:</strong> You can punch in until 10:15 AM without being marked late (15-minute grace).
-                </span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Lunch Break:</strong> 1 hour lunch break is permitted between 01:00 PM and 02:30 PM.
-                </span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                <span>
-                  <strong>Minimum Hours:</strong> At least 4 hours required for Half-Day and 8 hours for Full-Day credit.
-                </span>
+          {/* Dynamic Shift Rules Card (loaded from database shifts table) */}
+          {shift && (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-4">
+              <h3 className="text-sm font-bold text-slate-900">Shift Configuration & Policies</h3>
+              <div className="space-y-3 text-xs text-slate-600">
+                {shift.startTime && shift.endTime && (
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Shift Timings:</strong> {shift.startTime} to {shift.endTime} ({shift.name || 'Active Shift'}).
+                    </span>
+                  </div>
+                )}
+                {shift.graceMinutes !== undefined && shift.graceMinutes !== null && (
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Grace Period:</strong> {shift.graceMinutes} minutes grace allowed from shift start.
+                    </span>
+                  </div>
+                )}
+                {shift.breakAllowedMinutes !== undefined && shift.breakAllowedMinutes !== null && (
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Break Allowed:</strong> Maximum {shift.breakAllowedMinutes} minutes ({Math.round(shift.breakAllowedMinutes / 60)}h) break duration permitted.
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Attendance Correction Helper Card */}
           {onRequestCorrection && (

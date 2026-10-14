@@ -396,9 +396,7 @@ export const HRExitManagementView = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedExit(rec);
-                            setLetterType('relieving');
-                            setIsLetterModalOpen(true);
+                            navigate(`/hr/exit-management/${rec.id}/letter`, { state: { exitRecord: rec } });
                           }}
                           className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-all inline-flex items-center gap-1"
                         >

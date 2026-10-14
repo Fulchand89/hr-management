@@ -22,6 +22,9 @@ import {
   UserMinus,
   ShieldCheck,
   CalendarClock,
+  Home,
+  Users,
+  ChevronRight,
 } from 'lucide-react';
 
 export const EmployeeLayout = ({
@@ -51,6 +54,7 @@ export const EmployeeLayout = ({
   const userAvatar = user?.avatar || null;
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMoreModalOpen, setIsMoreModalOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const profileDropdownRef = useRef(null);
@@ -383,8 +387,73 @@ export const EmployeeLayout = ({
         </div>
       </header>
 
+      {/* Mobile Punch Status & Timer Bar for Small Screens */}
+      <div className="md:hidden bg-slate-50 border-b border-slate-200/80 px-4 py-2.5 flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${statusBadge.dot}`} />
+          <div className="text-[11px] font-mono font-bold text-slate-800 truncate">
+            {attendanceStatus === 'ON_BREAK' ? (
+              <span>Break: {breakTime}</span>
+            ) : attendanceStatus === 'WORKING' ? (
+              <span>Work: {workingTime}</span>
+            ) : attendanceStatus === 'PUNCHED_OUT' ? (
+              <span>Done: {workingTime}</span>
+            ) : (
+              <span className="text-slate-500 font-sans">Not Punched In</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {attendanceStatus === 'NOT_PUNCHED_IN' && (
+            <button
+              type="button"
+              onClick={onPunchIn}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <Play className="w-3 h-3 fill-white" /> Punch In
+            </button>
+          )}
+
+          {attendanceStatus === 'WORKING' && (
+            <>
+              <button
+                type="button"
+                onClick={onTakeBreak}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+              >
+                <Coffee className="w-3 h-3" /> Break
+              </button>
+              <button
+                type="button"
+                onClick={onPunchOut}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+              >
+                <Square className="w-3 h-3 fill-white" /> Out
+              </button>
+            </>
+          )}
+
+          {attendanceStatus === 'ON_BREAK' && (
+            <button
+              type="button"
+              onClick={onEndBreak}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <Play className="w-3 h-3 fill-white" /> Resume
+            </button>
+          )}
+
+          {attendanceStatus === 'PUNCHED_OUT' && (
+            <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
+              Shift Ended
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Main Body with Sidebar + Page Content */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex gap-6">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-6 flex gap-6">
         {/* Left Desktop Sidebar Navigation */}
         <aside className="hidden lg:flex flex-col w-64 shrink-0 space-y-6 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto no-scrollbar pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {/* Navigation Links List */}
@@ -459,66 +528,372 @@ export const EmployeeLayout = ({
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-50 lg:hidden flex">
             <div
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative w-72 bg-white h-full p-5 flex flex-col justify-between z-10 shadow-2xl">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-white p-0.5 border border-slate-200 flex items-center justify-center shrink-0">
-                      <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
-                    </div>
-                    <span className="font-extrabold text-slate-900">Gupta Tech Web</span>
+            <div className="relative w-80 max-w-[85vw] bg-white h-full flex flex-col z-10 shadow-2xl animate-in slide-in-from-left duration-200">
+              {/* Drawer Top Header */}
+              <div className="p-4 flex items-center justify-between border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white p-0.5 border border-slate-200 flex items-center justify-center shrink-0">
+                    <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
                   </div>
+                  <div>
+                    <span className="font-extrabold text-slate-900 block leading-tight text-sm">Gupta Tech Web</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Employee Self-Service</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* User Profile Info Chip */}
+              <div className="p-3 mx-4 my-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3 shrink-0">
+                {userAvatar ? (
+                  <img src={userAvatar} alt={userName} className="w-10 h-10 rounded-xl object-cover ring-2 ring-slate-200 shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-[#8B1D2C] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                    {userName.charAt(0)}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-slate-900 truncate">{userName}</div>
+                  <div className="text-[10px] text-slate-400 truncate font-medium">{userEmail}</div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 shrink-0">
+                  {userCode}
+                </span>
+              </div>
+
+              {/* Scrollable Navigation List */}
+              <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1 overscroll-contain">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Menu Navigation
+                </div>
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectTab(item.id);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                        isActive
+                          ? 'bg-[#8B1D2C] text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && item.badge > 0 && (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            isActive ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Drawer Bottom Actions */}
+              <div className="p-4 border-t border-slate-100 space-y-2 shrink-0 bg-white">
+                {onSwitchToHR && (
                   <button
                     type="button"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="p-1 rounded-lg text-slate-500 hover:bg-slate-100"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      onSwitchToHR();
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#8B1D2C] text-xs font-bold text-center block cursor-pointer transition-colors"
                   >
-                    <X className="w-5 h-5" />
+                    Switch to HR Operations Portal &rarr;
                   </button>
-                </div>
-
-                <nav className="space-y-1">
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          onSelectTab(item.id);
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer ${
-                          isActive
-                            ? 'bg-[#8B1D2C] text-white'
-                            : 'text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className="w-4 h-4" />
-                          <span>{item.label}</span>
-                        </div>
-                        {item.badge && item.badge > 0 && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500 text-white">
-                            {item.badge}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </nav>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    if (onLogout) onLogout();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium text-center block cursor-pointer transition-colors"
+                >
+                  Sign Out
+                </button>
               </div>
             </div>
           </div>
         )}
 
         {/* Center / Right Dynamic Page Viewport */}
-        <main className="flex-1 min-w-0">{children}</main>
+        <main className="flex-1 min-w-0 w-full">{children}</main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-4 py-2 flex items-center justify-around shadow-lg">
+        {/* Home / Dashboard */}
+        <button
+          type="button"
+          onClick={() => onSelectTab('dashboard')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors cursor-pointer ${
+            activeTab === 'dashboard' ? 'text-[#8B1D2C]' : 'text-slate-400 hover:text-slate-700'
+          }`}
+          title="Dashboard"
+        >
+          <Home className="w-5 h-5" />
+        </button>
+
+        {/* Live Attendance / Timer */}
+        <button
+          type="button"
+          onClick={() => onSelectTab('attendance')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors cursor-pointer ${
+            activeTab === 'attendance' ? 'text-[#8B1D2C]' : 'text-slate-400 hover:text-slate-700'
+          }`}
+          title="Punch & Timer"
+        >
+          <Clock className="w-5 h-5" />
+        </button>
+
+        {/* My Attendance */}
+        <button
+          type="button"
+          onClick={() => onSelectTab('my-attendance')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors cursor-pointer ${
+            activeTab === 'my-attendance' ? 'text-[#8B1D2C]' : 'text-slate-400 hover:text-slate-700'
+          }`}
+          title="Attendance History"
+        >
+          <CalendarCheck className="w-5 h-5" />
+        </button>
+
+        {/* Leaves */}
+        <button
+          type="button"
+          onClick={() => onSelectTab('leaves')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors cursor-pointer ${
+            activeTab === 'leaves' ? 'text-[#8B1D2C]' : 'text-slate-400 hover:text-slate-700'
+          }`}
+          title="Leaves"
+        >
+          <CalendarDays className="w-5 h-5" />
+        </button>
+
+        {/* More Button */}
+        <button
+          type="button"
+          onClick={() => setIsMoreModalOpen(true)}
+          className="w-10 h-10 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white flex items-center justify-center shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer active:scale-95"
+          title="More Options"
+        >
+          <Menu className="w-5 h-5 text-white" />
+        </button>
+      </nav>
+
+      {/* "More" Bottom Sheet Modal for Mobile */}
+      {isMoreModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150">
+          <div
+            className="fixed inset-0"
+            onClick={() => setIsMoreModalOpen(false)}
+          />
+          <div className="relative w-full max-w-md max-h-[85vh] flex flex-col bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl z-10 border border-slate-100 animate-in slide-in-from-bottom-6 duration-200">
+            {/* Top pill bar handle */}
+            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-3 shrink-0" />
+
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <h3 className="font-bold text-slate-900 text-sm">More Options</h3>
+              <button
+                type="button"
+                onClick={() => setIsMoreModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4 text-rose-600" />
+              </button>
+            </div>
+
+            <div className="mt-3 space-y-1 overflow-y-auto flex-1 pr-1 overscroll-contain">
+              {/* Attendance Corrections */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('attendance-correction');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <CalendarClock className="w-4 h-4" />
+                  </div>
+                  <span>Attendance Corrections</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Salary & Compensation */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('salary');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Wallet className="w-4 h-4" />
+                  </div>
+                  <span>Salary & Payslips</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Company Policies */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('policies');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <span>Company Policies</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Appraisals & Performance */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('appraisals');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <span>Appraisals & Reviews</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Resignation & Exit */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('resignation');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <UserMinus className="w-4 h-4" />
+                  </div>
+                  <span>Resignation & Exit</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* KYC Documents */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('kyc');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <span>My Documents & KYC</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Profile */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('profile');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <span>My Profile</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Notifications */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('notifications');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <span>Notifications</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+              </button>
+
+              {/* Switch to HR Portal (if applicable) */}
+              {onSwitchToHR && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMoreModalOpen(false);
+                    onSwitchToHR();
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-2xl bg-rose-50/70 hover:bg-rose-100/70 transition-colors text-xs font-bold text-[#8B1D2C] cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-white text-[#8B1D2C] flex items-center justify-center shadow-2xs">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <span>Switch to HR Portal</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[#8B1D2C]" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

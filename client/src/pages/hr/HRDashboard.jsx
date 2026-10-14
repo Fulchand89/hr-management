@@ -108,7 +108,7 @@ export const HRDashboard = ({
       const [hrRes, empRes, staffRes] = await Promise.all([
         getHRDashboard().catch(() => null),
         getEmployeeDashboard().catch(() => null),
-        getAdminDailyAttendance({ date: new Date().toISOString().split('T')[0] }).catch(() => null)
+        getAdminDailyAttendance({ date: new Date().toISOString().split('T')[0], limit: 100 }).catch(() => null)
       ]);
 
       const hrData = hrRes?.data ?? hrRes ?? {};
@@ -164,6 +164,8 @@ export const HRDashboard = ({
           };
         });
         setUpcomingHolidays(formatted);
+      } else {
+        setUpcomingHolidays([]);
       }
 
       // 6. Available Leave Balances
@@ -174,11 +176,16 @@ export const HRDashboard = ({
           0
         );
         setAvailableLeaveDays(totalRemaining);
+      } else {
+        setAvailableLeaveDays(0);
       }
 
       // 7. Staff Attendance
-      if (staffRes?.data) {
-        setStaffAttendance(staffRes.data);
+      const staffList = Array.isArray(staffRes?.data)
+        ? staffRes.data
+        : (staffRes?.data?.records || staffRes?.records || (Array.isArray(staffRes) ? staffRes : []));
+      if (staffList.length > 0) {
+        setStaffAttendance(staffList);
       }
     } catch (err) {
       console.error('Failed to load dashboard metrics:', err?.message);
@@ -190,7 +197,25 @@ export const HRDashboard = ({
   useEffect(() => {
     if (!token) return;
     fetchDashboard();
-  }, [token, user?.role, fetchDashboard]);
+  }, [token, user?.role, attendanceStatus, fetchDashboard]);
+
+  // Live Auto-Polling: Refresh staff attendance roster every 15s for instant punch sync
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(() => {
+      getAdminDailyAttendance({ date: new Date().toISOString().split('T')[0], limit: 100 })
+        .then((res) => {
+          const records = Array.isArray(res?.data)
+            ? res.data
+            : (res?.data?.records || res?.records || (Array.isArray(res) ? res : []));
+          if (records.length > 0) {
+            setStaffAttendance(records);
+          }
+        })
+        .catch(() => null);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -367,12 +392,12 @@ export const HRDashboard = ({
           </div>
 
           {/* Action Buttons Row */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             {attendanceStatus === 'NOT_PUNCHED_IN' && (
               <button
                 type="button"
                 onClick={onPunchIn}
-                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap"
+                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
               >
                 <Play className="w-4 h-4 fill-white shrink-0" /> Punch In for Today
               </button>
@@ -383,16 +408,16 @@ export const HRDashboard = ({
                 <button
                   type="button"
                   onClick={onTakeBreak}
-                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-white border-2 border-amber-500 text-amber-700 hover:bg-amber-50 font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all whitespace-nowrap shrink-0"
+                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-white border-2 border-amber-500 text-amber-700 hover:bg-amber-50 font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <Coffee className="w-4 h-4 text-amber-600 shrink-0" /> Take Break
                 </button>
                 <button
                   type="button"
                   onClick={onPunchOut}
-                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap shrink-0"
+                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
                 >
-                  <Square className="w-4 h-4 fill-white shrink-0" /> Punch Out & Finish Day
+                  <Square className="w-4 h-4 fill-white shrink-0" /> Punch Out <span className="hidden sm:inline">& Finish Day</span>
                 </button>
               </>
             )}
@@ -401,9 +426,9 @@ export const HRDashboard = ({
               <button
                 type="button"
                 onClick={onEndBreak}
-                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap shrink-0"
+                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
               >
-                <Play className="w-4 h-4 fill-white shrink-0" /> Resume Work (End Break)
+                <Play className="w-4 h-4 fill-white shrink-0" /> Resume Work
               </button>
             )}
 
@@ -411,7 +436,7 @@ export const HRDashboard = ({
               <button
                 type="button"
                 onClick={handleDetailedClock}
-                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all whitespace-nowrap shrink-0"
+                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
                 View Full Attendance Summary &rarr;
               </button>
@@ -420,7 +445,7 @@ export const HRDashboard = ({
             <button
               type="button"
               onClick={handleDetailedClock}
-              className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer text-center"
             >
               Detailed Clock &rarr;
             </button>

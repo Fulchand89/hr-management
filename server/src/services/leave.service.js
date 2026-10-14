@@ -31,8 +31,15 @@ try {
  */
 
 const getAllLeaveTypes = async () => {
-  return await LeaveType.findAll({
+  const types = await LeaveType.findAll({
     order: [['name', 'ASC']]
+  });
+  const seen = new Set();
+  return types.filter((t) => {
+    const key = t.code || t.name;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 };
 
@@ -180,8 +187,19 @@ const getMyLeaveBalances = async (userId, queryYear) => {
     }
   }
 
+  // Deduplicate balances by leaveTypeId / leaveType.code to prevent duplicate cards
+  const seenTypeIds = new Set();
+  const uniqueBalances = [];
+  for (const b of balances) {
+    const key = b.leaveTypeId || b.leaveType?.code || b.leaveType?.name;
+    if (key && !seenTypeIds.has(key)) {
+      seenTypeIds.add(key);
+      uniqueBalances.push(b);
+    }
+  }
+
   // Summary aggregation
-  const summary = balances.reduce(
+  const summary = uniqueBalances.reduce(
     (acc, b) => {
       acc.totalAllocated += Number(b.allocated);
       acc.totalUsed += Number(b.used);
@@ -191,7 +209,7 @@ const getMyLeaveBalances = async (userId, queryYear) => {
     { totalAllocated: 0, totalUsed: 0, totalRemaining: 0, year }
   );
 
-  return { balances, summary };
+  return { balances: uniqueBalances, summary };
 };
 
 const getUserLeaveBalances = async (userId, queryYear) => {

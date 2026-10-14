@@ -87,17 +87,20 @@ export const HRAppraisalManagementView = () => {
         emp.salary ||
         emp.salaryStructure?.netSalary ||
         emp.salaryStructure?.basicSalary ||
-        25000
+        0
       );
 
-      const isElevenMonthCycle = currentSalary < 15000;
+      const isElevenMonthCycle = currentSalary > 0 && currentSalary < 15000;
       const cycleMonths = isElevenMonthCycle ? 11 : 12;
 
-      // Calculate months tenure
-      const joinDate = emp.joiningDate ? new Date(emp.joiningDate) : new Date(today.getFullYear(), 0, 1);
-      const diffTime = Math.abs(today - joinDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const totalMonthsTenure = Math.floor(diffDays / 30.44);
+      // Calculate months tenure from actual database joiningDate
+      const joinDate = emp.joiningDate ? new Date(emp.joiningDate) : null;
+      let totalMonthsTenure = 0;
+      if (joinDate && !isNaN(joinDate.getTime())) {
+        const diffTime = Math.max(0, today - joinDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        totalMonthsTenure = Math.floor(diffDays / 30.44);
+      }
 
       // Check if employee has an appraisal recorded in appraisalsList
       const empAppraisals = appraisalsList.filter((a) => a.userId === emp.id);

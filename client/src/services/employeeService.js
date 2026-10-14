@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { clearAuthSession } from './authStorage';
 
 // ─────────────────────────────────────────────
 // AUTH
@@ -20,8 +21,7 @@ export const logout = async () => {
   } catch (_) {
     // Ignore logout errors
   } finally {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuthSession('employee');
   }
 };
 

@@ -81,7 +81,10 @@ const replicateToSecondary = async (targetSeq, tableName, dataValues) => {
     const sql = `INSERT INTO \`${tableName}\` (${quotedCols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateAssignments};`;
     const replacements = cols.map((c) => {
       const val = dataValues[c];
-      if (val !== null && typeof val === 'object' && !(val instanceof Date)) {
+      if (val instanceof Date) {
+        return val.toISOString().slice(0, 19).replace('T', ' ');
+      }
+      if (val !== null && typeof val === 'object') {
         return JSON.stringify(val);
       }
       return val;

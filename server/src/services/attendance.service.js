@@ -4,18 +4,27 @@ const { NotFoundError, BadRequestError } = require('../utils/apiError');
 const logger = require('../config/logger');
 
 /**
- * Format Date object to 12-hour AM/PM string (e.g., '09:12 AM')
+ * Format Date object to 12-hour AM/PM string (e.g., '09:12 AM') using IST timezone
  */
 const formatTime12h = (dateObj) => {
   if (!dateObj) return '--:--';
   const d = new Date(dateObj);
   if (isNaN(d.getTime())) return '--:--';
-  let hours = d.getHours();
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // '0' becomes '12'
-  return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+  try {
+    return d.toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch {
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // '0' becomes '12'
+    return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+  }
 };
 
 /**
@@ -27,6 +36,53 @@ const formatSecondsToHMS = (totalSeconds) => {
   const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
+/**
+ * Safely compute effective working hours for an attendance record:
+ * - If record has totalHours > 0, return that.
+ * - If record has clockIn and clockOut, compute exact difference minus breaks.
+ * - If record is for today (date === today) and has clockIn, compute live hours from clockIn to now.
+ * - If record is for a past day (date < today) and has clockIn but missing clockOut,
+ *   assume shift standard hours (8.0 hours) so missing punch-outs don't zero out employee average.
+ */
+const getEffectiveRecordHours = (rec, todayStr = new Date().toISOString().split('T')[0], now = new Date()) => {
+  if (!rec || !rec.clockIn) return 0;
+
+  const recordedHours = parseFloat(rec.totalHours);
+  if (!isNaN(recordedHours) && recordedHours > 0) {
+    return recordedHours;
+  }
+
+  const clockInDate = new Date(rec.clockIn);
+  if (isNaN(clockInDate.getTime())) return 0;
+
+  const breakMins = Number(rec.totalBreakMinutes) || 0;
+
+  if (rec.clockOut) {
+    const clockOutDate = new Date(rec.clockOut);
+    if (!isNaN(clockOutDate.getTime())) {
+      const diffMs = clockOutDate - clockInDate;
+      const netHours = Math.max(0, diffMs / (1000 * 60 * 60) - breakMins / 60);
+      return parseFloat(netHours.toFixed(2));
+    }
+  }
+
+  // No clockOut recorded:
+  if (rec.date === todayStr) {
+    // Currently working today: live elapsed hours up to now
+    const elapsedMs = Math.max(0, now - clockInDate);
+    const netHours = Math.max(0, elapsedMs / (1000 * 60 * 60) - breakMins / 60);
+    return parseFloat(netHours.toFixed(2));
+  }
+
+  if (rec.date < todayStr) {
+    // Past day with punch-in but no punch-out:
+    // Default to standard 8.0 hours shift work
+    return 8.0;
+  }
+
+  return 0;
 };
 
 /**
@@ -82,9 +138,32 @@ const computeLiveMetrics = (attendance, shift = null) => {
   }
 
   const now = new Date();
-  const clockInDate = new Date(attendance.clockIn);
-  const clockOutDate = attendance.clockOut ? new Date(attendance.clockOut) : null;
-  const breakStartDate = attendance.breakStartTime ? new Date(attendance.breakStartTime) : null;
+  let clockInDate = new Date(attendance.clockIn);
+  let clockOutDate = attendance.clockOut ? new Date(attendance.clockOut) : null;
+  let breakStartDate = attendance.breakStartTime ? new Date(attendance.breakStartTime) : null;
+
+  // Timeline check for true timestamps to guard against any DB timezone shift
+  const rawTimeline = parseTimelineArray(attendance.timeline);
+  const punchInTimelineItem = rawTimeline.find((item) => (item.label || '').toLowerCase().includes('punch in'));
+  if (punchInTimelineItem && punchInTimelineItem.timestamp) {
+    const timelineDate = new Date(punchInTimelineItem.timestamp);
+    if (!isNaN(timelineDate.getTime())) {
+      if (isNaN(clockInDate.getTime()) || clockInDate > now || Math.abs(clockInDate - timelineDate) > 3600 * 1000) {
+        clockInDate = timelineDate;
+      }
+    }
+  }
+
+  const breakStartTimelineItem = rawTimeline.find((item) => {
+    const lbl = (item.label || '').toLowerCase();
+    return lbl.includes('break') && !lbl.includes('ended');
+  });
+  if (breakStartDate && breakStartDate > now && breakStartTimelineItem && breakStartTimelineItem.timestamp) {
+    const tlBreakDate = new Date(breakStartTimelineItem.timestamp);
+    if (!isNaN(tlBreakDate.getTime())) {
+      breakStartDate = tlBreakDate;
+    }
+  }
 
   // 1. Determine active state
   let currentStatus = 'WORKING';
@@ -118,7 +197,6 @@ const computeLiveMetrics = (attendance, shift = null) => {
   }
 
   // 6. Timeline synthesis (Dynamic, non-hardcoded)
-  const rawTimeline = parseTimelineArray(attendance.timeline);
   let timeline = rawTimeline.length > 0 ? [...rawTimeline] : [];
 
   if (timeline.length === 0) {
@@ -187,8 +265,8 @@ const computeLiveMetrics = (attendance, shift = null) => {
 
   return {
     status: currentStatus,
-    clockInTime: attendance.clockIn,
-    clockOutTime: attendance.clockOut,
+    clockInTime: clockInDate ? clockInDate.toISOString() : null,
+    clockOutTime: clockOutDate ? clockOutDate.toISOString() : null,
     grossSeconds: totalElapsedSec,
     grossWorkingHours: grossWorkingHoursStr,
     workingSeconds: workingSec,
@@ -232,9 +310,9 @@ const getTodayStatus = async (userId) => {
     attendanceStatus: live.status,
     status: live.status, // dual property for frontend flexibility
     clockInTime: live.clockInTime,
-    clockInFormatted: attendance && attendance.clockIn ? formatTime12h(attendance.clockIn) : '--:--',
+    clockInFormatted: live.clockInTime ? formatTime12h(live.clockInTime) : '--:--',
     clockOutTime: live.clockOutTime,
-    clockOutFormatted: attendance && attendance.clockOut ? formatTime12h(attendance.clockOut) : '--:--',
+    clockOutFormatted: live.clockOutTime ? formatTime12h(live.clockOutTime) : '--:--',
     totalHours: attendance ? attendance.totalHours : 0,
     timeString: live.timeString,
     sinceText: live.sinceText,
@@ -564,9 +642,10 @@ const getMyAttendanceHistory = async (userId, query = {}) => {
   let halfDays = 0;
   let totalWorkingHours = 0;
   let overtimeHours = 0;
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const formattedRecords = records.map((rec) => {
-    const hours = parseFloat(rec.totalHours) || 0;
+    const hours = getEffectiveRecordHours(rec, todayStr);
     totalWorkingHours += hours;
 
     if (hours > 9) {
@@ -592,7 +671,7 @@ const getMyAttendanceHistory = async (userId, query = {}) => {
       clockInFormatted: rec.clockIn ? formatTime12h(rec.clockIn) : '--:--',
       clockOut: rec.clockOut,
       clockOutFormatted: rec.clockOut ? formatTime12h(rec.clockOut) : '--:--',
-      totalHours: rec.totalHours,
+      totalHours: hours > 0 ? parseFloat(hours.toFixed(2)) : (rec.totalHours || 0),
       totalBreakMinutes: rec.totalBreakMinutes || 0,
       timeline: rec.timeline || [],
       shift: rec.shift ? rec.shift.name : 'General Shift',
@@ -624,10 +703,13 @@ const getMyAttendanceHistory = async (userId, query = {}) => {
 const getAdminDailyAttendance = async (query = {}) => {
   const targetDate = query.date || new Date().toISOString().split('T')[0];
   const page = parseInt(query.page, 10) || 1;
-  const limit = parseInt(query.limit, 10) || 20;
+  const limit = parseInt(query.limit, 10) || 100;
   const offset = (page - 1) * limit;
 
-  const userWhere = { role: { [Op.ne]: 'ADMIN' } }; // Filter out super admins if needed
+  const userWhere = {};
+  if (query.role) {
+    userWhere.role = query.role;
+  }
 
   if (query.employeeId) {
     userWhere.id = query.employeeId;
@@ -685,6 +767,8 @@ const getAdminDailyAttendance = async (query = {}) => {
       return `${hours}h ${minutes}m`;
     };
 
+    const effHours = attendance ? getEffectiveRecordHours(attendance, targetDate) : 0;
+
     return {
       id: attendance ? attendance.id : `empty-${user.id}`,
       userId: user.id,
@@ -695,7 +779,7 @@ const getAdminDailyAttendance = async (query = {}) => {
       status: computedStatus,
       punchIn: attendance && attendance.clockIn ? formatTime12h(attendance.clockIn) : '--:--',
       punchOut: attendance && attendance.clockOut ? formatTime12h(attendance.clockOut) : '--:--',
-      totalHours: attendance ? formatHours(attendance.totalHours) : '0h 0m',
+      totalHours: attendance ? formatHours(effHours) : '0h 0m',
       raw: attendance
     };
   });
@@ -741,7 +825,8 @@ const getAdminMonthlyAttendance = async (query = {}) => {
     curr.setDate(curr.getDate() + 1);
   }
 
-  const userWhere = { role: { [Op.ne]: 'ADMIN' } };
+  const userWhere = {};
+  if (query.role) userWhere.role = query.role;
   if (query.employeeId) userWhere.id = query.employeeId;
   if (query.departmentId) userWhere.departmentId = query.departmentId;
 
@@ -787,7 +872,8 @@ const getAdminMonthlyAttendance = async (query = {}) => {
         else if (record.status === 'late') { status = 'L'; lateDays++; presentDays++; rawStatus = 'late'; }
         else if (record.status === 'half_day') { status = 'H'; presentDays += 0.5; rawStatus = 'half_day'; }
         
-        hours = record.totalHours || 0;
+        const todayStr = new Date().toISOString().split('T')[0];
+        hours = getEffectiveRecordHours(record, todayStr);
         totalWorkingHours += hours;
         
         punchIn = record.clockIn ? formatTime12h(record.clockIn) : null;
@@ -851,7 +937,8 @@ const getAdminDetailsAll = async (query = {}) => {
   const startDateStr = query.startDate || `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-01`;
   const endDateStr = query.endDate || currentDate.toISOString().split('T')[0];
 
-  const userWhere = { role: { [Op.ne]: 'ADMIN' } };
+  const userWhere = {};
+  if (query.role) userWhere.role = query.role;
   if (query.employeeId) userWhere.id = query.employeeId;
   
   const { rows, count } = await User.findAndCountAll({
@@ -877,18 +964,19 @@ const getAdminDetailsAll = async (query = {}) => {
       const bM = bMins % 60;
       const breakStr = bMins > 0 ? `${bH > 0 ? bH + 'h ' : ''}${bM}m` : '0m';
 
-      flatRecords.push({
-        id: att.id,
-        employeeId: user.employeeCode || `EMP-${user.id.substring(0,4).toUpperCase()}`,
-        employeeName: `${user.firstName} ${user.lastName}`,
-        department: user.department || 'N/A',
-        date: att.date,
-        status: att.status,
-        punchIn: att.clockIn ? formatTime12h(att.clockIn) : '--:--',
-        punchOut: att.clockOut ? formatTime12h(att.clockOut) : '--:--',
-        totalHours: att.totalHours ? `${Math.floor(att.totalHours)}h ${Math.round((att.totalHours%1)*60)}m` : '0h 0m',
-        breakTaken: breakStr
-      });
+        const effHours = getEffectiveRecordHours(att, endDateStr);
+        flatRecords.push({
+          id: att.id,
+          employeeId: user.employeeCode || `EMP-${user.id.substring(0,4).toUpperCase()}`,
+          employeeName: `${user.firstName} ${user.lastName}`,
+          department: user.department || 'N/A',
+          date: att.date,
+          status: att.status,
+          punchIn: att.clockIn ? formatTime12h(att.clockIn) : '--:--',
+          punchOut: att.clockOut ? formatTime12h(att.clockOut) : '--:--',
+          totalHours: effHours > 0 ? `${Math.floor(effHours)}h ${Math.round((effHours%1)*60)}m` : '0h 0m',
+          breakTaken: breakStr
+        });
     });
   });
 

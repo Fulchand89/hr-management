@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
   Plus,
@@ -23,6 +24,7 @@ import {
 } from '../../services/employeeService';
 
 export const LeavesView = ({ onBack }) => {
+  const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
@@ -45,9 +47,17 @@ export const LeavesView = ({ onBack }) => {
     try {
       const res = await getLeaveBalance();
       const data = res?.data ?? res ?? {};
-      const balanceList = Array.isArray(data?.balances)
+      const rawList = Array.isArray(data?.balances)
         ? data.balances
         : (Array.isArray(data) ? data : []);
+      // Deduplicate cards by leaveTypeId or code to prevent repeated cards
+      const seen = new Set();
+      const balanceList = rawList.filter((b) => {
+        const key = b.leaveTypeId || b.leaveType?.code || b.leaveType?.name || b.id;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       setBalances(balanceList);
     } catch {
       setBalances([]);
@@ -143,8 +153,7 @@ export const LeavesView = ({ onBack }) => {
   };
 
   const handleOpenDetail = (leave) => {
-    setSelectedLeave(leave);
-    setIsDetailModalOpen(true);
+    navigate(`/employee/leaves/${leave.id}`, { state: { leave } });
   };
 
   if (isBalancesLoading && leavesList.length === 0) {
@@ -157,7 +166,7 @@ export const LeavesView = ({ onBack }) => {
       <div className="flex items-center justify-end gap-4">
         <button
           type="button"
-          onClick={() => setIsApplyModalOpen(true)}
+          onClick={() => navigate('/employee/leaves/apply')}
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-md shadow-[#8B1D2C]/30 transition-all cursor-pointer active:scale-[0.99]"
         >
           <Plus className="w-4 h-4" />
@@ -165,16 +174,17 @@ export const LeavesView = ({ onBack }) => {
         </button>
       </div>
 
-      {/* 3 Leave Quota Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Leave Quota Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         {balances.length > 0 ? (
           balances.map((b) => {
             const total = Number(b.allocated) || 12;
             const remaining = Number(b.remaining) || 0;
             const used = Number(b.used) || 0;
-            const pct = Math.round((remaining / total) * 100);
+            const pct = total > 0 ? Math.round((remaining / total) * 100) : 0;
+            const key = b.leaveTypeId || b.leaveType?.code || b.id;
             return (
-              <div key={b.leaveTypeId || b.id} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs">
+              <div key={key} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                     {b.leaveType?.name || 'Leave'} ({b.leaveType?.code || 'LV'})
@@ -190,7 +200,7 @@ export const LeavesView = ({ onBack }) => {
                   <span className="text-xs text-slate-400 font-semibold">/ {total} days left</span>
                 </div>
                 <div className="w-full h-2 bg-slate-100 rounded-full mt-3 overflow-hidden">
-                  <div className="h-full bg-[#8B1D2C] rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                  <div className="h-full bg-[#8B1D2C] rounded-full" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
                 </div>
                 <div className="flex justify-between text-[11px] text-slate-400 mt-2 font-medium">
                   <span>{used} days consumed</span>
@@ -200,7 +210,7 @@ export const LeavesView = ({ onBack }) => {
             );
           })
         ) : isBalancesLoading ? (
-          [1, 2, 3].map((idx) => (
+          [1, 2, 3, 4].map((idx) => (
             <div key={idx} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs animate-pulse">
               <div className="h-4 bg-slate-100 rounded w-1/3 mb-3" />
               <div className="h-8 bg-slate-100 rounded w-1/2 mb-3" />

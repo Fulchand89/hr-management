@@ -539,8 +539,73 @@ export const HRLayout = ({
         </div>
       </header>
 
+      {/* Mobile Punch Status & Timer Bar for Small Screens */}
+      <div className="md:hidden bg-slate-50 border-b border-slate-200/80 px-4 py-2.5 flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${statusBadge.dot}`} />
+          <div className="text-[11px] font-mono font-bold text-slate-800 truncate">
+            {attendanceStatus === 'ON_BREAK' ? (
+              <span>Break: {breakTimeFormatted}</span>
+            ) : attendanceStatus === 'WORKING' ? (
+              <span>Work: {workingTimeFormatted}</span>
+            ) : attendanceStatus === 'PUNCHED_OUT' ? (
+              <span>Done: {workingTimeFormatted}</span>
+            ) : (
+              <span className="text-slate-500 font-sans">Not Punched In</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {attendanceStatus === 'NOT_PUNCHED_IN' && (
+            <button
+              type="button"
+              onClick={handlePunchIn}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <Play className="w-3 h-3 fill-white" /> Punch In
+            </button>
+          )}
+
+          {attendanceStatus === 'WORKING' && (
+            <>
+              <button
+                type="button"
+                onClick={handleTakeBreak}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+              >
+                <Coffee className="w-3 h-3" /> Break
+              </button>
+              <button
+                type="button"
+                onClick={handlePunchOut}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+              >
+                <Square className="w-3 h-3 fill-white" /> Out
+              </button>
+            </>
+          )}
+
+          {attendanceStatus === 'ON_BREAK' && (
+            <button
+              type="button"
+              onClick={handleEndBreak}
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <Play className="w-3 h-3 fill-white" /> Resume
+            </button>
+          )}
+
+          {attendanceStatus === 'PUNCHED_OUT' && (
+            <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
+              Shift Ended
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Main Body with Sidebar + Page Content matching EmployeeLayout */}
-      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6 flex gap-6">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 lg:pb-6 flex gap-6">
         {/* Left Desktop Sidebar Navigation matching EmployeeLayout */}
         <aside className="hidden lg:flex flex-col w-64 shrink-0 space-y-6 sticky top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto no-scrollbar pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {/* Navigation Links List matching EmployeeLayout */}
@@ -615,77 +680,98 @@ export const HRLayout = ({
           </div>
         </aside>
 
-        {/* Mobile Navigation Drawer matching EmployeeLayout */}
+        {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-50 lg:hidden flex">
             <div
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
               onClick={() => setIsMobileMenuOpen(false)}
             />
-            <div className="relative w-72 bg-white h-full p-5 flex flex-col justify-between z-10 shadow-2xl">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-white p-0.5 border border-slate-200 flex items-center justify-center shrink-0">
-                      <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
-                    </div>
-                    <div>
-                      <span className="font-extrabold text-slate-900 block leading-tight">Gupta Tech Web</span>
-                      <span className="text-[10px] text-slate-400 font-medium">HR Operations Hub</span>
-                    </div>
+            <div className="relative w-80 max-w-[85vw] bg-white h-full flex flex-col z-10 shadow-2xl animate-in slide-in-from-left duration-200">
+              {/* Drawer Top Header */}
+              <div className="p-4 flex items-center justify-between border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white p-0.5 border border-slate-200 flex items-center justify-center shrink-0">
+                    <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="p-1 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div>
+                    <span className="font-extrabold text-slate-900 block leading-tight text-sm">Gupta Tech Web</span>
+                    <span className="text-[10px] text-slate-400 font-medium">HR Operations Hub</span>
+                  </div>
                 </div>
-
-                <nav className="space-y-1">
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = item.isActive;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => handleNavigate(item.path)}
-                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer ${
-                          isActive
-                            ? 'bg-[#8B1D2C] text-white'
-                            : 'text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className="w-4 h-4" />
-                          <span>{item.label}</span>
-                        </div>
-                        {item.badge && item.badge > 0 && (
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] ${
-                              isActive ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </nav>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Mobile Drawer Bottom Portal Switchers */}
-              <div className="pt-4 border-t border-slate-100 space-y-2">
+              {/* User Profile Info Chip */}
+              <div className="p-3 mx-4 my-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3 shrink-0">
+                {userAvatar ? (
+                  <img src={userAvatar} alt={userName} className="w-10 h-10 rounded-xl object-cover ring-2 ring-slate-200 shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-[#8B1D2C] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                    {userName.charAt(0)}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold text-slate-900 truncate">{userName}</div>
+                  <div className="text-[10px] text-slate-400 truncate font-medium">{userEmail}</div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8B1D2C]/10 text-[#8B1D2C] shrink-0 border border-[#8B1D2C]/20">
+                  HR Admin
+                </span>
+              </div>
+
+              {/* Scrollable Navigation List */}
+              <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1 overscroll-contain">
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Menu Navigation
+                </div>
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = item.isActive;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleNavigate(item.path)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                        isActive
+                          ? 'bg-[#8B1D2C] text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && item.badge > 0 && (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            isActive ? 'bg-white/20 text-white' : 'bg-[#8B1D2C] text-white'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Drawer Bottom Portal Switchers */}
+              <div className="p-4 border-t border-slate-100 space-y-2 shrink-0 bg-white">
                 <button
                   type="button"
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     navigate('/employee/dashboard');
                   }}
-                  className="w-full py-2 px-3 rounded-xl bg-rose-50 text-[#8B1D2C] text-xs font-bold text-center block cursor-pointer"
+                  className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#8B1D2C] text-xs font-bold text-center block cursor-pointer transition-colors"
                 >
                   Switch to Employee Portal &rarr;
                 </button>
@@ -693,9 +779,10 @@ export const HRLayout = ({
                   type="button"
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    navigate('/hr/signin');
+                    if (propLogout) propLogout();
+                    else navigate('/hr/signin');
                   }}
-                  className="w-full py-2 px-3 rounded-xl bg-slate-100 text-slate-600 text-xs font-medium text-center block cursor-pointer"
+                  className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium text-center block cursor-pointer transition-colors"
                 >
                   Sign Out
                 </button>
@@ -705,7 +792,7 @@ export const HRLayout = ({
         )}
 
         {/* Center / Right Dynamic Page Viewport */}
-        <main className="flex-1 min-w-0">{children}</main>
+        <main className="flex-1 min-w-0 w-full">{children}</main>
       </div>
 
       {/* Mobile Bottom Navigation Bar matching mockup */}
@@ -776,12 +863,12 @@ export const HRLayout = ({
             className="fixed inset-0"
             onClick={() => setIsMoreModalOpen(false)}
           />
-          <div className="relative w-full max-w-sm bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl z-10 border border-slate-100 animate-in slide-in-from-bottom-6 duration-200">
+          <div className="relative w-full max-w-md max-h-[85vh] flex flex-col bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl z-10 border border-slate-100 animate-in slide-in-from-bottom-6 duration-200">
             {/* Top pill bar handle matching Frame 473 */}
-            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-3" />
+            <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-3 shrink-0" />
 
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm">More</h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <h3 className="font-bold text-slate-900 text-sm">More HR Options</h3>
               <button
                 type="button"
                 onClick={() => setIsMoreModalOpen(false)}
@@ -791,7 +878,7 @@ export const HRLayout = ({
               </button>
             </div>
 
-            <div className="mt-3 space-y-1">
+            <div className="mt-3 space-y-1 overflow-y-auto flex-1 pr-1 overscroll-contain">
               {/* Employee Management */}
               <button
                 type="button"

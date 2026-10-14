@@ -68,36 +68,43 @@ export const MyAppraisalView = ({ onBack }) => {
       profile?.salary ||
       profile?.salaryStructure?.netSalary ||
       profile?.salaryStructure?.basicSalary ||
-      25000
+      0
     );
   }, [profile]);
 
-  const isElevenMonthCycle = currentSalary < 15000;
+  const isElevenMonthCycle = currentSalary > 0 && currentSalary < 15000;
   const cycleMonths = isElevenMonthCycle ? 11 : 12;
 
   // Next appraisal schedule calculation
   const nextAppraisalInfo = useMemo(() => {
-    const joinDate = profile?.joiningDate ? new Date(profile.joiningDate) : new Date();
+    const joinDate = profile?.joiningDate ? new Date(profile.joiningDate) : null;
     const today = new Date();
-    const diffTime = Math.abs(today - joinDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const totalMonthsTenure = Math.floor(diffDays / 30.44);
+    let totalMonthsTenure = 0;
+    if (joinDate && !isNaN(joinDate.getTime())) {
+      const diffTime = Math.max(0, today - joinDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      totalMonthsTenure = Math.floor(diffDays / 30.44);
+    }
 
     const completedCycles = Math.floor(totalMonthsTenure / cycleMonths);
     const nextDueMonths = (completedCycles + 1) * cycleMonths;
     const monthsRemaining = Math.max(0, nextDueMonths - totalMonthsTenure);
 
-    const targetDate = new Date(joinDate);
-    targetDate.setMonth(targetDate.getMonth() + nextDueMonths);
+    let dueDateFormatted = 'Pending joining date';
+    if (joinDate && !isNaN(joinDate.getTime())) {
+      const targetDate = new Date(joinDate);
+      targetDate.setMonth(targetDate.getMonth() + nextDueMonths);
+      dueDateFormatted = targetDate.toLocaleDateString('en-IN', {
+        month: 'short',
+        year: 'numeric'
+      });
+    }
 
     return {
       tenureMonths: totalMonthsTenure,
       monthsRemaining,
-      dueDateFormatted: targetDate.toLocaleDateString('en-IN', {
-        month: 'short',
-        year: 'numeric'
-      }),
-      isEligibleNow: monthsRemaining === 0
+      dueDateFormatted,
+      isEligibleNow: totalMonthsTenure > 0 && monthsRemaining === 0
     };
   }, [profile, cycleMonths]);
 

@@ -41,7 +41,14 @@ export const HRApplyLeaveModal = ({ isOpen, onClose, onSubmitLeave }) => {
     const fetchTypes = async () => {
       try {
         const res = await getLeaveTypes();
-        const types = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const rawTypes = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const seen = new Set();
+        const types = rawTypes.filter((t) => {
+          const key = t.code || t.name || t.id;
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         setLeaveTypes(types);
         if (types.length > 0) {
           setSelectedTypeId(types[0].id);

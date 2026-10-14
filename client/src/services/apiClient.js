@@ -18,11 +18,13 @@ const apiClient = axios.create({
   withCredentials: true
 });
 
+import { getAuthToken, clearAuthSession, isHRPortal } from './authStorage';
+
 // ── Request Interceptor: Attach JWT token ─────────────────────────────────
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token && token !== 'undefined' && token !== 'null') {
+    const token = getAuthToken();
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -37,13 +39,13 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const { status } = error.response;
       if (status === 401) {
-        // Token expired or invalid — clear storage
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        clearAuthSession();
         
         // Prevent infinite page-reload blinking loop (lap-chap)
+        const isHr = isHRPortal();
+        const loginUrl = isHr ? '/hr/signin' : '/signin';
         if (!window.location.pathname.includes('/signin')) {
-          window.location.href = '/signin';
+          window.location.href = loginUrl;
         }
       }
     }

@@ -335,7 +335,7 @@ export const HREmployeeManagementView = ({ defaultTab }) => {
       </div>
 
       {/* ── Sub-Tabs Navigation (Directory vs KYC Verification) ── */}
-      <div className="flex items-center gap-2 border-b border-slate-200/80 pb-1">
+      <div className="flex items-center gap-2 border-b border-slate-200/80 pb-1 overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => handleTabChange('directory')}

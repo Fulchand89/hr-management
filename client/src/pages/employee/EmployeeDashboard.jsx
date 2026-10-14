@@ -106,6 +106,8 @@ export const EmployeeDashboard = ({
             };
           });
           setUpcomingHolidays(formatted);
+        } else {
+          setUpcomingHolidays([]);
         }
 
         if (data?.leaveBalances && data.leaveBalances.length > 0) {
@@ -114,6 +116,8 @@ export const EmployeeDashboard = ({
             0
           );
           setAvailableLeaveDays(totalRemaining);
+        } else {
+          setAvailableLeaveDays(0);
         }
 
         if (data?.latestAppraisal) {
@@ -159,11 +163,11 @@ export const EmployeeDashboard = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 flex-nowrap">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={onNavigateToAttendance}
-              className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0"
+              className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2.5 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <Clock className="w-4 h-4 text-[#8B1D2C] shrink-0" />
               Open Live Timer
@@ -171,7 +175,7 @@ export const EmployeeDashboard = ({
             <button
               type="button"
               onClick={onOpenApplyLeave}
-              className="px-3.5 sm:px-4 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-md shadow-[#8B1D2C]/40 transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap shrink-0"
+              className="flex-1 sm:flex-initial px-3.5 sm:px-4 py-2.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-xs shadow-md shadow-[#8B1D2C]/40 transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <CalendarDays className="w-4 h-4 shrink-0" />
               Apply Leave
@@ -213,7 +217,7 @@ export const EmployeeDashboard = ({
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900">
-              {attendanceSummary.averageHoursPerDay ? `${attendanceSummary.averageHoursPerDay}h` : '0h'}
+              {attendanceSummary.averageHoursPerDay ? `${parseFloat(Number(attendanceSummary.averageHoursPerDay).toFixed(1))}h` : '0h'}
             </span>
             <span className="text-xs text-slate-400 font-medium">/ 8h goal</span>
           </div>

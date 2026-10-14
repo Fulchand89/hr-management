@@ -28,7 +28,6 @@ export const HRSignInView = ({ onSignIn }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showDemoAccounts, setShowDemoAccounts] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,7 +45,7 @@ export const HRSignInView = ({ onSignIn }) => {
     setIsLoading(true);
     try {
       if (login) {
-        await login(identifier.trim(), password);
+        await login(identifier.trim(), password, 'hr');
       }
       if (onSignIn) {
         onSignIn();
@@ -293,31 +292,6 @@ export const HRSignInView = ({ onSignIn }) => {
             <p className="text-[11px] text-slate-400 text-center leading-relaxed">
               Authorized HR Operations personnel only. All access attempts are logged with security audit trails.
             </p>
-
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={() => setShowDemoAccounts(!showDemoAccounts)}
-                className="text-[10px] font-semibold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                {showDemoAccounts ? '▲ Hide Staging Credentials' : '▼ Staging Quick Fill'}
-              </button>
-
-              {showDemoAccounts && (
-                <div className="mt-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200 flex justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIdentifier('hr@hrmanagement.com');
-                      setPassword('HrPassword@123');
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-rose-50 text-[#8B1D2C] hover:bg-rose-100 font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    💼 Fill HR Lead
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
