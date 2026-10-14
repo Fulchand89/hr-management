@@ -745,15 +745,23 @@ const getHolidays = async (query) => {
 };
 
 const createHoliday = async (payload, actor) => {
+  const title = (payload.title || payload.name || '').trim();
+  if (!title) {
+    throw new BadRequestError('Holiday title is required');
+  }
+
   const existing = await Holiday.findOne({ where: { date: payload.date } });
   if (existing) {
     throw new ConflictError(`A holiday on ${payload.date} already exists ('${existing.title}')`);
   }
 
+  const rawType = (payload.type || 'company').toLowerCase();
+  const normalizedType = rawType === 'optional' ? 'restricted' : (['national', 'gazetted', 'restricted', 'company'].includes(rawType) ? rawType : 'company');
+
   const holiday = await Holiday.create({
-    title: payload.title.trim(),
+    title,
     date: payload.date,
-    type: payload.type || 'company',
+    type: normalizedType,
     description: payload.description ? payload.description.trim() : null
   });
 

@@ -372,13 +372,22 @@ export const EmployeeDashboard = ({
               )}
 
               {attendanceStatus === 'ON_BREAK' && (
-                <button
-                  type="button"
-                  onClick={onEndBreak}
-                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap"
-                >
-                  <Play className="w-4 h-4 fill-white shrink-0" /> Resume Work (End Break)
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                  <button
+                    type="button"
+                    onClick={onEndBreak}
+                    className="flex-1 w-full py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap"
+                  >
+                    <Play className="w-4 h-4 fill-white shrink-0" /> Resume Work (End Break)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onPunchOut}
+                    className="flex-1 w-full py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap"
+                  >
+                    <Square className="w-4 h-4 fill-white shrink-0" /> Punch Out & Finish Day
+                  </button>
+                </div>
               )}
 
               {attendanceStatus === 'PUNCHED_OUT' && (
@@ -476,9 +485,19 @@ export const EmployeeDashboard = ({
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 Upcoming Holidays
               </h3>
-              <span className="text-[11px] font-semibold text-[#8B1D2C]">
-                {today.toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-[#8B1D2C]">
+                  {today.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </span>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/employee/holidays')}
+                  className="text-[11px] font-bold text-[#8B1D2C] hover:underline cursor-pointer"
+                >
+                  View All
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2.5">

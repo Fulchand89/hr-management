@@ -19,6 +19,7 @@ import HRApplyLeaveModal from './HRApplyLeaveModal';
 import HRAttendanceDetailModal from './HRAttendanceDetailModal';
 import HRAttendanceCorrectionDetailView from './HRAttendanceCorrectionDetailView';
 import HRHolidayManagementView from './HRHolidayManagementView';
+import HRAddHolidayView from './HRAddHolidayView';
 import HRReportsView from './HRReportsView';
 import HRStaffAttendance from './HRStaffAttendance';
 import HREmployeeManagementView from './HREmployeeManagementView';
@@ -550,6 +551,10 @@ export const HRApp = () => {
         <Route path="holiday-management" element={<HRHolidayManagementView />} />
         <Route path="holiday" element={<HRHolidayManagementView />} />
         <Route path="holiday-calendar" element={<HRHolidayManagementView />} />
+        <Route path="holiday-management/new" element={<HRAddHolidayView />} />
+        <Route path="holiday-management/add" element={<HRAddHolidayView />} />
+        <Route path="holidays/new" element={<HRAddHolidayView />} />
+        <Route path="holidays/add" element={<HRAddHolidayView />} />
 
         {/* Workforce Reports */}
         <Route path="reports" element={<HRReportsView />} />

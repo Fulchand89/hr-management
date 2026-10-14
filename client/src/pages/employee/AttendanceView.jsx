@@ -128,13 +128,22 @@ export const AttendanceView = ({
               )}
 
               {status === 'ON_BREAK' && (
-                <button
-                  type="button"
-                  onClick={onEndBreak}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-md shadow-emerald-600/30 transition-all cursor-pointer text-sm flex items-center justify-center gap-2"
-                >
-                  <Play className="w-4 h-4 fill-white" /> Resume Working (End Break)
-                </button>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={onEndBreak}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-md shadow-emerald-600/30 transition-all cursor-pointer text-sm flex items-center justify-center gap-2"
+                  >
+                    <Play className="w-4 h-4 fill-white" /> Resume Working
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onPunchOut}
+                    className="w-full bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold py-3.5 px-4 rounded-2xl shadow-md shadow-[#8B1D2C]/30 transition-all cursor-pointer text-sm flex items-center justify-center gap-2"
+                  >
+                    <Square className="w-4 h-4 fill-white" /> Punch Out
+                  </button>
+                </div>
               )}
 
               {status === 'PUNCHED_OUT' && (

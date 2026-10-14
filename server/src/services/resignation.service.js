@@ -235,21 +235,30 @@ const updateResignationStatus = async (id, payload, actor) => {
     await resignation.update(updateData, { transaction });
 
     // Status-specific cascading user state changes
+    const applicantUser = await User.findByPk(resignation.userId, { transaction });
+    const isStaffAdminOrHr = ['admin', 'hr', 'ADMIN', 'HR'].includes(applicantUser?.role);
+
     if (status === 'approved') {
-      await User.update(
-        { status: USER_STATUS.NOTICE_PERIOD },
-        { where: { id: resignation.userId }, transaction }
-      );
+      if (!isStaffAdminOrHr) {
+        await User.update(
+          { status: USER_STATUS.NOTICE_PERIOD },
+          { where: { id: resignation.userId }, transaction }
+        );
+      }
     } else if (status === 'completed') {
-      await User.update(
-        { status: USER_STATUS.RESIGNED },
-        { where: { id: resignation.userId }, transaction }
-      );
+      if (!isStaffAdminOrHr) {
+        await User.update(
+          { status: USER_STATUS.RESIGNED },
+          { where: { id: resignation.userId }, transaction }
+        );
+      }
     } else if (status === 'rejected') {
-      await User.update(
-        { status: USER_STATUS.ACTIVE },
-        { where: { id: resignation.userId }, transaction }
-      );
+      if (!isStaffAdminOrHr) {
+        await User.update(
+          { status: USER_STATUS.ACTIVE },
+          { where: { id: resignation.userId }, transaction }
+        );
+      }
     }
 
     let notifTitle = `Resignation Request ${status.toUpperCase().replace('_', ' ')}`;

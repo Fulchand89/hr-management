@@ -13,7 +13,23 @@ const getMyNotifications = async (userId, query = {}) => {
 
   const whereClause = { userId };
   if (query.type && query.type.toLowerCase() !== 'all') {
-    whereClause.type = { [Op.like]: `%${query.type}%` };
+    const rawType = query.type.toLowerCase();
+    if (rawType === 'leaves' || rawType === 'leave') {
+      whereClause.type = 'leave';
+    } else if (rawType === 'attendance') {
+      whereClause.type = 'attendance';
+    } else if (rawType === 'personnel' || rawType === 'profile') {
+      whereClause[Op.or] = [
+        { type: { [Op.in]: ['info', 'warning'] } },
+        { title: { [Op.like]: '%profile%' } },
+        { title: { [Op.like]: '%kyc%' } },
+        { message: { [Op.like]: '%profile%' } }
+      ];
+    } else if (rawType === 'company') {
+      whereClause.type = { [Op.in]: ['announcement', 'info', 'success', 'warning'] };
+    } else {
+      whereClause.type = { [Op.like]: `%${query.type}%` };
+    }
   }
   if (query.isRead !== undefined) {
     whereClause.isRead = query.isRead === 'true' || query.isRead === true;
@@ -92,6 +108,24 @@ const createNotification = async (userId, { title, message, type = 'info', actio
       actionUrl,
       isRead: false
     });
+
+    // Emit real-time WebSocket event to individual user room
+    try {
+      const socketService = require('./socket.service');
+      if (socketService) {
+        socketService.emitToUser(userId, 'notification', {
+          id: notification.id,
+          title,
+          message,
+          type,
+          actionUrl,
+          createdAt: notification.createdAt
+        });
+      }
+    } catch {
+      // socket emission is optional
+    }
+
     return notification;
   } catch (err) {
     logger.warn('Notification creation warning:', err.message);
@@ -128,12 +162,17 @@ const notifyHRAndAdmins = async ({ title, message, type = 'info', actionUrl = nu
 
     const created = await Notification.bulkCreate(records);
 
-    // Also emit real-time WebSocket events to HR and Admin rooms
+    // Also emit real-time WebSocket events to HR and Admin rooms and user rooms
     try {
       const socketService = require('./socket.service');
       if (socketService) {
         socketService.emitToRole('hr', 'notification', { title, message, type, actionUrl });
         socketService.emitToRole('admin', 'notification', { title, message, type, actionUrl });
+        socketService.emitToRole('HR', 'notification', { title, message, type, actionUrl });
+        socketService.emitToRole('ADMIN', 'notification', { title, message, type, actionUrl });
+        recipients.forEach((u) => {
+          socketService.emitToUser(u.id, 'notification', { title, message, type, actionUrl });
+        });
       }
     } catch {
       // socket emission is optional

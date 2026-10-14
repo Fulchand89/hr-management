@@ -57,11 +57,14 @@ const adminLeaveQuerySchema = Joi.object({
 });
 
 const createHolidaySchema = Joi.object({
-  title: Joi.string().trim().min(2).max(100).required(),
+  title: Joi.string().trim().min(2).max(100).optional(),
+  name: Joi.string().trim().min(2).max(100).optional(),
   date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
-  type: Joi.string().valid('national', 'gazetted', 'restricted', 'company').default('company'),
+  type: Joi.string()
+    .valid('national', 'gazetted', 'restricted', 'company', 'optional', 'National', 'Gazetted', 'Restricted', 'Company', 'Optional')
+    .default('company'),
   description: Joi.string().trim().max(255).optional().allow('', null)
-});
+}).or('title', 'name');
 
 const holidayQuerySchema = Joi.object({
   year: Joi.number().integer().min(2020).max(2100).optional()

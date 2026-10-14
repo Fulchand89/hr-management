@@ -31,7 +31,7 @@ export const HRNotificationsView = ({ onBack }) => {
   const loadNotifications = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await getMyNotifications(currentPage, 10, activeCategory);
+      const res = await getMyNotifications(currentPage, 50);
       const data = res?.data ?? res ?? {};
       const rawList = Array.isArray(data)
         ? data
@@ -42,14 +42,18 @@ export const HRNotificationsView = ({ onBack }) => {
           let category = 'Company';
           const typeStr = (n.type || '').toLowerCase();
           const titleStr = (n.title || '').toLowerCase();
+          const msgStr = (n.message || '').toLowerCase();
 
-          if (typeStr.includes('leave')) category = 'Leaves';
-          else if (typeStr.includes('attendance')) category = 'Attendance';
-          else if (
+          if (typeStr.includes('leave') || titleStr.includes('leave') || msgStr.includes('leave')) {
+            category = 'Leaves';
+          } else if (typeStr.includes('attendance') || titleStr.includes('attendance') || msgStr.includes('attendance')) {
+            category = 'Attendance';
+          } else if (
             typeStr.includes('profile') ||
             typeStr.includes('document') ||
             titleStr.includes('profile') ||
-            titleStr.includes('kyc')
+            titleStr.includes('kyc') ||
+            msgStr.includes('profile')
           ) {
             category = 'Personnel';
           }
@@ -88,7 +92,7 @@ export const HRNotificationsView = ({ onBack }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, activeCategory]);
+  }, [currentPage]);
 
   useEffect(() => {
     loadNotifications();

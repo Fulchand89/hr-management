@@ -24,6 +24,7 @@ import HRExitLetterView from '../hr/HRExitLetterView';
 import HRApplyLeaveView from '../hr/HRApplyLeaveView';
 import HRLeaveDetailView from '../hr/HRLeaveDetailView';
 import EmployeeKycDocumentsView from './EmployeeKycDocumentsView';
+import EmployeeHolidayCalendarView from './EmployeeHolidayCalendarView';
 import SignInView from './SignInView';
 
 import { useAuth } from '../../context/AuthContext';
@@ -278,6 +279,7 @@ export const EmployeeApp = () => {
       return 'attendance';
     }
     if (path.includes('/leaves') || path.includes('/my-leaves') || path.includes('/apply-leave')) return 'leaves';
+    if (path.includes('/holidays') || path.includes('/holiday-calendar') || path.includes('/holiday')) return 'holidays';
     if (
       path.includes('/salary') ||
       path.includes('/payslips') ||
@@ -470,6 +472,18 @@ export const EmployeeApp = () => {
         <Route path="correction-request" element={<Navigate to="/employee/attendance-correction" replace />} />
         <Route path="correction-request/new" element={<Navigate to="/employee/attendance-correction/new" replace />} />
         <Route path="correction-requests" element={<Navigate to="/employee/attendance-correction" replace />} />
+
+        {/* Company Holiday Calendar */}
+        <Route
+          path="holidays"
+          element={
+            <EmployeeHolidayCalendarView
+              onBack={() => navigate('/employee/dashboard')}
+            />
+          }
+        />
+        <Route path="holiday-calendar" element={<Navigate to="/employee/holidays" replace />} />
+        <Route path="holiday" element={<Navigate to="/employee/holidays" replace />} />
 
         {/* Leaves & Applications View */}
         <Route

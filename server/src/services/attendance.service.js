@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const { Attendance, AttendanceCorrection, Shift, User, Department, Designation, ActivityLog } = require('../models');
 const { NotFoundError, BadRequestError } = require('../utils/apiError');
 const logger = require('../config/logger');
+const { notifyHRAndAdmins, createNotification } = require('./notification.service');
 
 /**
  * Format Date object to 12-hour AM/PM string (e.g., '09:12 AM') using IST timezone
@@ -99,6 +100,45 @@ const parseTimelineArray = (rawTimeline) => {
     }
   }
   return [];
+};
+
+/**
+ * Safely determine effective clockOut Date for an attendance record:
+ * 1. If explicit rec.clockOut exists, return Date object.
+ * 2. If timeline has a 'Punch Out' event, return that timestamp Date.
+ * 3. If past day (rec.date < todayStr) and record has clockIn:
+ *    Compute auto clockOut = clockIn + (effHours * 3600000) + (totalBreakMinutes * 60000)
+ */
+const getEffectiveClockOut = (rec, effHours, todayStr = new Date().toISOString().split('T')[0]) => {
+  if (!rec || !rec.clockIn) return null;
+
+  if (rec.clockOut) {
+    const d = new Date(rec.clockOut);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // Check timeline
+  const tl = parseTimelineArray(rec.timeline);
+  const po = tl.find((t) => t.label === 'Punch Out' || t.status === 'punched_out');
+  if (po && (po.timestamp || po.time)) {
+    if (po.timestamp) {
+      const d = new Date(po.timestamp);
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+
+  // Past day with punch-in but missing clockOut:
+  if (rec.date < todayStr) {
+    const clockInDate = new Date(rec.clockIn);
+    if (!isNaN(clockInDate.getTime())) {
+      const hoursToUse = (effHours && effHours > 0) ? effHours : 8.0;
+      const breakMins = Number(rec.totalBreakMinutes) || 0;
+      const totalMs = Math.round((hoursToUse * 60 + breakMins) * 60 * 1000);
+      return new Date(clockInDate.getTime() + totalMs);
+    }
+  }
+
+  return null;
 };
 
 /**
@@ -368,24 +408,36 @@ const punchIn = async (user, payload = {}, ipAddress = null) => {
     throw new BadRequestError('You have already punched in for today');
   }
 
-  // Resolve shift
+  // Resolve shift: prioritize payload.shiftId, then default to 'General Shift' (10:00 - 19:00), then any active shift
   let shift = null;
   if (payload.shiftId) {
     shift = await Shift.findByPk(payload.shiftId);
   }
   if (!shift) {
+    shift = await Shift.findOne({ where: { status: 'active', name: 'General Shift' } });
+  }
+  if (!shift) {
     shift = await Shift.findOne({ where: { status: 'active' } });
   }
 
-  // Check if late (e.g., if punchIn is after 09:15)
+  // Check if late (e.g., if punchIn is after 10:15 AM for General Shift)
   let status = 'present';
-  if (shift && shift.startTime) {
-    const [shiftHour, shiftMin] = shift.startTime.split(':').map(Number);
-    const graceMin = shift.graceMinutes || 15;
-    const shiftStartToday = new Date();
-    shiftStartToday.setHours(shiftHour, shiftMin + graceMin, 0, 0);
+  const dayOfWeek = now.getDay();
+  const isSunday = dayOfWeek === 0;
 
-    if (now > shiftStartToday) {
+  if (isSunday) {
+    status = 'present'; // Weekend work is not marked late
+  } else if (shift && shift.startTime) {
+    const [shiftHour, shiftMin] = shift.startTime.split(':').map(Number);
+    const graceMin = shift.graceMinutes !== undefined ? shift.graceMinutes : 15;
+
+    // Convert now to IST hours and minutes
+    const istTimeStr = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: false });
+    const [currHour, currMin] = istTimeStr.split(':').map(Number);
+    const currentMins = currHour * 60 + currMin;
+    const shiftGraceMins = shiftHour * 60 + shiftMin + graceMin;
+
+    if (currentMins > shiftGraceMins) {
       status = 'late';
     }
   }
@@ -663,14 +715,34 @@ const getMyAttendanceHistory = async (userId, query = {}) => {
       absentDays++;
     }
 
+    const effClockOut = getEffectiveClockOut(rec, hours, todayStr);
+
+    // Auto-heal missing clockOut in database for past records
+    if (!rec.clockOut && rec.date < todayStr && rec.clockIn && effClockOut) {
+      rec.clockOut = effClockOut;
+      rec.totalHours = hours > 0 ? parseFloat(hours.toFixed(2)) : 8.0;
+      const tl = parseTimelineArray(rec.timeline);
+      if (!tl.some((t) => t.label === 'Punch Out' || t.status === 'punched_out')) {
+        tl.push({
+          label: 'Punch Out',
+          time: formatTime12h(effClockOut),
+          timestamp: effClockOut instanceof Date ? effClockOut.toISOString() : new Date(effClockOut).toISOString(),
+          status: 'punched_out'
+        });
+        rec.timeline = tl;
+        rec.changed('timeline', true);
+      }
+      rec.save().catch((err) => logger.warn('Failed to auto-save past clockOut:', err.message));
+    }
+
     return {
       id: rec.id,
       date: rec.date,
       status: rec.status,
       clockIn: rec.clockIn,
       clockInFormatted: rec.clockIn ? formatTime12h(rec.clockIn) : '--:--',
-      clockOut: rec.clockOut,
-      clockOutFormatted: rec.clockOut ? formatTime12h(rec.clockOut) : '--:--',
+      clockOut: effClockOut,
+      clockOutFormatted: effClockOut ? formatTime12h(effClockOut) : '--:--',
       totalHours: hours > 0 ? parseFloat(hours.toFixed(2)) : (rec.totalHours || 0),
       totalBreakMinutes: rec.totalBreakMinutes || 0,
       timeline: rec.timeline || [],
@@ -778,7 +850,7 @@ const getAdminDailyAttendance = async (query = {}) => {
       designation: user.designation || 'N/A',
       status: computedStatus,
       punchIn: attendance && attendance.clockIn ? formatTime12h(attendance.clockIn) : '--:--',
-      punchOut: attendance && attendance.clockOut ? formatTime12h(attendance.clockOut) : '--:--',
+      punchOut: attendance ? formatTime12h(getEffectiveClockOut(attendance, effHours, targetDate)) : '--:--',
       totalHours: attendance ? formatHours(effHours) : '0h 0m',
       raw: attendance
     };
@@ -876,8 +948,9 @@ const getAdminMonthlyAttendance = async (query = {}) => {
         hours = getEffectiveRecordHours(record, todayStr);
         totalWorkingHours += hours;
         
+        const effClockOut = getEffectiveClockOut(record, hours, todayStr);
         punchIn = record.clockIn ? formatTime12h(record.clockIn) : null;
-        punchOut = record.clockOut ? formatTime12h(record.clockOut) : null;
+        punchOut = effClockOut ? formatTime12h(effClockOut) : null;
       } else {
         if (isWeekend) {
           status = 'W';
@@ -965,6 +1038,7 @@ const getAdminDetailsAll = async (query = {}) => {
       const breakStr = bMins > 0 ? `${bH > 0 ? bH + 'h ' : ''}${bM}m` : '0m';
 
         const effHours = getEffectiveRecordHours(att, endDateStr);
+        const effClockOut = getEffectiveClockOut(att, effHours, endDateStr);
         flatRecords.push({
           id: att.id,
           employeeId: user.employeeCode || `EMP-${user.id.substring(0,4).toUpperCase()}`,
@@ -973,7 +1047,7 @@ const getAdminDetailsAll = async (query = {}) => {
           date: att.date,
           status: att.status,
           punchIn: att.clockIn ? formatTime12h(att.clockIn) : '--:--',
-          punchOut: att.clockOut ? formatTime12h(att.clockOut) : '--:--',
+          punchOut: effClockOut ? formatTime12h(effClockOut) : '--:--',
           totalHours: effHours > 0 ? `${Math.floor(effHours)}h ${Math.round((effHours%1)*60)}m` : '0h 0m',
           breakTaken: breakStr
         });
@@ -1045,6 +1119,26 @@ const createAttendanceCorrection = async (userId, payload) => {
     reason: payload.reason,
     status: 'pending'
   });
+
+  // Notify all active HR & Admin personnel
+  try {
+    const applicant = await User.findByPk(userId, {
+      attributes: ['id', 'firstName', 'lastName', 'employeeCode']
+    });
+    const applicantName = applicant
+      ? `${applicant.firstName || ''} ${applicant.lastName || ''}`.trim()
+      : 'An employee';
+    const empCodeStr = applicant?.employeeCode ? ` (${applicant.employeeCode})` : '';
+
+    await notifyHRAndAdmins({
+      title: 'New Attendance Correction Request',
+      message: `${applicantName}${empCodeStr} submitted an attendance correction request for ${payload.date} (${payload.punchType}: ${payload.requestedTime}). Reason: ${payload.reason || 'N/A'}`,
+      type: 'attendance',
+      actionUrl: `/hr/attendance-correction/${correction.id}`
+    });
+  } catch (err) {
+    logger.warn('Failed to notify HR of attendance correction request:', err.message);
+  }
 
   return correction;
 };
@@ -1279,6 +1373,20 @@ const actionAttendanceCorrection = async (id, payload, actionerUser) => {
     ipAddress: 'INTERNAL',
     details: `${actionerUser.firstName} ${payload.status} attendance correction for ${correction.applicant?.firstName || 'Employee'}`
   }).catch((err) => logger.warn('ActivityLog warning:', err.message));
+
+  // Notify applicant about HR decision
+  try {
+    const actionStatus = payload.status === 'approved' ? 'Approved' : 'Rejected';
+    const actionerName = actionerUser ? `${actionerUser.firstName || ''} ${actionerUser.lastName || ''}`.trim() : 'HR';
+    await createNotification(correction.userId, {
+      title: `Attendance Correction ${actionStatus}`,
+      message: `Your attendance correction request for ${correction.date} (${correction.punchType || 'Punch'}) has been ${payload.status} by ${actionerName || 'HR'}.${payload.actionReason ? ' Reason: ' + payload.actionReason : ''}`,
+      type: 'attendance',
+      actionUrl: '/employee/attendance-correction'
+    });
+  } catch (err) {
+    logger.warn('Failed to notify employee of correction action:', err.message);
+  }
 
   return correction;
 };

@@ -423,13 +423,22 @@ export const HRDashboard = ({
             )}
 
             {attendanceStatus === 'ON_BREAK' && (
-              <button
-                type="button"
-                onClick={onEndBreak}
-                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
-              >
-                <Play className="w-4 h-4 fill-white shrink-0" /> Resume Work
-              </button>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={onEndBreak}
+                  className="flex-1 w-full py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                >
+                  <Play className="w-4 h-4 fill-white shrink-0" /> Resume Work
+                </button>
+                <button
+                  type="button"
+                  onClick={onPunchOut}
+                  className="flex-1 w-full py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                >
+                  <Square className="w-4 h-4 fill-white shrink-0" /> Punch Out & Finish Day
+                </button>
+              </div>
             )}
 
             {attendanceStatus === 'PUNCHED_OUT' && (

@@ -78,6 +78,18 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
           else if (r.status === 'late') displayStatus = 'Late';
           else if (r.status === 'on_leave') displayStatus = 'Leave';
 
+          let punchOutVal = r.clockOutFormatted;
+          if (!punchOutVal || punchOutVal === '--:--') {
+            if (r.clockOut) {
+              const d = new Date(r.clockOut);
+              if (!isNaN(d.getTime())) {
+                punchOutVal = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+              }
+            } else if (r.punchOut && r.punchOut !== '--:--') {
+              punchOutVal = r.punchOut;
+            }
+          }
+
           return {
             id: r.id,
             date: dateStr,
@@ -85,8 +97,8 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
             day: dayName,
             status: displayStatus,
             holidayName: holidayMap[dateIso] || null,
-            in: r.clockInFormatted || '--:--',
-            out: r.clockOutFormatted || '--:--',
+            in: r.clockInFormatted || (r.punchIn && r.punchIn !== '--:--' ? r.punchIn : '--:--'),
+            out: punchOutVal || '--:--',
             duration: hours > 0 ? `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}m` : '--',
             break: r.totalBreakMinutes ? `${r.totalBreakMinutes}m` : '0m',
             overtime: otMinutes > 0 ? `+${otMinutes}m` : '--'
@@ -144,12 +156,21 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
   };
 
   const handleExportCSV = () => {
+    const headers = ['Date', 'Day', 'Status', 'Punch In', 'Punch Out', 'Duration', 'Break'];
+    const rows = attendanceLogs.map((r) => [
+      r.date,
+      r.day,
+      r.status,
+      r.in,
+      r.out,
+      r.duration,
+      r.break
+    ]);
     const csvContent =
-      'Date,Day,Status,Punch In,Punch Out,Duration,Break\n' +
-      attendanceLogs
-        .map((r) => `${r.date},${r.day},${r.status},${r.in},${r.out},${r.duration},${r.break}`)
-        .join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      [headers, ...rows]
+        .map((row) => row.map((val) => `"${String(val ?? '').replace(/"/g, '""')}"`).join(','))
+        .join('\r\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

@@ -198,15 +198,7 @@ export const HRHolidayManagementView = () => {
 
           <button
             type="button"
-            onClick={() => {
-              setFormData({
-                name: '',
-                fullDate: `${selectedYear}-01-01`,
-                type: 'National',
-                description: ''
-              });
-              setIsAddModalOpen(true);
-            }}
+            onClick={() => navigate('/hr/holiday-management/new')}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer active:scale-[0.98]"
           >
             <Plus className="w-4 h-4" />
@@ -286,7 +278,15 @@ export const HRHolidayManagementView = () => {
           <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-2xs space-y-3">
             <Calendar className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="text-sm font-bold text-slate-700">No holidays found for {selectedYear}</h3>
-            <p className="text-xs text-slate-400">Click the "Add Holiday" button above to add one.</p>
+            <p className="text-xs text-slate-400">Click below to add a holiday for this calendar year.</p>
+            <button
+              type="button"
+              onClick={() => navigate('/hr/holiday-management/new')}
+              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Holiday</span>
+            </button>
           </div>
         ) : (
           filteredHolidays.map((holiday) => (

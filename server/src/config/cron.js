@@ -83,25 +83,56 @@ const initCronJobs = () => {
       const { Op } = require('sequelize');
       const today = new Date().toISOString().split('T')[0];
 
-      // Find any shifts punched in today that were never clocked out
+      // Find any shifts punched in that were never clocked out
       const unclosed = await Attendance.findAll({
         where: {
-          date: today,
-          clockOut: null,
-          status: { [Op.in]: ['working', 'WORKING', 'on_break', 'ON_BREAK'] }
+          date: { [Op.lte]: today },
+          clockIn: { [Op.ne]: null },
+          clockOut: null
         }
       });
 
       for (const record of unclosed) {
-        await record.update({
-          status: 'half_day',
-          notes: (record.notes ? record.notes + ' | ' : '') + 'Auto-closed at midnight due to missing clock out.'
-        });
+        const clockInDate = new Date(record.clockIn);
+        const breakMins = Number(record.totalBreakMinutes) || 0;
+        const totalMs = Math.round((8.0 * 60 + breakMins) * 60 * 1000);
+        const autoClockOut = new Date(clockInDate.getTime() + totalMs);
+
+        let timeline = [];
+        if (Array.isArray(record.timeline)) {
+          timeline = [...record.timeline];
+        } else if (typeof record.timeline === 'string') {
+          try { timeline = JSON.parse(record.timeline) || []; } catch {}
+        }
+
+        const formatTime = (d) => {
+          try {
+            return d.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+          } catch {
+            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          }
+        };
+
+        if (!timeline.some((t) => t.label === 'Punch Out' || t.status === 'punched_out')) {
+          timeline.push({
+            label: 'Punch Out',
+            time: formatTime(autoClockOut),
+            timestamp: autoClockOut.toISOString(),
+            status: 'punched_out'
+          });
+        }
+
+        record.clockOut = autoClockOut;
+        record.totalHours = 8.0;
+        record.timeline = timeline;
+        record.remarks = (record.remarks ? record.remarks + ' | ' : '') + 'Auto-closed at midnight due to missing clock out.';
+        record.changed('timeline', true);
+        await record.save();
 
         await Notification.create({
           userId: record.userId,
-          title: 'Missing Punch Out Detected',
-          message: `Your shift for ${today} was not clocked out. Please raise an Attendance Correction if needed.`,
+          title: 'Shift Auto-Closed',
+          message: `Your shift for ${record.date} was auto-closed. Clock-out set to ${formatTime(autoClockOut)}. Please raise an Attendance Correction if needed.`,
           type: 'ATTENDANCE_CORRECTION_REQUIRED'
         }).catch(() => {});
       }
