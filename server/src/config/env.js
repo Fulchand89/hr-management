@@ -19,14 +19,11 @@ const isCloudOrVercel = Boolean(
 // If running in Cloud/Vercel and DB_HOST is set to localhost / 127.0.0.1 or empty,
 // automatically fall back to the live Hostinger cloud MySQL database so deployment never fails with ECONNREFUSED
 const rawDbHost = process.env.DB_HOST;
-const isLocalhostDb = !rawDbHost || rawDbHost === '127.0.0.1' || rawDbHost === 'localhost' || rawDbHost === '::1';
-const useRemoteDb = isCloudOrVercel && isLocalhostDb;
-
-const primaryDbHost = useRemoteDb ? 'srv1823.hstgr.io' : (rawDbHost || '127.0.0.1');
-const primaryDbPort = useRemoteDb ? 3306 : (parseInt(process.env.DB_PORT, 10) || 3308);
-const primaryDbName = useRemoteDb ? 'u879279162_camelcaravan' : (process.env.DB_NAME || 'hr_management_db');
-const primaryDbUser = useRemoteDb ? 'u879279162_camelcaravan' : (process.env.DB_USER || 'root');
-const primaryDbPassword = useRemoteDb ? 'CamelCaravan@123' : (process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '');
+const primaryDbHost = rawDbHost || 'srv1823.hstgr.io';
+const primaryDbPort = parseInt(process.env.DB_PORT, 10) || 3306;
+const primaryDbName = process.env.DB_NAME || 'u879279162_camelcaravan';
+const primaryDbUser = process.env.DB_USER || 'u879279162_camelcaravan';
+const primaryDbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : 'CamelCaravan@123';
 
 const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
