@@ -41,9 +41,9 @@ const refreshTokenSchema = Joi.object({
 });
 
 const forgotPasswordSchema = Joi.object({
-  email: Joi.string().trim().email().required().messages({
-    'string.empty': 'Email is required',
-    'string.email': 'Please enter a valid email address'
+  email: Joi.string().trim().min(3).max(100).required().messages({
+    'string.empty': 'Please enter your registered corporate email or Employee ID',
+    'any.required': 'Please enter your registered corporate email or Employee ID'
   })
 });
 

@@ -92,8 +92,10 @@ export const EmployeeHolidayCalendarView = ({ onBack }) => {
         item.day.toLowerCase().includes(searchQuery.toLowerCase());
       const matchType =
         typeFilter === 'ALL' ||
-        (typeFilter === 'National' && (item.rawType === 'national' || item.rawType === 'gazetted')) ||
-        (typeFilter === 'Optional' && (item.rawType === 'restricted' || item.rawType === 'optional'));
+        (typeFilter === 'National' && item.rawType === 'national') ||
+        (typeFilter === 'Gazetted' && item.rawType === 'gazetted') ||
+        (typeFilter === 'Optional' && (item.rawType === 'restricted' || item.rawType === 'optional')) ||
+        (typeFilter === 'Company' && item.rawType === 'company');
       return matchYear && matchSearch && matchType;
     });
   }, [holidays, selectedYear, searchQuery, typeFilter]);
@@ -159,8 +161,8 @@ export const EmployeeHolidayCalendarView = ({ onBack }) => {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100 self-stretch sm:self-auto justify-center">
-          {['ALL', 'National', 'Optional'].map((tab) => (
+        <div className="flex flex-wrap items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100 self-stretch sm:self-auto justify-center">
+          {['ALL', 'National', 'Gazetted', 'Optional', 'Company'].map((tab) => (
             <button
               key={tab}
               type="button"

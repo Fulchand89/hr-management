@@ -171,6 +171,12 @@ export const HRApp = () => {
     loadUnreadCount();
     loadPendingCount();
 
+    // Auto-refresh unread notifications and pending queue every 15 seconds
+    const pollInterval = setInterval(() => {
+      loadUnreadCount();
+      loadPendingCount();
+    }, 15000);
+
     const onWindowFocus = () => {
       loadTodayAttendance();
       loadUnreadCount();
@@ -179,6 +185,7 @@ export const HRApp = () => {
     window.addEventListener('focus', onWindowFocus);
 
     return () => {
+      clearInterval(pollInterval);
       window.removeEventListener('focus', onWindowFocus);
     };
   }, [token, loadTodayAttendance, loadUnreadCount, loadPendingCount]);
@@ -237,8 +244,20 @@ export const HRApp = () => {
     try {
       const res = await apiStartBreak('Lunch / Tea Break');
       const data = res?.data ?? res ?? {};
-      setAttendanceStatus(data.status || 'ON_BREAK');
+      const status = data.status || 'ON_BREAK';
+      const workSec = Number(data.workingSeconds) || workingSeconds;
+      const brkSec = Number(data.breakSeconds) || 0;
+      setAttendanceStatus(status);
+      setWorkingSeconds(workSec);
+      setBreakSeconds(brkSec);
       setTimeline(data.timeline || []);
+
+      timerBaselineRef.current = {
+        status,
+        workingSec: workSec,
+        breakSec: brkSec,
+        syncTime: Date.now()
+      };
       await loadTodayAttendance();
     } catch (err) {
       console.error('Break start failed:', err?.response?.data?.message || err.message);
@@ -249,9 +268,20 @@ export const HRApp = () => {
     try {
       const res = await apiEndBreak();
       const data = res?.data ?? res ?? {};
-      setAttendanceStatus(data.status || 'WORKING');
-      setBreakSeconds(data.breakSeconds || 0);
+      const status = data.status || 'WORKING';
+      const workSec = Number(data.workingSeconds) || workingSeconds;
+      const brkSec = Number(data.breakSeconds) || 0;
+      setAttendanceStatus(status);
+      setWorkingSeconds(workSec);
+      setBreakSeconds(brkSec);
       setTimeline(data.timeline || []);
+
+      timerBaselineRef.current = {
+        status,
+        workingSec: workSec,
+        breakSec: brkSec,
+        syncTime: Date.now()
+      };
       await loadTodayAttendance();
     } catch (err) {
       console.error('Break end failed:', err?.response?.data?.message || err.message);
@@ -262,8 +292,20 @@ export const HRApp = () => {
     try {
       const res = await apiPunchOut();
       const data = res?.data ?? res ?? {};
-      setAttendanceStatus(data.status || 'PUNCHED_OUT');
+      const status = data.status || 'PUNCHED_OUT';
+      const workSec = Number(data.workingSeconds) || workingSeconds;
+      const brkSec = Number(data.breakSeconds) || breakSeconds;
+      setAttendanceStatus(status);
+      setWorkingSeconds(workSec);
+      setBreakSeconds(brkSec);
       setTimeline(data.timeline || []);
+
+      timerBaselineRef.current = {
+        status,
+        workingSec: workSec,
+        breakSec: brkSec,
+        syncTime: Date.now()
+      };
       await loadTodayAttendance();
     } catch (err) {
       console.error('Punch-out failed:', err?.response?.data?.message || err.message);
@@ -416,7 +458,15 @@ export const HRApp = () => {
           element={<HRAddEmployeeView />}
         />
         <Route
+          path="employees/add/:tab"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
           path="employees/create"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employees/create/:tab"
           element={<HRAddEmployeeView />}
         />
         <Route
@@ -424,7 +474,15 @@ export const HRApp = () => {
           element={<HRAddEmployeeView />}
         />
         <Route
+          path="employees/new/:tab"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
           path="employee/add"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employee/add/:tab"
           element={<HRAddEmployeeView />}
         />
         <Route
@@ -432,7 +490,15 @@ export const HRApp = () => {
           element={<HRAddEmployeeView />}
         />
         <Route
+          path="employee/create/:tab"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
           path="employee/new"
+          element={<HRAddEmployeeView />}
+        />
+        <Route
+          path="employee/new/:tab"
           element={<HRAddEmployeeView />}
         />
         <Route
@@ -460,11 +526,23 @@ export const HRApp = () => {
           element={<HRAddEmployeeView isEdit={true} />}
         />
         <Route
+          path="employees/:id/edit/:tab"
+          element={<HRAddEmployeeView isEdit={true} />}
+        />
+        <Route
           path="employee/:id/edit"
           element={<HRAddEmployeeView isEdit={true} />}
         />
         <Route
+          path="employee/:id/edit/:tab"
+          element={<HRAddEmployeeView isEdit={true} />}
+        />
+        <Route
           path="employees/edit/:id"
+          element={<HRAddEmployeeView isEdit={true} />}
+        />
+        <Route
+          path="employees/edit/:id/:tab"
           element={<HRAddEmployeeView isEdit={true} />}
         />
         <Route

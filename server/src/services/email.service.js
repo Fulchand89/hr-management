@@ -44,20 +44,22 @@ const sendWelcomeEmail = async ({ to, name, temporaryPassword = null, role = 'Em
 /**
  * Send Password Reset Email with secure token link
  */
-const sendPasswordResetEmail = async ({ to, name, resetToken }) => {
-  const resetUrl = `${env.CLIENT_URL}/reset-password?token=${resetToken}`;
+const sendPasswordResetEmail = async ({ to, name, resetToken, clientOrigin = null }) => {
+  const rawBase = clientOrigin || env.CLIENT_URL || 'http://localhost:5173';
+  const cleanBase = rawBase.split(',')[0].trim().replace(/\/+$/, '');
+  const resetUrl = `${cleanBase}/reset-password?token=${resetToken}&email=${encodeURIComponent(to)}`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-      <div style="background-color: #b91c1c; padding: 20px; text-align: center; border-radius: 6px 6px 0 0;">
+      <div style="background-color: #8B1D2C; padding: 20px; text-align: center; border-radius: 6px 6px 0 0;">
         <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Password Reset Request</h1>
       </div>
       <div style="padding: 24px; color: #333333; line-height: 1.6;">
         <p>Hello <strong>${name}</strong>,</p>
-        <p>We received a request to reset your password for your ${env.APP_NAME} account.</p>
-        <p>Click the button below to reset your password. This link is valid for 1 hour.</p>
+        <p>We received a request to reset your password for your <strong>${env.APP_NAME}</strong> account.</p>
+        <p>Click the button below to reset your corporate password. This link is valid for 1 hour.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background-color: #b91c1c; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+          <a href="${resetUrl}" style="background-color: #8B1D2C; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
         </div>
         <p style="word-break: break-all; font-size: 13px; color: #64748b;">Or copy this link into your browser: <br>${resetUrl}</p>
         <p><strong>Reset Token:</strong> <code>${resetToken}</code></p>

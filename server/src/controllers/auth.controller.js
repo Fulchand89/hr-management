@@ -59,9 +59,21 @@ const refreshToken = async (req, res, next) => {
  */
 const forgotPassword = async (req, res, next) => {
   try {
-    const result = await authService.requestPasswordReset(req.body.email);
+    let clientOrigin = req.headers.origin;
+    if (!clientOrigin && req.headers.referer) {
+      try {
+        clientOrigin = new URL(req.headers.referer).origin;
+      } catch (_) {}
+    }
+    const result = await authService.requestPasswordReset(req.body.email, clientOrigin);
     return ApiResponse.success(res, {
-      message: result.message
+      message: result.message,
+      data: {
+        email: result.email,
+        previewUrl: result.previewUrl,
+        resetToken: result.resetToken,
+        resetUrl: result.resetUrl
+      }
     });
   } catch (error) {
     next(error);

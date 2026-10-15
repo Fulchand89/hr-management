@@ -111,6 +111,14 @@ router.get(
   employeeController.getEmployeeDocuments
 );
 
+// POST /api/v1/employees/:id/documents - Admin / HR upload KYC document for employee
+router.post(
+  '/:id/documents',
+  authorize(ROLES.ADMIN, ROLES.HR),
+  upload.single('file'),
+  employeeController.uploadDocumentForEmployee
+);
+
 // 4. PUT /api/v1/employees/:id - Employee details update
 router.put(
   '/:id',

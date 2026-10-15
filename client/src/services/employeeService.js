@@ -25,6 +25,16 @@ export const logout = async () => {
   }
 };
 
+export const forgotPassword = async (email) => {
+  const res = await apiClient.post('/auth/forgot-password', { email });
+  return res.data;
+};
+
+export const resetPassword = async (token, newPassword) => {
+  const res = await apiClient.post('/auth/reset-password', { token, newPassword });
+  return res.data;
+};
+
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────

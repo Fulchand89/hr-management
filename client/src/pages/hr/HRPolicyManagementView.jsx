@@ -272,26 +272,6 @@ export const HRPolicyManagementView = () => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setIsHandbookOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
-            title="Open official corporate policy handbook"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-rose-500" />
-            <span>Handbook</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate('/hr/policies/upload')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
-            title="Upload official policy PDF or SOP document"
-          >
-            <Upload className="w-3.5 h-3.5 text-[#8B1D2C]" />
-            <span>Upload Document</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => navigate('/hr/policies/add')}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
             title="Add a new policy clause"

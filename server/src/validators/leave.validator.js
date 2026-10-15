@@ -28,7 +28,8 @@ const applyLeaveSchema = Joi.object({
 
 const actionLeaveSchema = Joi.object({
   status: Joi.string().valid('approved', 'rejected').required(),
-  actionReason: Joi.string().trim().max(255).optional().allow('', null)
+  actionReason: Joi.string().trim().max(1000).optional().allow('', null),
+  rejectionReason: Joi.string().trim().max(1000).optional().allow('', null)
 });
 
 const allocateBalanceSchema = Joi.object({

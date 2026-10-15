@@ -162,11 +162,27 @@ const refreshTokens = async (token) => {
 /**
  * Request Password Reset Token
  */
-const requestPasswordReset = async (email) => {
-  const user = await User.findOne({ where: { email: email.toLowerCase() } });
+const requestPasswordReset = async (emailOrIdentifier, clientOrigin = null) => {
+  if (!emailOrIdentifier || typeof emailOrIdentifier !== 'string' || !emailOrIdentifier.trim()) {
+    throw new BadRequestError('Email address or Employee ID is required');
+  }
+
+  const cleanInput = emailOrIdentifier.trim();
+  const user = await User.findOne({
+    where: {
+      [Op.or]: [
+        { email: cleanInput.toLowerCase() },
+        { employeeCode: cleanInput.toUpperCase() }
+      ]
+    }
+  });
+
   if (!user) {
     // Return friendly generic message to avoid email enumeration
-    return { message: 'If an account with that email exists, a password reset link has been dispatched.' };
+    return {
+      message: 'If an active account exists for that email or employee ID, a password reset link has been dispatched.',
+      email: cleanInput
+    };
   }
 
   // Generate a random token
@@ -178,13 +194,27 @@ const requestPasswordReset = async (email) => {
   await user.save();
 
   // Send email with original reset token
-  sendPasswordResetEmail({
+  const mailResult = await sendPasswordResetEmail({
     to: user.email,
-    name: `${user.firstName} ${user.lastName}`,
-    resetToken
-  }).catch((err) => logger.error('Password reset email error:', err.message));
+    name: `${user.firstName} ${user.lastName || ''}`.trim() || 'Employee',
+    resetToken,
+    clientOrigin
+  }).catch((err) => {
+    logger.error('Password reset email error:', err.message);
+    return { success: false, error: err.message };
+  });
 
-  return { message: 'If an account with that email exists, a password reset link has been dispatched.' };
+  const rawBase = clientOrigin || env.CLIENT_URL || 'http://localhost:5173';
+  const cleanBase = rawBase.split(',')[0].trim().replace(/\/+$/, '');
+  const resetUrl = `${cleanBase}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+
+  return {
+    message: `A secure password reset link has been dispatched to ${user.email}. Please check your inbox or spam folder.`,
+    email: user.email,
+    previewUrl: mailResult?.previewUrl || null,
+    resetToken: process.env.NODE_ENV !== 'production' ? resetToken : undefined,
+    resetUrl: process.env.NODE_ENV !== 'production' ? resetUrl : undefined
+  };
 };
 
 /**

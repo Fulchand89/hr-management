@@ -82,9 +82,12 @@ export const HREmployeeProfileDetailView = () => {
       }));
 
       setIsBankModalOpen(false);
-      showToast('Salary bank details updated successfully!');
     } catch (err) {
-      setBankError(err?.response?.data?.message || 'Failed to update bank details');
+      const errorMsg =
+        err?.response?.data?.errors?.[0]?.message ||
+        err?.response?.data?.message ||
+        'Failed to update bank details';
+      setBankError(errorMsg);
     } finally {
       setBankLoading(false);
     }

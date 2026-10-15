@@ -30,7 +30,7 @@ const env = {
   PORT: parseInt(process.env.PORT, 10) || 5000,
   APP_NAME: process.env.APP_NAME || 'HR Management Portal',
   APP_URL: process.env.APP_URL || 'http://localhost:5000',
-  CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000',
+  CLIENT_URL: (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/+$/, ''),
 
   // Database (Primary)
   DB: {

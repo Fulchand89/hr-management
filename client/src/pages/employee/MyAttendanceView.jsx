@@ -67,6 +67,18 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
           const dateStr = recDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
           const hours = parseFloat(r.totalHours) || 0;
           const otMinutes = Math.max(0, Math.round((hours - 8) * 60));
+          const otHours = Math.floor(otMinutes / 60);
+          const otMins = otMinutes % 60;
+          let overtimeFormatted = '--';
+          if (otMinutes > 0) {
+            if (otHours > 0 && otMins > 0) {
+              overtimeFormatted = `+${otHours}h ${otMins}m`;
+            } else if (otHours > 0) {
+              overtimeFormatted = `+${otHours}h`;
+            } else {
+              overtimeFormatted = `+0h ${otMins}m`;
+            }
+          }
 
           const dateIso = r.date ? String(r.date).split('T')[0] : '';
           const isHoliday = !!holidayMap[dateIso];
@@ -101,7 +113,7 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
             out: punchOutVal || '--:--',
             duration: hours > 0 ? `${Math.floor(hours)}h ${Math.round((hours % 1) * 60)}m` : '--',
             break: r.totalBreakMinutes ? `${r.totalBreakMinutes}m` : '0m',
-            overtime: otMinutes > 0 ? `+${otMinutes}m` : '--'
+            overtime: overtimeFormatted
           };
         });
         setAttendanceLogs(formatted.reverse());
@@ -156,7 +168,7 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Date', 'Day', 'Status', 'Punch In', 'Punch Out', 'Duration', 'Break'];
+    const headers = ['Date', 'Day', 'Status', 'Punch In', 'Punch Out', 'Duration', 'Break', 'Overtime'];
     const rows = attendanceLogs.map((r) => [
       r.date,
       r.day,
@@ -164,7 +176,8 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
       r.in,
       r.out,
       r.duration,
-      r.break
+      r.break,
+      r.overtime
     ]);
     const csvContent =
       [headers, ...rows]

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Mail,
   Lock,
@@ -20,9 +20,11 @@ import {
   X,
   Send,
   Phone,
-  MapPin
+  MapPin,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { forgotPassword } from '../../services/employeeService';
 
 export const SignInView = () => {
   const navigate = useNavigate();
@@ -39,6 +41,10 @@ export const SignInView = () => {
   });
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
+  const [isForgotLoading, setIsForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotData, setForgotData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -48,6 +54,29 @@ export const SignInView = () => {
       navigate('/signin', { replace: true });
     }
   }, [location.pathname, navigate]);
+
+  const handleModalForgotSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!forgotEmail.trim()) return;
+
+    setForgotError('');
+    setIsForgotLoading(true);
+
+    try {
+      const res = await forgotPassword(forgotEmail.trim());
+      setForgotData(res?.data || null);
+      setForgotSent(true);
+    } catch (err) {
+      console.error('Modal forgot password error:', err);
+      setForgotError(
+        err?.response?.data?.errors?.[0]?.message ||
+        err?.response?.data?.message ||
+        'Failed to send password reset email. Please try again.'
+      );
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
 
   // Load remembered email on mount
   useEffect(() => {
@@ -230,17 +259,13 @@ export const SignInView = () => {
                   <label className="block text-xs font-bold text-slate-700">
                     Password <span className="text-rose-500">*</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotEmail(identifier);
-                      setForgotSent(false);
-                      setIsForgotPasswordOpen(true);
-                    }}
+                  <Link
+                    to="/forgot-password"
+                    state={{ email: identifier, portal: 'employee' }}
                     className="text-xs font-semibold text-[#8B1D2C] hover:underline cursor-pointer"
                   >
                     Forgot Password?
-                  </button>
+                  </Link>
                 </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -340,71 +365,118 @@ export const SignInView = () => {
               </button>
             </div>
 
-            <div className="py-4 space-y-3">
-              {forgotSent ? (
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs space-y-1">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Reset Instructions Sent
+            <form onSubmit={handleModalForgotSubmit}>
+              <div className="py-4 space-y-3">
+                {forgotError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <span>{forgotError}</span>
                   </div>
-                  <p className="text-emerald-700 text-[11px]">
-                    If an active account exists for <b>{forgotEmail}</b>, an email with a secure reset link has been dispatched. Please check your inbox or spam folder.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Enter your registered corporate work email address below to receive password reset instructions from the IT security team.
-                  </p>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Corporate Work Email
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        value={forgotEmail}
-                        onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="your.name@guptatechweb.com"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
-                      />
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-800">
-                    💡 <b>Tip:</b> For urgent clearance resets, contact your department HR lead or email{' '}
-                    <a href="mailto:support@guptatechweb.com" className="font-bold underline">
-                      support@guptatechweb.com
-                    </a>.
-                  </div>
-                </>
-              )}
-            </div>
+                )}
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsForgotPasswordOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                Close
-              </button>
-              {!forgotSent && (
+                {forgotSent ? (
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs space-y-1.5">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        Reset Instructions Sent
+                      </div>
+                      <p className="text-emerald-700 text-[11px] leading-relaxed">
+                        If an active account exists for <b>{forgotEmail}</b>, a secure password reset link has been dispatched to your email address.
+                      </p>
+                    </div>
+
+                    {forgotData?.previewUrl && (
+                      <a
+                        href={forgotData.previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full py-2 px-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs flex items-center justify-center gap-1.5"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Open Test Email Preview (Inbox)</span>
+                      </a>
+                    )}
+
+                    {forgotData?.resetToken && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsForgotPasswordOpen(false);
+                          navigate(`/reset-password?token=${forgotData.resetToken}&email=${encodeURIComponent(forgotEmail)}`);
+                        }}
+                        className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <span>Continue to Reset Password Now</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Enter your registered corporate work email or Employee ID below to receive password reset instructions.
+                    </p>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Work Email or Employee ID
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          required
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="e.g. your.name@guptatechweb.com or EMP-001"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                      <span>Prefer dedicated view?</span>
+                      <Link
+                        to="/forgot-password"
+                        state={{ email: forgotEmail || identifier, portal: 'employee' }}
+                        onClick={() => setIsForgotPasswordOpen(false)}
+                        className="font-bold text-[#8B1D2C] hover:underline"
+                      >
+                        Open recovery page →
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (forgotEmail.trim()) {
-                      setForgotSent(true);
-                    }
-                  }}
-                  disabled={!forgotEmail.trim()}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[#8B1D2C] hover:bg-[#731724] disabled:opacity-50 text-white cursor-pointer shadow-xs flex items-center gap-1.5"
+                  onClick={() => setIsForgotPasswordOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send Reset Link</span>
+                  Close
                 </button>
-              )}
-            </div>
+                {!forgotSent && (
+                  <button
+                    type="submit"
+                    disabled={isForgotLoading || !forgotEmail.trim()}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-[#8B1D2C] hover:bg-[#731724] disabled:opacity-50 text-white cursor-pointer shadow-xs flex items-center gap-1.5"
+                  >
+                    {isForgotLoading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Send Reset Link</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       )}

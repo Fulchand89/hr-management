@@ -411,6 +411,17 @@ export const HRLayout = ({
               </div>
             )}
 
+            {attendanceStatus === 'PUNCHED_OUT' && (
+              <button
+                type="button"
+                onClick={handlePunchIn}
+                className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-semibold shadow-xs cursor-pointer transition-colors"
+                title="Punch in again for another work session today"
+              >
+                <Play className="w-3 h-3 fill-white" /> Punch In Again
+              </button>
+            )}
+
             {/* HR Approvals Queue Indicator */}
             {propPendingQueue !== undefined && propPendingQueue > 0 && (
               <>
@@ -522,19 +533,6 @@ export const HRLayout = ({
                     type="button"
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
-                      navigate('/employee/dashboard');
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs text-[#8B1D2C] hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-bold"
-                  >
-                    <Users className="w-4 h-4 text-[#8B1D2C]" /> Switch to Employee Portal
-                  </button>
-
-                  <div className="my-1 border-t border-slate-100" />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileDropdownOpen(false);
                       if (propLogout) propLogout();
                       else navigate('/hr/signin');
                     }}
@@ -617,9 +615,18 @@ export const HRLayout = ({
           )}
 
           {attendanceStatus === 'PUNCHED_OUT' && (
-            <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
-              Shift Ended
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
+                Shift Ended
+              </span>
+              <button
+                type="button"
+                onClick={handlePunchIn}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+              >
+                <Play className="w-3 h-3 fill-white" /> In Again
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -769,18 +776,8 @@ export const HRLayout = ({
                 })}
               </div>
 
-              {/* Drawer Bottom Portal Switchers */}
+              {/* Drawer Bottom Actions */}
               <div className="p-4 border-t border-slate-100 space-y-2 shrink-0 bg-white">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    navigate('/employee/dashboard');
-                  }}
-                  className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#8B1D2C] text-xs font-bold text-center block cursor-pointer transition-colors"
-                >
-                  Switch to Employee Portal &rarr;
-                </button>
                 <button
                   type="button"
                   onClick={() => {

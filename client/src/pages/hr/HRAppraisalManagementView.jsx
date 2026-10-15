@@ -162,6 +162,7 @@ export const HRAppraisalManagementView = () => {
         productivityScore: overallScore,
         teamworkScore: overallScore,
         leadershipScore: overallScore,
+        previousSalary: currentSalary,
         newSalary: newSalary, // Monthly salary
         hikePercentage: incrementPercent,
         comments: reviewNotes.trim() || 'Performance appraisal successfully approved.',

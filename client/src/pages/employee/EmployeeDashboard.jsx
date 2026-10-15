@@ -79,6 +79,18 @@ export const EmployeeDashboard = ({
   const [latestAppraisal, setLatestAppraisal] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const getAppraisalHikePercent = (appraisal) => {
+    if (!appraisal) return 0;
+    const direct = Number(appraisal.hikePercentage || appraisal.incrementPercentage || 0);
+    if (direct > 0) return direct;
+    const prev = Number(appraisal.previousSalary || 0);
+    const next = Number(appraisal.newSalary || 0);
+    if (prev > 0 && next > prev) {
+      return parseFloat((((next - prev) / prev) * 100).toFixed(1));
+    }
+    return 0;
+  };
+
   useEffect(() => {
     if (!token) return;
 
@@ -391,13 +403,22 @@ export const EmployeeDashboard = ({
               )}
 
               {attendanceStatus === 'PUNCHED_OUT' && (
-                <button
-                  type="button"
-                  onClick={onNavigateToAttendance}
-                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all whitespace-nowrap"
-                >
-                  View Full Attendance Summary &rarr;
-                </button>
+                <div className="flex-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onPunchIn}
+                    className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] whitespace-nowrap"
+                  >
+                    <Play className="w-4 h-4 fill-white shrink-0" /> Punch In Again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onNavigateToAttendance}
+                    className="py-3 px-3.5 sm:px-5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-1 cursor-pointer transition-all whitespace-nowrap"
+                  >
+                    Summary &rarr;
+                  </button>
+                </div>
               )}
 
               <button
@@ -473,7 +494,7 @@ export const EmployeeDashboard = ({
                 </div>
                 <div className="text-xs font-bold text-slate-900 truncate">Appraisals</div>
                 <div className="text-[10px] text-emerald-700 font-semibold truncate">
-                  {latestAppraisal ? `+${latestAppraisal.hikePercentage}% Hike` : 'Review cycle'}
+                  {latestAppraisal ? `+${getAppraisalHikePercent(latestAppraisal)}% Hike` : 'Review cycle'}
                 </div>
               </button>
             </div>

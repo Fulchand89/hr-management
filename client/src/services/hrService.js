@@ -20,6 +20,16 @@ export const logout = async () => {
   }
 };
 
+export const forgotPassword = async (email) => {
+  const res = await apiClient.post('/auth/forgot-password', { email });
+  return res.data;
+};
+
+export const resetPassword = async (token, newPassword) => {
+  const res = await apiClient.post('/auth/reset-password', { token, newPassword });
+  return res.data;
+};
+
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
@@ -127,6 +137,21 @@ export const actionAttendanceCorrection = async (id, payload) => {
 
 export const getLeaveTypes = async () => {
   const res = await apiClient.get('/leaves/types');
+  return res.data;
+};
+
+export const createLeaveType = async (payload) => {
+  const res = await apiClient.post('/leaves/types', payload);
+  return res.data;
+};
+
+export const updateLeaveType = async (id, payload) => {
+  const res = await apiClient.put(`/leaves/types/${id}`, payload);
+  return res.data;
+};
+
+export const deleteLeaveType = async (id) => {
+  const res = await apiClient.delete(`/leaves/types/${id}`);
   return res.data;
 };
 
@@ -474,6 +499,13 @@ export const getEmployeeDocuments = async (userId) => {
   return res.data;
 };
 
+export const uploadEmployeeDocumentForUser = async (userId, formData) => {
+  const res = await apiClient.post(`/employees/${userId}/documents`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return res.data;
+};
+
 export const getEmployeeDocumentById = async (docId) => {
   const res = await apiClient.get(`/employees/admin/documents/${docId}`);
   return res.data;
@@ -534,6 +566,3 @@ export const deleteCompanyAsset = async (id) => {
   const res = await apiClient.delete(`/assets/${id}`);
   return res.data;
 };
-
-
-

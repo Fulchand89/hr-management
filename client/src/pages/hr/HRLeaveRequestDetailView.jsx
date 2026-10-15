@@ -159,31 +159,41 @@ export const HRLeaveRequestDetailView = ({ request: propRequest, onBack }) => {
   };
 
   const handleRejectConfirm = async () => {
-    if (!rejectReason.trim()) {
+    const trimmedReason = rejectReason.trim();
+    if (!trimmedReason) {
       setRejectError('Please state a reason for rejecting this leave request');
       return;
     }
+    const targetId = id || request?.id;
+    if (!targetId) {
+      setRejectError('Invalid leave request ID');
+      return;
+    }
+
     if (isSubmitting) return;
     setIsSubmitting(true);
     setRejectError('');
     try {
-      await actionLeaveRequest(id || request.id, { 
+      await actionLeaveRequest(targetId, { 
         status: 'rejected', 
-        actionReason: rejectReason.trim(),
-        rejectionReason: rejectReason.trim()
+        actionReason: trimmedReason,
+        rejectionReason: trimmedReason
       });
       setRequest((prev) => (prev ? { 
         ...prev, 
         status: 'Rejected',
         reviewerName: `${user?.firstName || 'HR'} ${user?.lastName || ''}`.trim(),
         actionedAt: 'Just now',
-        actionReason: rejectReason.trim()
+        actionReason: trimmedReason
       } : null));
       setIsRejectModalOpen(false);
       setRejectReason('');
       showToast('Leave request marked as rejected.');
     } catch (err) {
-      showToast(err?.response?.data?.message || 'Failed to reject leave request');
+      console.error('Failed to reject leave request:', err);
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to reject leave request';
+      setRejectError(errMsg);
+      showToast(errMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -191,7 +201,7 @@ export const HRLeaveRequestDetailView = ({ request: propRequest, onBack }) => {
 
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500);
+    setTimeout(() => setToastMessage(''), 4000);
   };
 
   const handleGoBack = () => {
@@ -244,7 +254,7 @@ export const HRLeaveRequestDetailView = ({ request: propRequest, onBack }) => {
     <div className="space-y-6 w-full font-sans pb-16">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-2xl border border-slate-700 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 right-6 z-[70] px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-2xl border border-slate-700 flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>

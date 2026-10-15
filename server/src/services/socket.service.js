@@ -69,9 +69,33 @@ const broadcastNotification = (payload) => {
   }
 };
 
+/**
+ * Broadcast an announcement or event to a specific room (e.g. role:hr, role:admin)
+ */
+const broadcastToRoom = (room, event, payload) => {
+  try {
+    const io = getIO();
+    io.to(room).emit(event, {
+      ...payload,
+      timestamp: new Date().toISOString()
+    });
+    return true;
+  } catch (error) {
+    logger.warn(`Failed to broadcast socket event to room ${room}:`, error.message);
+    return false;
+  }
+};
+
+/**
+ * Alias for emitToUser
+ */
+const sendToUser = (userId, event, payload) => emitToUser(userId, event, payload);
+
 module.exports = {
   emitToUser,
+  sendToUser,
   emitToRole,
   emitToDepartment,
-  broadcastNotification
+  broadcastNotification,
+  broadcastToRoom
 };

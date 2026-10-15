@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -11,9 +11,12 @@ import {
   FileText,
   Info,
   ShieldCheck,
-  Send
+  Send,
+  Pencil,
+  Settings2
 } from 'lucide-react';
 import { getLeaveTypes, getLeaveBalance, applyLeave } from '../../services/hrService';
+import HRManageLeaveTypesModal from './HRManageLeaveTypesModal';
 
 export const HRApplyLeaveView = () => {
   const navigate = useNavigate();
@@ -38,62 +41,69 @@ export const HRApplyLeaveView = () => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Modal State for HR Quota Management
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [editTargetTypeId, setEditTargetTypeId] = useState(null);
+
   // Fetch initial types and balances
-  useEffect(() => {
-    let isMounted = true;
-    const fetchData = async () => {
-      setIsLoadingData(true);
-      setError('');
-      try {
-        const [typesRes, balancesRes] = await Promise.allSettled([
-          getLeaveTypes(),
-          getLeaveBalance()
-        ]);
+  const fetchData = useCallback(async () => {
+    setIsLoadingData(true);
+    setError('');
+    try {
+      const [typesRes, balancesRes] = await Promise.allSettled([
+        getLeaveTypes(),
+        getLeaveBalance()
+      ]);
 
-        if (typesRes.status === 'fulfilled') {
-          const rawTypes = Array.isArray(typesRes.value?.data)
-            ? typesRes.value.data
-            : (Array.isArray(typesRes.value) ? typesRes.value : []);
-          
-          const seen = new Set();
-          const uniqueTypes = rawTypes.filter((t) => {
-            const key = t.id || t.code || t.name;
-            if (!key || seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
+      if (typesRes.status === 'fulfilled') {
+        const rawTypes = Array.isArray(typesRes.value?.data)
+          ? typesRes.value.data
+          : (Array.isArray(typesRes.value) ? typesRes.value : []);
+        
+        const seen = new Set();
+        const uniqueTypes = rawTypes.filter((t) => {
+          const key = t.id || t.code || t.name;
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
 
-          if (isMounted) {
-            setLeaveTypes(uniqueTypes);
-            if (uniqueTypes.length > 0) {
-              setSelectedTypeId(uniqueTypes[0].id);
-            }
-          }
+        setLeaveTypes(uniqueTypes);
+        if (uniqueTypes.length > 0) {
+          setSelectedTypeId((prev) => prev || uniqueTypes[0].id);
         }
-
-        if (balancesRes.status === 'fulfilled') {
-          const bData = balancesRes.value?.data ?? balancesRes.value ?? {};
-          const rawBalances = Array.isArray(bData?.balances)
-            ? bData.balances
-            : (Array.isArray(bData) ? bData : []);
-          if (isMounted) {
-            setBalances(rawBalances);
-          }
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError('Failed to load leave configuration. Please try again.');
-        }
-      } finally {
-        if (isMounted) setIsLoadingData(false);
       }
-    };
 
-    fetchData();
-    return () => {
-      isMounted = false;
-    };
+      if (balancesRes.status === 'fulfilled') {
+        const bData = balancesRes.value?.data ?? balancesRes.value ?? {};
+        const rawBalances = Array.isArray(bData?.balances)
+          ? bData.balances
+          : (Array.isArray(bData) ? bData : []);
+        
+        const seen = new Set();
+        const uniqueBalances = rawBalances.filter((b) => {
+          const key = b.leaveTypeId || b.leaveType?.code || b.leaveType?.name || b.id;
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        setBalances(uniqueBalances);
+        if (uniqueBalances.length > 0) {
+          const firstId = uniqueBalances[0].leaveTypeId || uniqueBalances[0].id;
+          setSelectedTypeId((prev) => prev || firstId);
+        }
+      }
+    } catch {
+      setError('Failed to load leave configuration. Please try again.');
+    } finally {
+      setIsLoadingData(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Calculate requested duration
   const calculatedDays = useMemo(() => {
@@ -109,8 +119,18 @@ export const HRApplyLeaveView = () => {
   // Find remaining balance for the currently selected type
   const selectedBalance = useMemo(() => {
     if (!selectedTypeId) return null;
-    return balances.find((b) => String(b.leaveTypeId) === String(selectedTypeId) || String(b.id) === String(selectedTypeId));
+    return balances.find((b) => String(b.leaveTypeId || b.id) === String(selectedTypeId));
   }, [balances, selectedTypeId]);
+
+  // Find selected leave type details
+  const selectedType = useMemo(() => {
+    if (!selectedTypeId) return null;
+    return (
+      leaveTypes.find((t) => String(t.id) === String(selectedTypeId)) ||
+      balances.find((b) => String(b.leaveTypeId || b.id) === String(selectedTypeId))?.leaveType ||
+      null
+    );
+  }, [leaveTypes, selectedTypeId, balances]);
 
   const remainingDays = selectedBalance ? Number(selectedBalance.remaining) || 0 : null;
 
@@ -213,11 +233,26 @@ export const HRApplyLeaveView = () => {
 
       {/* Available Balance Cards */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-            Your Available Quota Balances
-          </span>
-          <span className="text-[11px] text-slate-400">Click a card to select leave type</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              Your Available Quota Balances
+            </span>
+            <span className="text-[11px] text-slate-400">&bull; Click a card to select</span>
+          </div>
+          {!isEmployeePortal && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditTargetTypeId(null);
+                setIsManageModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-[#8B1D2C]/10 text-slate-700 hover:text-[#8B1D2C] text-xs font-bold transition-all border border-slate-200 hover:border-[#8B1D2C]/30 cursor-pointer self-start sm:self-auto shadow-2xs"
+            >
+              <Pencil className="w-3.5 h-3.5 text-[#8B1D2C]" />
+              <span>Edit Leave Names & Quotas</span>
+            </button>
+          )}
         </div>
 
         {isLoadingData ? (
@@ -238,19 +273,22 @@ export const HRApplyLeaveView = () => {
                 <button
                   key={typeId}
                   type="button"
-                  onClick={() => setSelectedTypeId(typeId)}
-                  className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  onClick={() => {
+                    setSelectedTypeId(typeId);
+                    setError('');
+                  }}
+                  className={`group relative text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
                     isSelected
                       ? 'border-[#8B1D2C] bg-[#8B1D2C]/5 ring-2 ring-[#8B1D2C]/20 shadow-xs'
                       : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-1">
                     <span className="text-xs font-bold text-slate-700 truncate">
                       {b.leaveType?.name || 'Leave'}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                         isSelected ? 'bg-[#8B1D2C] text-white' : 'bg-slate-100 text-slate-600'
                       }`}
                     >
@@ -295,22 +333,26 @@ export const HRApplyLeaveView = () => {
             Leave Request Details
           </h3>
 
-          {/* Leave Type Select */}
+          {/* Leave Category (Autofilled from Quota Balance selection above) */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Leave Category <span className="text-rose-500">*</span>
-            </label>
-            <select
-              value={selectedTypeId}
-              onChange={(e) => setSelectedTypeId(e.target.value)}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C] cursor-pointer"
-            >
-              {leaveTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.code}) {t.isPaid ? '• Paid' : '• Unpaid'}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700">
+                Leave Category <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[11px] font-medium text-slate-400">
+                Autofilled from selection above
+              </span>
+            </div>
+            <input
+              type="text"
+              readOnly
+              value={
+                selectedType
+                  ? `${selectedType.name} (${selectedType.code}) ${selectedType.isPaid ? '• Paid' : '• Unpaid'}`
+                  : 'Click a leave quota card above to select'
+              }
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 cursor-default select-none focus:outline-none"
+            />
           </div>
 
           {/* Half Day Checkbox */}
@@ -465,6 +507,17 @@ export const HRApplyLeaveView = () => {
           </button>
         </div>
       </form>
+
+      {/* Leave Quota & Category Management Modal */}
+      <HRManageLeaveTypesModal
+        isOpen={isManageModalOpen}
+        onClose={() => {
+          setIsManageModalOpen(false);
+          setEditTargetTypeId(null);
+        }}
+        onUpdated={fetchData}
+        initialEditTypeId={editTargetTypeId}
+      />
     </div>
   );
 };

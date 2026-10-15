@@ -47,12 +47,153 @@ const formatSecondsToHMS = (totalSeconds) => {
  * - If record is for a past day (date < today) and has clockIn but missing clockOut,
  *   assume shift standard hours (8.0 hours) so missing punch-outs don't zero out employee average.
  */
+/**
+ * Safely parse timeline into an array
+ */
+const parseTimelineArray = (rawTimeline) => {
+  if (Array.isArray(rawTimeline)) return rawTimeline;
+  if (typeof rawTimeline === 'string') {
+    try {
+      const parsed = JSON.parse(rawTimeline);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
+/**
+ * Calculate multi-session working seconds, break seconds, and state from timeline events
+ */
+const calculateAttendanceSessionMetrics = (timelineArray, ongoingBreakStartTime, recordClockIn, recordClockOut, now = new Date()) => {
+  const events = parseTimelineArray(timelineArray);
+
+  // If no timeline events exist but clockIn exists (legacy fallback)
+  if (events.length === 0 && recordClockIn) {
+    const start = new Date(recordClockIn);
+    const end = recordClockOut ? new Date(recordClockOut) : now;
+    const elapsed = Math.max(0, Math.floor((end - start) / 1000));
+    return {
+      workingSec: elapsed,
+      breakSec: 0,
+      totalElapsedSec: elapsed,
+      isCurrentlyWorking: !recordClockOut,
+      isCurrentlyPunchedOut: !!recordClockOut,
+      sessionCount: 1,
+      lastPunchInTime: start,
+      lastPunchOutTime: recordClockOut ? end : null
+    };
+  }
+
+  let totalWorkingSec = 0;
+  let totalBreakSec = 0;
+  let totalElapsedSec = 0;
+  let currentSessionStart = null;
+  let currentSessionBreakSec = 0;
+  let lastBreakStart = null;
+  let sessionCount = 0;
+  let isCurrentlyWorking = false;
+  let isCurrentlyPunchedOut = false;
+  let lastPunchInTime = null;
+  let lastPunchOutTime = null;
+
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
+    const lbl = (ev.label || '').toLowerCase();
+    const ts = ev.timestamp ? new Date(ev.timestamp) : null;
+    if (!ts || isNaN(ts.getTime())) continue;
+
+    if (lbl.includes('punch in')) {
+      currentSessionStart = ts;
+      currentSessionBreakSec = 0;
+      lastBreakStart = null;
+      lastPunchInTime = ts;
+      sessionCount++;
+      isCurrentlyWorking = true;
+      isCurrentlyPunchedOut = false;
+    } else if (lbl.includes('break') && !lbl.includes('ended')) {
+      lastBreakStart = ts;
+    } else if (lbl.includes('break') && lbl.includes('ended')) {
+      if (lastBreakStart) {
+        const brk = Math.max(0, Math.floor((ts - lastBreakStart) / 1000));
+        currentSessionBreakSec += brk;
+        totalBreakSec += brk;
+        lastBreakStart = null;
+      }
+    } else if (lbl.includes('punch out')) {
+      if (currentSessionStart) {
+        if (lastBreakStart) {
+          const brk = Math.max(0, Math.floor((ts - lastBreakStart) / 1000));
+          currentSessionBreakSec += brk;
+          totalBreakSec += brk;
+          lastBreakStart = null;
+        }
+        const grossSec = Math.max(0, Math.floor((ts - currentSessionStart) / 1000));
+        const netSec = Math.max(0, grossSec - currentSessionBreakSec);
+        totalWorkingSec += netSec;
+        totalElapsedSec += grossSec;
+        currentSessionStart = null;
+      }
+      lastPunchOutTime = ts;
+      isCurrentlyWorking = false;
+      isCurrentlyPunchedOut = true;
+    }
+  }
+
+  // If there is an active unclosed session (user is currently punched in and working)
+  if (currentSessionStart) {
+    isCurrentlyWorking = true;
+    isCurrentlyPunchedOut = false;
+
+    // Check if there's an ongoing break
+    if (ongoingBreakStartTime) {
+      const ongoingBrkDate = new Date(ongoingBreakStartTime);
+      if (!isNaN(ongoingBrkDate.getTime())) {
+        const ongoingBrkSec = Math.max(0, Math.floor((now - ongoingBrkDate) / 1000));
+        currentSessionBreakSec += ongoingBrkSec;
+        totalBreakSec += ongoingBrkSec;
+      }
+    } else if (lastBreakStart) {
+      const ongoingBrkSec = Math.max(0, Math.floor((now - lastBreakStart) / 1000));
+      currentSessionBreakSec += ongoingBrkSec;
+      totalBreakSec += ongoingBrkSec;
+    }
+
+    const grossSec = Math.max(0, Math.floor((now - currentSessionStart) / 1000));
+    const netSec = Math.max(0, grossSec - currentSessionBreakSec);
+    totalWorkingSec += netSec;
+    totalElapsedSec += grossSec;
+  }
+
+  return {
+    workingSec: totalWorkingSec,
+    breakSec: totalBreakSec,
+    totalElapsedSec,
+    isCurrentlyWorking,
+    isCurrentlyPunchedOut,
+    sessionCount,
+    lastPunchInTime,
+    lastPunchOutTime,
+    lastBreakStart
+  };
+};
+
 const getEffectiveRecordHours = (rec, todayStr = new Date().toISOString().split('T')[0], now = new Date()) => {
   if (!rec || !rec.clockIn) return 0;
 
   const recordedHours = parseFloat(rec.totalHours);
-  if (!isNaN(recordedHours) && recordedHours > 0) {
+  if (!isNaN(recordedHours) && recordedHours > 0 && rec.clockOut) {
     return recordedHours;
+  }
+
+  // If record has timeline events, calculate multi-session net hours
+  const tl = parseTimelineArray(rec.timeline);
+  if (tl.length > 0) {
+    const metrics = calculateAttendanceSessionMetrics(tl, rec.breakStartTime, rec.clockIn, rec.clockOut, now);
+    if (metrics.workingSec > 0) {
+      return parseFloat((metrics.workingSec / 3600).toFixed(2));
+    }
   }
 
   const clockInDate = new Date(rec.clockIn);
@@ -71,15 +212,12 @@ const getEffectiveRecordHours = (rec, todayStr = new Date().toISOString().split(
 
   // No clockOut recorded:
   if (rec.date === todayStr) {
-    // Currently working today: live elapsed hours up to now
     const elapsedMs = Math.max(0, now - clockInDate);
     const netHours = Math.max(0, elapsedMs / (1000 * 60 * 60) - breakMins / 60);
     return parseFloat(netHours.toFixed(2));
   }
 
   if (rec.date < todayStr) {
-    // Past day with punch-in but no punch-out:
-    // Default to standard 8.0 hours shift work
     return 8.0;
   }
 
@@ -87,25 +225,9 @@ const getEffectiveRecordHours = (rec, todayStr = new Date().toISOString().split(
 };
 
 /**
- * Safely parse timeline into an array
- */
-const parseTimelineArray = (rawTimeline) => {
-  if (Array.isArray(rawTimeline)) return rawTimeline;
-  if (typeof rawTimeline === 'string') {
-    try {
-      const parsed = JSON.parse(rawTimeline);
-      if (Array.isArray(parsed)) return parsed;
-    } catch {
-      return [];
-    }
-  }
-  return [];
-};
-
-/**
  * Safely determine effective clockOut Date for an attendance record:
  * 1. If explicit rec.clockOut exists, return Date object.
- * 2. If timeline has a 'Punch Out' event, return that timestamp Date.
+ * 2. If timeline has 'Punch Out' event(s), return latest timestamp Date.
  * 3. If past day (rec.date < todayStr) and record has clockIn:
  *    Compute auto clockOut = clockIn + (effHours * 3600000) + (totalBreakMinutes * 60000)
  */
@@ -117,13 +239,16 @@ const getEffectiveClockOut = (rec, effHours, todayStr = new Date().toISOString()
     if (!isNaN(d.getTime())) return d;
   }
 
-  // Check timeline
+  // Check timeline backwards for the latest Punch Out event
   const tl = parseTimelineArray(rec.timeline);
-  const po = tl.find((t) => t.label === 'Punch Out' || t.status === 'punched_out');
-  if (po && (po.timestamp || po.time)) {
-    if (po.timestamp) {
-      const d = new Date(po.timestamp);
-      if (!isNaN(d.getTime())) return d;
+  for (let i = tl.length - 1; i >= 0; i--) {
+    const t = tl[i];
+    const lbl = (t.label || '').toLowerCase();
+    if (lbl.includes('punch out') || t.status === 'punched_out') {
+      if (t.timestamp) {
+        const d = new Date(t.timestamp);
+        if (!isNaN(d.getTime())) return d;
+      }
     }
   }
 
@@ -178,74 +303,59 @@ const computeLiveMetrics = (attendance, shift = null) => {
   }
 
   const now = new Date();
-  let clockInDate = new Date(attendance.clockIn);
-  let clockOutDate = attendance.clockOut ? new Date(attendance.clockOut) : null;
-  let breakStartDate = attendance.breakStartTime ? new Date(attendance.breakStartTime) : null;
-
-  // Timeline check for true timestamps to guard against any DB timezone shift
+  const clockInDate = attendance.clockIn ? new Date(attendance.clockIn) : null;
+  const clockOutDate = attendance.clockOut ? new Date(attendance.clockOut) : null;
   const rawTimeline = parseTimelineArray(attendance.timeline);
-  const punchInTimelineItem = rawTimeline.find((item) => (item.label || '').toLowerCase().includes('punch in'));
-  if (punchInTimelineItem && punchInTimelineItem.timestamp) {
-    const timelineDate = new Date(punchInTimelineItem.timestamp);
-    if (!isNaN(timelineDate.getTime())) {
-      if (isNaN(clockInDate.getTime()) || clockInDate > now || Math.abs(clockInDate - timelineDate) > 3600 * 1000) {
-        clockInDate = timelineDate;
-      }
-    }
-  }
+  const breakStartDate = attendance.breakStartTime ? new Date(attendance.breakStartTime) : null;
+  const metrics = calculateAttendanceSessionMetrics(rawTimeline, breakStartDate, attendance.clockIn, attendance.clockOut, now);
 
-  const breakStartTimelineItem = rawTimeline.find((item) => {
-    const lbl = (item.label || '').toLowerCase();
-    return lbl.includes('break') && !lbl.includes('ended');
-  });
-  if (breakStartDate && breakStartDate > now && breakStartTimelineItem && breakStartTimelineItem.timestamp) {
-    const tlBreakDate = new Date(breakStartTimelineItem.timestamp);
-    if (!isNaN(tlBreakDate.getTime())) {
-      breakStartDate = tlBreakDate;
-    }
-  }
+  const lastEvent = rawTimeline.length > 0 ? rawTimeline[rawTimeline.length - 1] : null;
+  const isBreakActive = !!breakStartDate || (lastEvent && (lastEvent.label || '').toLowerCase().includes('break') && !(lastEvent.label || '').toLowerCase().includes('ended'));
 
   // 1. Determine active state
   let currentStatus = 'WORKING';
-  if (clockOutDate) {
-    currentStatus = 'PUNCHED_OUT';
-  } else if (breakStartDate) {
+  if (isBreakActive) {
     currentStatus = 'ON_BREAK';
+  } else if (metrics.isCurrentlyPunchedOut) {
+    currentStatus = 'PUNCHED_OUT';
+  } else if (metrics.isCurrentlyWorking) {
+    currentStatus = 'WORKING';
+  } else if (attendance.clockOut) {
+    currentStatus = 'PUNCHED_OUT';
   }
 
-  // 2. Break duration calculation
-  let cumulativeBreakSec = (attendance.totalBreakMinutes || 0) * 60;
-  if (breakStartDate && !clockOutDate) {
-    const ongoingBreakSec = Math.max(0, Math.floor((now - breakStartDate) / 1000));
-    cumulativeBreakSec += ongoingBreakSec;
-  }
+  // 2. Working and Break Seconds
+  const workingSec = metrics.workingSec;
+  const cumulativeBreakSec = metrics.breakSec;
+  const totalElapsedSec = metrics.totalElapsedSec;
 
-  // 3. Gross & Net Working seconds calculation
-  const referenceEnd = clockOutDate || now;
-  const totalElapsedSec = Math.max(0, Math.floor((referenceEnd - clockInDate) / 1000));
-  const workingSec = Math.max(0, totalElapsedSec - cumulativeBreakSec);
-
-  // 4. Progress percentage
+  // 3. Progress percentage
   const progressPercent = Math.min(100, Math.round((workingSec / totalShiftSeconds) * 100));
 
-  // 5. Since Text
-  let sinceText = `Since ${formatTime12h(clockInDate)}`;
-  if (currentStatus === 'ON_BREAK' && breakStartDate) {
-    sinceText = `Break since ${formatTime12h(breakStartDate)}`;
-  } else if (currentStatus === 'PUNCHED_OUT' && clockOutDate) {
-    sinceText = `Shift ended at ${formatTime12h(clockOutDate)}`;
+  // 4. Since Text
+  let sinceText = 'Not clocked in yet';
+  if (currentStatus === 'ON_BREAK' && (breakStartDate || metrics.lastBreakStart)) {
+    const brkStart = breakStartDate || metrics.lastBreakStart;
+    sinceText = `Break since ${formatTime12h(brkStart)}`;
+  } else if (currentStatus === 'PUNCHED_OUT' && (metrics.lastPunchOutTime || clockOutDate)) {
+    sinceText = `Punched out at ${formatTime12h(metrics.lastPunchOutTime || clockOutDate)}`;
+  } else if (metrics.lastPunchInTime) {
+    sinceText = `Since ${formatTime12h(metrics.lastPunchInTime)}`;
+  } else if (clockInDate) {
+    sinceText = `Since ${formatTime12h(clockInDate)}`;
   }
 
-  // 6. Timeline synthesis (Dynamic, non-hardcoded)
+  // 5. Timeline synthesis & status formatting
   let timeline = rawTimeline.length > 0 ? [...rawTimeline] : [];
-
   if (timeline.length === 0) {
-    timeline.push({
-      label: 'Punch In',
-      time: formatTime12h(clockInDate),
-      timestamp: clockInDate.toISOString(),
-      status: 'completed'
-    });
+    if (clockInDate) {
+      timeline.push({
+        label: 'Punch In',
+        time: formatTime12h(clockInDate),
+        timestamp: clockInDate.toISOString(),
+        status: 'completed'
+      });
+    }
     if (breakStartDate) {
       timeline.push({
         label: 'Break Started',
@@ -253,44 +363,26 @@ const computeLiveMetrics = (attendance, shift = null) => {
         timestamp: breakStartDate.toISOString(),
         status: 'break'
       });
-    } else if (attendance.totalBreakMinutes > 0) {
-      // Calculate realistic break boundaries matching the exact recorded totalBreakMinutes
-      const totalBreakSec = attendance.totalBreakMinutes * 60;
-      const netWorkingSec = Math.max(0, totalElapsedSec - totalBreakSec);
-      const breakOffsetSec = Math.floor(netWorkingSec / 2);
-      const synthStart = new Date(clockInDate.getTime() + breakOffsetSec * 1000);
-      const synthEnd = new Date(synthStart.getTime() + totalBreakSec * 1000);
-
+    }
+    if (clockOutDate) {
       timeline.push({
-        label: 'Break Started',
-        time: formatTime12h(synthStart),
-        timestamp: synthStart.toISOString(),
-        status: 'break'
-      });
-      timeline.push({
-        label: 'Break Ended',
-        time: formatTime12h(synthEnd),
-        timestamp: synthEnd.toISOString(),
-        status: 'completed'
+        label: 'Punch Out',
+        time: formatTime12h(clockOutDate),
+        timestamp: clockOutDate.toISOString(),
+        status: 'punched_out'
       });
     }
-    timeline.push({
-      label: 'Punch Out',
-      time: clockOutDate ? formatTime12h(clockOutDate) : '--:--',
-      timestamp: clockOutDate ? clockOutDate.toISOString() : null,
-      status: clockOutDate ? 'punched_out' : 'pending'
-    });
   } else {
-    // Ensure appropriate status indicators for break and punchout nodes
     timeline = timeline.map((item) => {
       const lbl = (item.label || '').toLowerCase();
+      const itemTime = item.time || (item.timestamp ? formatTime12h(item.timestamp) : '--:--');
       if (lbl.includes('break') && !lbl.includes('ended')) {
-        return { ...item, status: item.status || 'break' };
+        return { ...item, time: itemTime, status: item.status || 'break' };
       }
       if (lbl.includes('punch out')) {
-        return { ...item, status: 'punched_out' };
+        return { ...item, time: itemTime, status: 'punched_out' };
       }
-      return item;
+      return { ...item, time: itemTime, status: item.status || 'completed' };
     });
   }
 
@@ -305,8 +397,8 @@ const computeLiveMetrics = (attendance, shift = null) => {
 
   return {
     status: currentStatus,
-    clockInTime: clockInDate ? clockInDate.toISOString() : null,
-    clockOutTime: clockOutDate ? clockOutDate.toISOString() : null,
+    clockInTime: metrics.lastPunchInTime ? metrics.lastPunchInTime.toISOString() : (clockInDate ? clockInDate.toISOString() : null),
+    clockOutTime: metrics.lastPunchOutTime ? metrics.lastPunchOutTime.toISOString() : (clockOutDate ? clockOutDate.toISOString() : null),
     grossSeconds: totalElapsedSec,
     grossWorkingHours: grossWorkingHoursStr,
     workingSeconds: workingSec,
@@ -404,8 +496,59 @@ const punchIn = async (user, payload = {}, ipAddress = null) => {
     where: { userId: user.id, date: today }
   });
 
+  // Check if attendance already exists with clockIn
   if (attendance && attendance.clockIn) {
-    throw new BadRequestError('You have already punched in for today');
+    const rawTimeline = parseTimelineArray(attendance.timeline);
+    const lastEvent = rawTimeline.length > 0 ? rawTimeline[rawTimeline.length - 1] : null;
+    const isPunchedOut = lastEvent
+      ? (lastEvent.label || '').toLowerCase().includes('punch out')
+      : !!attendance.clockOut;
+
+    if (!isPunchedOut) {
+      if (attendance.breakStartTime) {
+        // If user is currently on break, punch-in resumes active working state cleanly
+        const breakDurationMinutes = Math.max(1, Math.round((now - new Date(attendance.breakStartTime)) / 60000));
+        attendance.totalBreakMinutes = (attendance.totalBreakMinutes || 0) + breakDurationMinutes;
+        attendance.breakStartTime = null;
+        const updatedTimeline = [...rawTimeline];
+        updatedTimeline.push({
+          label: 'Break Ended',
+          time: formatTime12h(now),
+          timestamp: now.toISOString(),
+          status: 'completed'
+        });
+        attendance.timeline = updatedTimeline;
+        attendance.changed('timeline', true);
+        await attendance.save();
+      }
+      return getTodayStatus(user.id);
+    }
+
+    // USER WAS PUNCHED OUT: ALLOW RE-PUNCH IN (NEW WORK SESSION)!
+    const updatedTimeline = [...rawTimeline];
+    updatedTimeline.push({
+      label: 'Punch In',
+      time: formatTime12h(now),
+      timestamp: now.toISOString(),
+      status: 'completed'
+    });
+
+    attendance.clockOut = null; // Resume active working state
+    attendance.timeline = updatedTimeline;
+    attendance.changed('timeline', true);
+    await attendance.save();
+
+    // Log activity
+    await ActivityLog.create({
+      userId: user.id,
+      action: 'ATTENDANCE_PUNCH_IN',
+      module: 'ATTENDANCE',
+      targetId: attendance.id,
+      ipAddress: ipAddress || 'INTERNAL',
+      details: `Employee re-punched in (New session resumed) at ${formatTime12h(now)}`
+    }).catch((err) => logger.warn('ActivityLog warning:', err.message));
+
+    return getTodayStatus(user.id);
   }
 
   // Resolve shift: prioritize payload.shiftId, then default to 'General Shift' (10:00 - 19:00), then any active shift
@@ -448,6 +591,7 @@ const punchIn = async (user, payload = {}, ipAddress = null) => {
 
   if (attendance) {
     attendance.clockIn = now;
+    attendance.clockOut = null;
     attendance.status = status;
     attendance.shiftId = shift ? shift.id : attendance.shiftId;
     attendance.ipAddress = ipAddress || attendance.ipAddress;
@@ -459,6 +603,7 @@ const punchIn = async (user, payload = {}, ipAddress = null) => {
       userId: user.id,
       date: today,
       clockIn: now,
+      clockOut: null,
       status,
       shiftId: shift ? shift.id : null,
       ipAddress: ipAddress || 'INTERNAL',
@@ -496,8 +641,14 @@ const startBreak = async (user, payload = {}, ipAddress = null) => {
     throw new BadRequestError('You must punch in first before taking a break');
   }
 
-  if (attendance.clockOut) {
-    throw new BadRequestError('You have already punched out for today');
+  const rawTimeline = parseTimelineArray(attendance.timeline);
+  const lastEvent = rawTimeline.length > 0 ? rawTimeline[rawTimeline.length - 1] : null;
+  const isPunchedOut = lastEvent
+    ? (lastEvent.label || '').toLowerCase().includes('punch out')
+    : !!attendance.clockOut;
+
+  if (isPunchedOut) {
+    throw new BadRequestError('You are currently punched out. Please punch in first before taking a break.');
   }
 
   if (attendance.breakStartTime) {
@@ -551,18 +702,24 @@ const endBreak = async (user, ipAddress = null) => {
     where: { userId: user.id, date: today }
   });
 
-  if (!attendance || !attendance.breakStartTime) {
-    throw new BadRequestError('You do not have an active break to resume from');
+  if (!attendance) {
+    throw new BadRequestError('You do not have an active attendance record for today. Please punch in first.');
   }
 
-  if (attendance.clockOut) {
-    throw new BadRequestError('You have already punched out for today');
+  const rawTimeline = parseTimelineArray(attendance.timeline);
+  const lastEvent = rawTimeline.length > 0 ? rawTimeline[rawTimeline.length - 1] : null;
+  const isBreakActive = !!attendance.breakStartTime || (lastEvent && (lastEvent.label || '').toLowerCase().includes('break') && !(lastEvent.label || '').toLowerCase().includes('ended'));
+
+  if (!isBreakActive) {
+    // If break was already ended or user is already working, return current status smoothly
+    return getTodayStatus(user.id);
   }
 
-  const breakDurationMinutes = Math.max(1, Math.round((now - new Date(attendance.breakStartTime)) / 60000));
+  const breakStartRef = attendance.breakStartTime ? new Date(attendance.breakStartTime) : (lastEvent?.timestamp ? new Date(lastEvent.timestamp) : now);
+  const breakDurationMinutes = Math.max(1, Math.round((now - breakStartRef) / 60000));
   const newTotalBreak = (attendance.totalBreakMinutes || 0) + breakDurationMinutes;
 
-  const updatedTimeline = parseTimelineArray(attendance.timeline);
+  const updatedTimeline = [...rawTimeline];
   updatedTimeline.push({
     label: 'Break Ended',
     time: formatTime12h(now),
@@ -604,11 +761,15 @@ const punchOut = async (user, payload = {}, ipAddress = null) => {
     throw new BadRequestError('You have not punched in today');
   }
 
-  if (attendance.clockOut) {
-    throw new BadRequestError('You have already punched out for today');
-  }
-
   const updatedTimeline = parseTimelineArray(attendance.timeline);
+  const lastEvent = updatedTimeline.length > 0 ? updatedTimeline[updatedTimeline.length - 1] : null;
+  const isAlreadyPunchedOut = lastEvent
+    ? (lastEvent.label || '').toLowerCase().includes('punch out')
+    : !!attendance.clockOut;
+
+  if (isAlreadyPunchedOut) {
+    throw new BadRequestError('You have already punched out. You can punch in again to start a new work session.');
+  }
 
   // If currently on break, auto-conclude the break
   let totalBreakMinutes = attendance.totalBreakMinutes || 0;
@@ -624,22 +785,25 @@ const punchOut = async (user, payload = {}, ipAddress = null) => {
     attendance.breakStartTime = null;
   }
 
-  const clockInDate = new Date(attendance.clockIn);
-  const totalWorkedSec = Math.max(0, Math.floor((now - clockInDate) / 1000) - totalBreakMinutes * 60);
-  const calculatedHours = parseFloat((totalWorkedSec / 3600).toFixed(2));
-
-  // Determine if half-day
-  let finalStatus = attendance.status;
-  if (calculatedHours < 4.0 && finalStatus === 'present') {
-    finalStatus = 'half_day';
-  }
-
+  // Push new Punch Out event to timeline
   updatedTimeline.push({
     label: 'Punch Out',
     time: formatTime12h(now),
     timestamp: now.toISOString(),
     status: 'punched_out'
   });
+
+  // Calculate cumulative net hours across all sessions in updatedTimeline
+  const metrics = calculateAttendanceSessionMetrics(updatedTimeline, null, attendance.clockIn, now, now);
+  const calculatedHours = parseFloat((metrics.workingSec / 3600).toFixed(2));
+
+  // Determine if half-day
+  let finalStatus = attendance.status;
+  if (calculatedHours < 4.0 && finalStatus === 'present') {
+    finalStatus = 'half_day';
+  } else if (calculatedHours >= 4.0 && finalStatus === 'half_day') {
+    finalStatus = 'present';
+  }
 
   attendance.clockOut = now;
   attendance.totalHours = calculatedHours;

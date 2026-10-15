@@ -140,7 +140,7 @@ const notifyHRAndAdmins = async ({ title, message, type = 'info', actionUrl = nu
   try {
     const hrUsers = await User.findAll({
       where: {
-        role: { [Op.in]: ['hr', 'admin', 'HR', 'ADMIN'] },
+        role: { [Op.in]: ['hr', 'admin', 'HR', 'ADMIN', 'Hr', 'Admin'] },
         status: { [Op.ne]: 'terminated' }
       },
       attributes: ['id', 'email', 'firstName', 'lastName', 'role']
@@ -148,8 +148,11 @@ const notifyHRAndAdmins = async ({ title, message, type = 'info', actionUrl = nu
 
     if (!hrUsers || hrUsers.length === 0) return [];
 
-    const recipients = hrUsers.filter((u) => !excludeUserId || u.id !== excludeUserId);
-    if (recipients.length === 0) return [];
+    let recipients = hrUsers.filter((u) => !excludeUserId || u.id !== excludeUserId);
+    if (recipients.length === 0) {
+      // In single-admin or testing setups, don't drop notifications completely if user is the sole HR/admin
+      recipients = hrUsers;
+    }
 
     const records = recipients.map((u) => ({
       userId: u.id,
@@ -185,11 +188,71 @@ const notifyHRAndAdmins = async ({ title, message, type = 'info', actionUrl = nu
   }
 };
 
+/**
+ * 7. Send notification to all active employees and staff
+ */
+const notifyAllEmployees = async ({ title, message, type = 'announcement', actionUrl = '/employee/holidays', excludeUserId = null }) => {
+  try {
+    const activeUsers = await User.findAll({
+      where: {
+        status: { [Op.ne]: 'terminated' }
+      },
+      attributes: ['id', 'email', 'firstName', 'lastName', 'role']
+    });
+
+    if (!activeUsers || activeUsers.length === 0) return [];
+
+    let recipients = activeUsers;
+    if (excludeUserId) {
+      const filtered = activeUsers.filter((u) => u.id !== excludeUserId);
+      if (filtered.length > 0) recipients = filtered;
+    }
+
+    const records = recipients.map((u) => ({
+      userId: u.id,
+      title,
+      message,
+      type,
+      actionUrl,
+      isRead: false
+    }));
+
+    const created = await Notification.bulkCreate(records);
+
+    // Also emit real-time WebSocket events if connected
+    try {
+      const socketService = require('./socket.service');
+      if (socketService) {
+        const payload = { title, message, type, actionUrl, createdAt: new Date().toISOString() };
+        if (typeof socketService.broadcastNotification === 'function') {
+          socketService.broadcastNotification(payload);
+        }
+        if (typeof socketService.emitToRole === 'function') {
+          ['employee', 'EMPLOYEE', 'manager', 'MANAGER', 'hr', 'HR', 'admin', 'ADMIN'].forEach((r) => {
+            socketService.emitToRole(r, 'notification', payload);
+          });
+        }
+        recipients.forEach((u) => {
+          socketService.emitToUser(u.id, 'notification', payload);
+        });
+      }
+    } catch {
+      // socket emission is optional
+    }
+
+    return created;
+  } catch (err) {
+    logger.warn('Failed to notify all employees:', err.message);
+    return [];
+  }
+};
+
 module.exports = {
   getMyNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
   createNotification,
-  notifyHRAndAdmins
+  notifyHRAndAdmins,
+  notifyAllEmployees
 };

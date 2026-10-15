@@ -217,6 +217,19 @@ const updateEmployeeSalary = async (req, res, next) => {
 /**
  * KYC Documents Controllers
  */
+const uploadDocumentForEmployee = async (req, res, next) => {
+  try {
+    const targetUserId = req.params.id;
+    const doc = await employeeService.uploadEmployeeDocument(targetUserId, req.body, req.file);
+    return ApiResponse.created(res, {
+      message: 'Employee document uploaded successfully',
+      data: doc
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const uploadMyDocument = async (req, res, next) => {
   try {
     const doc = await employeeService.uploadEmployeeDocument(req.user.id, req.body, req.file);
@@ -314,6 +327,7 @@ module.exports = {
   uploadMyAvatar,
   updateEmployeeSalary,
   uploadMyDocument,
+  uploadDocumentForEmployee,
   getMyDocuments,
   getEmployeeDocuments,
   getAllDocuments,

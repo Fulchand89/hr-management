@@ -17,6 +17,7 @@ const {
   ForbiddenError
 } = require('../utils/apiError');
 const logger = require('../config/logger');
+const { notifyHRAndAdmins, createNotification, notifyAllEmployees } = require('./notification.service');
 let socketService = null;
 try {
   socketService = require('./socket.service');
@@ -63,6 +64,28 @@ const createLeaveType = async (payload, actor) => {
     name: payload.name.trim()
   });
 
+  // Auto-seed balances for all active users for current year
+  try {
+    const currentYear = new Date().getFullYear();
+    const activeUsers = await User.findAll({
+      where: { status: { [Op.ne]: 'terminated' } },
+      attributes: ['id']
+    });
+    if (activeUsers && activeUsers.length > 0) {
+      const balanceRecords = activeUsers.map((u) => ({
+        userId: u.id,
+        leaveTypeId: leaveType.id,
+        year: currentYear,
+        allocated: Number(leaveType.daysPerYear) || 12,
+        used: 0,
+        remaining: Number(leaveType.daysPerYear) || 12
+      }));
+      await LeaveBalance.bulkCreate(balanceRecords, { ignoreDuplicates: true });
+    }
+  } catch (seedErr) {
+    logger.warn('Failed to auto-seed leave balances for new leave type:', seedErr.message);
+  }
+
   await ActivityLog.create({
     userId: actor ? actor.id : null,
     action: 'LEAVE_TYPE_CREATED',
@@ -96,18 +119,42 @@ const updateLeaveType = async (id, payload, actor) => {
     }
   }
 
+  const oldDaysPerYear = Number(leaveType.daysPerYear);
+
   await leaveType.update({
     ...payload,
     ...(payload.code && { code: payload.code.toUpperCase() }),
     ...(payload.name && { name: payload.name.trim() })
   });
 
+  // If daysPerYear (quota count) was updated, synchronize current year LeaveBalances for all employees
+  if (payload.daysPerYear !== undefined && Number(payload.daysPerYear) !== oldDaysPerYear) {
+    try {
+      const newQuota = Number(payload.daysPerYear);
+      const currentYear = new Date().getFullYear();
+      const existingBalances = await LeaveBalance.findAll({
+        where: { leaveTypeId: id, year: currentYear }
+      });
+
+      for (const bal of existingBalances) {
+        const used = Number(bal.used) || 0;
+        const newRemaining = Math.max(0, newQuota - used);
+        await bal.update({
+          allocated: newQuota,
+          remaining: newRemaining
+        });
+      }
+    } catch (syncErr) {
+      logger.warn('Failed to sync employee leave balances on quota update:', syncErr.message);
+    }
+  }
+
   await ActivityLog.create({
     userId: actor ? actor.id : null,
     action: 'LEAVE_TYPE_UPDATED',
     module: 'leave',
     targetId: leaveType.id,
-    details: `Updated leave category '${leaveType.name}' (${leaveType.code})`
+    details: `Updated leave category '${leaveType.name}' (${leaveType.code}) to ${leaveType.daysPerYear} days/year`
   }).catch((err) => logger.warn('ActivityLog warning:', err.message));
 
   return leaveType;
@@ -329,16 +376,48 @@ const applyLeave = async (user, payload, ipAddress) => {
     status: 'pending'
   });
 
-  // Real-time broadcast announcement to Admin/HR/Manager
-  if (socketService && typeof socketService.broadcastToRoom === 'function') {
-    socketService.broadcastToRoom('role:admin', 'notification:leave_applied', {
-      requestId: leaveRequest.id,
-      employeeName: `${user.firstName} ${user.lastName}`,
-      leaveType: leaveType.name,
-      startDate,
-      endDate,
-      totalDays
+  // Persistent notification to all active HR and Admin personnel
+  try {
+    const applicantName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'An employee';
+    const empCodeStr = user.employeeCode ? ` (${user.employeeCode})` : '';
+    await notifyHRAndAdmins({
+      title: 'New Leave Application',
+      message: `${applicantName}${empCodeStr} applied for ${totalDays} day(s) of ${leaveType.name} from ${startDate} to ${endDate}. Reason: "${reason.trim()}"`,
+      type: 'leave',
+      actionUrl: `/hr/leave-requests/${leaveRequest.id}`,
+      excludeUserId: user.id
     });
+  } catch (notifErr) {
+    logger.warn('Failed to notify HR and Admins of leave application:', notifErr.message);
+  }
+
+  // Real-time broadcast announcement to Admin/HR/Manager
+  if (socketService) {
+    try {
+      const applicantName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'An employee';
+      const wsPayload = {
+        requestId: leaveRequest.id,
+        employeeName: applicantName,
+        leaveType: leaveType.name,
+        startDate,
+        endDate,
+        totalDays,
+        reason: reason.trim(),
+        actionUrl: `/hr/leave-requests/${leaveRequest.id}`
+      };
+      if (typeof socketService.emitToRole === 'function') {
+        socketService.emitToRole('hr', 'notification:leave_applied', wsPayload);
+        socketService.emitToRole('admin', 'notification:leave_applied', wsPayload);
+        socketService.emitToRole('HR', 'notification:leave_applied', wsPayload);
+        socketService.emitToRole('ADMIN', 'notification:leave_applied', wsPayload);
+      }
+      if (typeof socketService.broadcastToRoom === 'function') {
+        socketService.broadcastToRoom('role:admin', 'notification:leave_applied', wsPayload);
+        socketService.broadcastToRoom('role:hr', 'notification:leave_applied', wsPayload);
+      }
+    } catch (wsErr) {
+      logger.warn('WebSocket notification error for leave application:', wsErr.message);
+    }
   }
 
   await ActivityLog.create({
@@ -444,6 +523,21 @@ const cancelLeave = async (requestId, user, ipAddress) => {
   }
 
   await leave.update({ status: 'cancelled' });
+
+  // Persistent notification to HR and Admins
+  try {
+    const applicantName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'An employee';
+    const empCodeStr = user.employeeCode ? ` (${user.employeeCode})` : '';
+    await notifyHRAndAdmins({
+      title: 'Leave Request Cancelled',
+      message: `${applicantName}${empCodeStr} cancelled their leave application from ${leave.startDate} to ${leave.endDate}.`,
+      type: 'leave',
+      actionUrl: `/hr/leave-requests/${leave.id}`,
+      excludeUserId: user.id
+    });
+  } catch (notifErr) {
+    logger.warn('Failed to notify HR of leave cancellation:', notifErr.message);
+  }
 
   await ActivityLog.create({
     userId: user.id,
@@ -613,7 +707,8 @@ const getLeaveRequestById = async (id, user) => {
 
 const actionLeaveRequest = async (id, payload, reviewer, ipAddress) => {
   const status = payload.status;
-  const actionReason = payload.actionReason || payload.rejectionReason;
+  const rawReason = payload.actionReason || payload.rejectionReason;
+  const actionReason = rawReason ? rawReason.trim().slice(0, 255) : null;
 
   const leave = await LeaveRequest.findByPk(id, {
     include: [
@@ -630,10 +725,14 @@ const actionLeaveRequest = async (id, payload, reviewer, ipAddress) => {
     throw new BadRequestError(`Cannot action this leave application because it is already marked as ${leave.status}`);
   }
 
-  // Conflict of Interest Prevention: HR/Managers cannot approve their own leaves
-  if (leave.userId === reviewer.id && reviewer.role !== 'admin') {
+  // Conflict of Interest Prevention:
+  // Non-privileged managers are prevented from approving their own leaves.
+  // Privileged roles (admin, hr) can action applications, and rejecting/declining is always permitted.
+  const reviewerRole = (reviewer.role || '').toLowerCase();
+  const isPrivileged = reviewerRole === 'admin' || reviewerRole === 'hr';
+  if (leave.userId === reviewer.id && !isPrivileged && status === 'approved') {
     throw new ForbiddenError(
-      'Conflict of Interest: You cannot approve or reject your own leave application. It must be reviewed by an Administrator.'
+      'Conflict of Interest: You cannot approve your own leave application. It must be reviewed by an Administrator or HR.'
     );
   }
 
@@ -688,24 +787,43 @@ const actionLeaveRequest = async (id, payload, reviewer, ipAddress) => {
   });
 
   // Persistent user notification
-  await Notification.create({
-    userId: leave.userId,
-    title: `Leave Application ${status.toUpperCase()}`,
-    message: `Your leave request for ${leave.startDate} to ${leave.endDate} has been ${status}${actionReason ? `: "${actionReason}"` : '.'}`,
-    type: status === 'approved' ? 'leave_approved' : 'leave_rejected',
-    referenceId: leave.id,
-    isRead: false
-  }).catch((err) => logger.warn('Notification log warning:', err.message));
+  try {
+    await createNotification(leave.userId, {
+      title: `Leave Application ${status.toUpperCase()}`,
+      message: `Your leave request for ${leave.startDate} to ${leave.endDate} has been ${status}${actionReason ? `: "${actionReason}"` : '.'}`,
+      type: 'leave',
+      actionUrl: '/employee/leaves'
+    });
+  } catch (err) {
+    logger.warn('Notification log warning:', err.message);
+  }
 
   // Dispatch real-time WebSocket alert directly to employee
-  if (socketService && typeof socketService.sendToUser === 'function') {
-    socketService.sendToUser(leave.userId, 'notification:direct', {
-      type: `leave_${status}`,
-      title: `Leave ${status.toUpperCase()}`,
-      message: `Your leave application (${leave.startDate} to ${leave.endDate}) was ${status}.`,
-      leaveId: leave.id
-    });
+  if (socketService) {
+    try {
+      const wsDirectPayload = {
+        type: 'leave',
+        status,
+        title: `Leave ${status.toUpperCase()}`,
+        message: `Your leave application (${leave.startDate} to ${leave.endDate}) was ${status}.`,
+        leaveId: leave.id,
+        actionUrl: '/employee/leaves'
+      };
+      if (typeof socketService.emitToUser === 'function') {
+        socketService.emitToUser(leave.userId, 'notification:direct', wsDirectPayload);
+      }
+      if (typeof socketService.sendToUser === 'function') {
+        socketService.sendToUser(leave.userId, 'notification:direct', wsDirectPayload);
+      }
+    } catch (wsErr) {
+      logger.warn('Socket direct emit warning on leave status update:', wsErr.message);
+    }
   }
+
+  const reviewerName = `${reviewer?.firstName || ''} ${reviewer?.lastName || ''}`.trim() || 'HR';
+  const applicantName = leave.applicant 
+    ? `${leave.applicant.firstName || ''} ${leave.applicant.lastName || ''}`.trim() 
+    : 'Employee';
 
   await ActivityLog.create({
     userId: reviewer.id,
@@ -713,7 +831,7 @@ const actionLeaveRequest = async (id, payload, reviewer, ipAddress) => {
     module: 'leave',
     targetId: leave.id,
     ipAddress,
-    details: `${reviewer.role.toUpperCase()} ${reviewer.firstName} ${reviewer.lastName} marked leave for ${leave.applicant.firstName} ${leave.applicant.lastName} as ${status}.`
+    details: `${(reviewer.role || 'HR').toUpperCase()} ${reviewerName} marked leave for ${applicantName} as ${status}.`
   }).catch((err) => logger.warn('ActivityLog warning:', err.message));
 
   return await LeaveRequest.findByPk(id, {
@@ -772,6 +890,24 @@ const createHoliday = async (payload, actor) => {
     targetId: holiday.id,
     details: `Added holiday '${holiday.title}' on ${holiday.date} (${holiday.type})`
   }).catch((err) => logger.warn('ActivityLog warning:', err.message));
+
+  // Dispatch persistent notification & real-time alert to all employees
+  try {
+    const formattedDate = new Date(holiday.date).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+    const typeLabel = normalizedType === 'restricted' ? 'Optional' : (normalizedType.charAt(0).toUpperCase() + normalizedType.slice(1));
+    await notifyAllEmployees({
+      title: `🎉 New Holiday: ${holiday.title}`,
+      message: `A new ${typeLabel} holiday has been scheduled on ${formattedDate}: "${holiday.title}"${holiday.description ? ` (${holiday.description})` : ''}. Check the Holiday Calendar for details.`,
+      type: 'announcement',
+      actionUrl: '/employee/holidays'
+    });
+  } catch (notifErr) {
+    logger.warn('Holiday employee notification warning:', notifErr.message);
+  }
 
   return holiday;
 };

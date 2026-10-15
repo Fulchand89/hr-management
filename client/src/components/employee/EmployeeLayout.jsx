@@ -38,7 +38,6 @@ export const EmployeeLayout = ({
   onTakeBreak,
   onEndBreak,
   onPunchOut,
-  onSwitchToHR,
   onSwitchToMobile,
   unreadNotifications = 2,
   onApplyLeaveClick,
@@ -229,6 +228,17 @@ export const EmployeeLayout = ({
                 </button>
               </div>
             )}
+
+            {attendanceStatus === 'PUNCHED_OUT' && (
+              <button
+                type="button"
+                onClick={onPunchIn}
+                className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-semibold shadow-xs cursor-pointer transition-colors"
+                title="Punch in again for another work session today"
+              >
+                <Play className="w-3 h-3 fill-white" /> Punch In Again
+              </button>
+            )}
           </div>
 
           {/* Right Action Tools: Notifications & Profile */}
@@ -369,23 +379,6 @@ export const EmployeeLayout = ({
                     type="button"
                     onClick={() => {
                       setIsProfileDropdownOpen(false);
-                      if (onSwitchToHR) {
-                        onSwitchToHR();
-                      } else {
-                        window.location.href = '/hr/dashboard';
-                      }
-                    }}
-                    className="w-full text-left px-4 py-2 text-xs text-[#8B1D2C] hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-bold"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-[#8B1D2C]" /> Switch to HR Portal
-                  </button>
-
-                  <div className="my-1 border-t border-slate-100" />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileDropdownOpen(false);
                       if (onLogout) onLogout();
                     }}
                     className="w-full text-left px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-medium"
@@ -467,9 +460,18 @@ export const EmployeeLayout = ({
           )}
 
           {attendanceStatus === 'PUNCHED_OUT' && (
-            <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
-              Shift Ended
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-md">
+                Shift Ended
+              </span>
+              <button
+                type="button"
+                onClick={onPunchIn}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all"
+              >
+                <Play className="w-3 h-3 fill-white" /> In Again
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -623,18 +625,6 @@ export const EmployeeLayout = ({
 
               {/* Drawer Bottom Actions */}
               <div className="p-4 border-t border-slate-100 space-y-2 shrink-0 bg-white">
-                {onSwitchToHR && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      onSwitchToHR();
-                    }}
-                    className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#8B1D2C] text-xs font-bold text-center block cursor-pointer transition-colors"
-                  >
-                    Switch to HR Operations Portal &rarr;
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -899,26 +889,6 @@ export const EmployeeLayout = ({
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
               </button>
-
-              {/* Switch to HR Portal (if applicable) */}
-              {onSwitchToHR && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMoreModalOpen(false);
-                    onSwitchToHR();
-                  }}
-                  className="w-full flex items-center justify-between p-3 rounded-2xl bg-rose-50/70 hover:bg-rose-100/70 transition-colors text-xs font-bold text-[#8B1D2C] cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-white text-[#8B1D2C] flex items-center justify-center shadow-2xs">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <span>Switch to HR Portal</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[#8B1D2C]" />
-                </button>
-              )}
             </div>
           </div>
         </div>

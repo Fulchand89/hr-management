@@ -119,6 +119,18 @@ export const MyAppraisalView = ({ onBack }) => {
     return { label: 'Pending Review', bg: 'bg-slate-100 text-slate-600 border-slate-200' };
   };
 
+  const computeHikePercent = useCallback((appraisal) => {
+    if (!appraisal) return 0;
+    const direct = Number(appraisal.hikePercentage || appraisal.incrementPercentage || 0);
+    if (direct > 0) return direct;
+    const prev = Number(appraisal.previousSalary || 0);
+    const next = Number(appraisal.newSalary || 0);
+    if (prev > 0 && next > prev) {
+      return parseFloat((((next - prev) / prev) * 100).toFixed(1));
+    }
+    return 0;
+  }, []);
+
   if (loading) {
     return <PageSkeleton statsCount={4} tableRows={3} className="max-w-5xl" />;
   }
@@ -217,7 +229,7 @@ export const MyAppraisalView = ({ onBack }) => {
               </span>
               <div className="mt-1">
                 <span className="text-xl sm:text-2xl font-black text-emerald-700 font-mono">
-                  +{Number(latestAppraisal.hikePercentage || latestAppraisal.incrementPercentage || 0).toFixed(0)}%
+                  +{computeHikePercent(latestAppraisal)}%
                 </span>
               </div>
               <span className="text-[10px] font-bold text-emerald-600 mt-1 block">
@@ -368,7 +380,7 @@ export const MyAppraisalView = ({ onBack }) => {
               <tbody className="divide-y divide-slate-100">
                 {appraisals.map((rev) => {
                   const rating = getScoreRating(rev.overallScore);
-                  const hike = Number(rev.hikePercentage || rev.incrementPercentage || 0);
+                  const hike = computeHikePercent(rev);
 
                   return (
                     <tr key={rev.id} className="hover:bg-slate-50/70 transition-colors">

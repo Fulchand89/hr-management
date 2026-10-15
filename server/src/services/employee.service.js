@@ -470,7 +470,8 @@ const updateEmployee = async (id, payload, actor = null) => {
   // Update scalar fields
   const scalarFields = [
     'firstName', 'lastName', 'phone', 'joiningDate', 'salary', 'dob', 'gender', 'status',
-    'address', 'bankName', 'bankAccountNumber', 'bankIfsc'
+    'address', 'bankName', 'bankAccountNumber', 'bankIfsc',
+    'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation'
   ];
   scalarFields.forEach((field) => {
     if (payload[field] !== undefined) {

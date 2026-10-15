@@ -44,10 +44,10 @@ router.put(
   leaveController.updateLeaveType
 );
 
-// Delete leave type (Admin only)
+// Delete leave type (Admin & HR)
 router.delete(
   '/types/:id',
-  authorize(ROLES.ADMIN),
+  authorize(ROLES.ADMIN, ROLES.HR),
   leaveController.deleteLeaveType
 );
 

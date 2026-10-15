@@ -13,9 +13,11 @@ import {
   Calendar,
   AlertCircle,
   Loader2,
+  Pencil
 } from 'lucide-react';
 import HRApplyLeaveModal from './HRApplyLeaveModal';
 import HRLeaveDetailModal from './HRLeaveDetailModal';
+import HRManageLeaveTypesModal from './HRManageLeaveTypesModal';
 import {
   getMyLeaves,
   getLeaveBalance,
@@ -40,6 +42,10 @@ export const HRLeavesView = ({ onBack }) => {
   const [leavesList, setLeavesList] = useState([]);
   const [balances, setBalances] = useState([]);
   const [isBalancesLoading, setIsBalancesLoading] = useState(true);
+
+  // Manage Leave Types & Quotas Modal State
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [editTargetTypeId, setEditTargetTypeId] = useState(null);
 
   // Fetch balances
   const loadBalances = useCallback(async () => {
@@ -172,7 +178,18 @@ export const HRLeavesView = ({ onBack }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              setEditTargetTypeId(null);
+              setIsManageModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200 transition-all cursor-pointer shadow-2xs"
+          >
+            <Pencil className="w-3.5 h-3.5 text-[#8B1D2C]" />
+            <span>Manage Leave Quotas</span>
+          </button>
           <button
             type="button"
             onClick={() => navigate('/hr/leave-requests')}
@@ -203,11 +220,11 @@ export const HRLeavesView = ({ onBack }) => {
             const key = b.leaveTypeId || b.leaveType?.code || b.id;
             return (
               <div key={key} className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">
                     {b.leaveType?.name || 'Leave'} ({b.leaveType?.code || 'LV'})
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-[#8B1D2C]">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-[#8B1D2C] shrink-0">
                     Annual
                   </span>
                 </div>
@@ -455,6 +472,17 @@ export const HRLeavesView = ({ onBack }) => {
         onClose={() => setIsDetailModalOpen(false)}
         leave={selectedLeave}
         onCancelLeave={handleCancelLeave}
+      />
+
+      {/* Leave Quota & Category Management Modal */}
+      <HRManageLeaveTypesModal
+        isOpen={isManageModalOpen}
+        onClose={() => {
+          setIsManageModalOpen(false);
+          setEditTargetTypeId(null);
+        }}
+        onUpdated={loadBalances}
+        initialEditTypeId={editTargetTypeId}
       />
     </div>
   );

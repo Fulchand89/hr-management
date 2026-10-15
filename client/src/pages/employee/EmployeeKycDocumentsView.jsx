@@ -75,6 +75,30 @@ export const EmployeeKycDocumentsView = ({ onBack }) => {
     return { total, verified, pending, rejected };
   }, [documents]);
 
+  const KYC_SEQUENCE = ['aadhaar', 'pan', 'bank', 'degree', 'experience', 'other'];
+
+  const isCategoryUploaded = (type) => {
+    return documents.some((d) => {
+      const t = (d.documentType || '').toLowerCase();
+      const title = (d.title || '').toLowerCase();
+      if (type === 'aadhaar') return t === 'aadhaar' || (t === 'id_proof' && title.includes('aadhaar'));
+      if (type === 'pan') return t === 'pan' || title.includes('pan');
+      if (type === 'bank') return t === 'bank' || title.includes('bank') || title.includes('passbook');
+      if (type === 'degree') return t === 'degree' || t === 'education' || title.includes('degree');
+      if (type === 'experience') return t === 'experience' || title.includes('experience') || title.includes('relieving');
+      return false;
+    });
+  };
+
+  const getNextKycCategory = (currentType) => {
+    const idx = KYC_SEQUENCE.indexOf(currentType);
+    for (let i = 1; i <= KYC_SEQUENCE.length; i++) {
+      const candidate = KYC_SEQUENCE[(idx + i) % KYC_SEQUENCE.length];
+      if (!isCategoryUploaded(candidate)) return candidate;
+    }
+    return KYC_SEQUENCE[(idx + 1) % KYC_SEQUENCE.length];
+  };
+
   const handleDocTypeChange = (type) => {
     setDocType(type);
     switch (type) {
@@ -124,6 +148,8 @@ export const EmployeeKycDocumentsView = ({ onBack }) => {
       setIsUploadModalOpen(false);
       setSelectedFile(null);
       setDocNumber('');
+      const next = getNextKycCategory(docType);
+      if (next) handleDocTypeChange(next);
       await loadDocuments();
     } catch (err) {
       console.error('Failed to upload document:', err);
@@ -487,11 +513,11 @@ export const EmployeeKycDocumentsView = ({ onBack }) => {
                   onChange={(e) => handleDocTypeChange(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
                 >
-                  <option value="aadhaar">Aadhaar Card (National ID)</option>
-                  <option value="pan">PAN Card (Tax Identification)</option>
-                  <option value="bank">Bank Passbook / Cheque (Salary Payout)</option>
-                  <option value="degree">Degree / Education Certificate</option>
-                  <option value="experience">Relieving / Experience Letter</option>
+                  <option value="aadhaar">Aadhaar Card (National ID) {isCategoryUploaded('aadhaar') ? '✓' : ''}</option>
+                  <option value="pan">PAN Card (Tax Identification) {isCategoryUploaded('pan') ? '✓' : ''}</option>
+                  <option value="bank">Bank Passbook / Cheque (Salary Payout) {isCategoryUploaded('bank') ? '✓' : ''}</option>
+                  <option value="degree">Degree / Education Certificate {isCategoryUploaded('degree') ? '✓' : ''}</option>
+                  <option value="experience">Relieving / Experience Letter {isCategoryUploaded('experience') ? '✓' : ''}</option>
                   <option value="other">Other Official Document</option>
                 </select>
               </div>

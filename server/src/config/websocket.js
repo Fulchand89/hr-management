@@ -6,13 +6,20 @@ const logger = require('./logger');
 let io = null;
 const onlineUsers = new Map(); // userId -> Set of socket IDs
 
+const { isOriginAllowed } = require('./corsOptions');
+
 /**
  * Initialize Socket.IO with HTTP Server
  */
 const initWebSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: env.WS_CORS_ORIGIN,
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error('WebSocket Blocked by CORS'));
+      },
       methods: ['GET', 'POST'],
       credentials: true
     },
@@ -56,6 +63,8 @@ const initWebSocket = (httpServer) => {
       // Join role room (e.g., role:admin, role:hr)
       if (user.role) {
         socket.join(`role:${user.role}`);
+        socket.join(`role:${user.role.toLowerCase()}`);
+        socket.join(`role:${user.role.toUpperCase()}`);
       }
 
       // Join department room if available

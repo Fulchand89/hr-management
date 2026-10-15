@@ -43,13 +43,17 @@ const createAppraisalReview = async (payload, reviewer) => {
     throw new NotFoundError('Employee not found');
   }
 
-  let previousSalary = parseFloat(employee.salary || 0.0);
+  let previousSalary = parseFloat(payload.previousSalary || employee.salary || 0.0);
   if (previousSalary === 0 && employee.salaryStructure) {
     previousSalary = parseFloat(employee.salaryStructure.netSalary || (employee.salaryStructure.ctc ? employee.salaryStructure.ctc / 12 : 0) || 0.0);
   }
 
+  const passedHike = (hikePercentage !== undefined && hikePercentage !== null && !isNaN(parseFloat(hikePercentage)))
+    ? parseFloat(hikePercentage)
+    : null;
+
   let computedNewSalary = previousSalary;
-  let computedHike = 0.0;
+  let computedHike = passedHike !== null ? passedHike : 0.0;
 
   if (newSalary !== undefined && newSalary !== null && parseFloat(newSalary) > 0) {
     let inputNew = parseFloat(newSalary);
@@ -60,9 +64,12 @@ const createAppraisalReview = async (payload, reviewer) => {
     computedNewSalary = inputNew;
     if (previousSalary > 0) {
       computedHike = ((computedNewSalary - previousSalary) / previousSalary) * 100;
+    } else if (passedHike !== null && passedHike > 0) {
+      computedHike = passedHike;
+      previousSalary = Math.round(computedNewSalary / (1 + computedHike / 100));
     }
-  } else if (hikePercentage !== undefined && hikePercentage !== null) {
-    computedHike = parseFloat(hikePercentage);
+  } else if (passedHike !== null) {
+    computedHike = passedHike;
     computedNewSalary = Math.round(previousSalary * (1 + computedHike / 100));
   }
 

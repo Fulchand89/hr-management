@@ -210,8 +210,20 @@ export const EmployeeApp = () => {
     try {
       const res = await apiStartBreak('Lunch / Tea Break');
       const data = res?.data ?? res ?? {};
-      setAttendanceStatus(data.status || 'ON_BREAK');
+      const status = data.status || 'ON_BREAK';
+      const workSec = Number(data.workingSeconds) || workingSeconds;
+      const brkSec = Number(data.breakSeconds) || 0;
+      setAttendanceStatus(status);
+      setWorkingSeconds(workSec);
+      setBreakSeconds(brkSec);
       setTimeline(data.timeline || []);
+
+      timerBaselineRef.current = {
+        status,
+        workingSec: workSec,
+        breakSec: brkSec,
+        syncTime: Date.now()
+      };
       await loadTodayAttendance();
     } catch (err) {
       console.error('Break start failed:', err?.response?.data?.message || err.message);
@@ -222,9 +234,20 @@ export const EmployeeApp = () => {
     try {
       const res = await apiEndBreak();
       const data = res?.data ?? res ?? {};
-      setAttendanceStatus(data.status || 'WORKING');
-      setBreakSeconds(data.breakSeconds || 0);
+      const status = data.status || 'WORKING';
+      const workSec = Number(data.workingSeconds) || workingSeconds;
+      const brkSec = Number(data.breakSeconds) || 0;
+      setAttendanceStatus(status);
+      setWorkingSeconds(workSec);
+      setBreakSeconds(brkSec);
       setTimeline(data.timeline || []);
+
+      timerBaselineRef.current = {
+        status,
+        workingSec: workSec,
+        breakSec: brkSec,
+        syncTime: Date.now()
+      };
       await loadTodayAttendance();
     } catch (err) {
       console.error('Break end failed:', err?.response?.data?.message || err.message);
@@ -235,8 +258,20 @@ export const EmployeeApp = () => {
     try {
       const res = await apiPunchOut();
       const data = res?.data ?? res ?? {};
-      setAttendanceStatus(data.status || 'PUNCHED_OUT');
+      const status = data.status || 'PUNCHED_OUT';
+      const workSec = Number(data.workingSeconds) || workingSeconds;
+      const brkSec = Number(data.breakSeconds) || breakSeconds;
+      setAttendanceStatus(status);
+      setWorkingSeconds(workSec);
+      setBreakSeconds(brkSec);
       setTimeline(data.timeline || []);
+
+      timerBaselineRef.current = {
+        status,
+        workingSec: workSec,
+        breakSec: brkSec,
+        syncTime: Date.now()
+      };
       await loadTodayAttendance();
     } catch (err) {
       console.error('Punch-out failed:', err?.response?.data?.message || err.message);
@@ -331,7 +366,6 @@ export const EmployeeApp = () => {
       onTakeBreak={handleTakeBreak}
       onEndBreak={handleEndBreak}
       onPunchOut={handlePunchOut}
-      onSwitchToHR={() => navigate('/hr/dashboard')}
       unreadNotifications={unreadCount}
       onApplyLeaveClick={() => setIsApplyLeaveModalOpen(true)}
       onLogout={handleLogout}

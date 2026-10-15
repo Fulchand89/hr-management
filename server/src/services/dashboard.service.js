@@ -163,20 +163,28 @@ const getEmployeeDashboard = async (userId) => {
         email: myResignation.reviewer.email
       } : null
     } : null,
-    latestAppraisal: latestAppraisal ? {
-      id: latestAppraisal.id,
-      cycleName: latestAppraisal.cycleName,
-      overallScore: Number(latestAppraisal.overallScore || 0),
-      hikePercentage: Number(latestAppraisal.hikePercentage || 0),
-      newSalary: Number(latestAppraisal.newSalary || 0),
-      previousSalary: Number(latestAppraisal.previousSalary || 0),
-      effectiveDate: latestAppraisal.effectiveDate,
-      comments: latestAppraisal.comments || latestAppraisal.feedbackStrengths || '',
-      createdAt: latestAppraisal.createdAt,
-      reviewerName: latestAppraisal.reviewer
-        ? `${latestAppraisal.reviewer.firstName} ${latestAppraisal.reviewer.lastName || ''}`.trim()
-        : 'HR Management'
-    } : null
+    latestAppraisal: latestAppraisal ? (() => {
+      let hike = Number(latestAppraisal.hikePercentage || 0);
+      const prev = Number(latestAppraisal.previousSalary || 0);
+      const next = Number(latestAppraisal.newSalary || 0);
+      if (hike <= 0 && prev > 0 && next > prev) {
+        hike = parseFloat((((next - prev) / prev) * 100).toFixed(1));
+      }
+      return {
+        id: latestAppraisal.id,
+        cycleName: latestAppraisal.cycleName,
+        overallScore: Number(latestAppraisal.overallScore || 0),
+        hikePercentage: hike,
+        newSalary: next,
+        previousSalary: prev,
+        effectiveDate: latestAppraisal.effectiveDate,
+        comments: latestAppraisal.comments || latestAppraisal.feedbackStrengths || '',
+        createdAt: latestAppraisal.createdAt,
+        reviewerName: latestAppraisal.reviewer
+          ? `${latestAppraisal.reviewer.firstName} ${latestAppraisal.reviewer.lastName || ''}`.trim()
+          : 'HR Management'
+      };
+    })() : null
   };
 };
 

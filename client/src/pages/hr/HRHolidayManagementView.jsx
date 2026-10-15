@@ -68,7 +68,11 @@ export const HRHolidayManagementView = () => {
         const fullDateStr = h.date ? String(h.date).split('T')[0] : `${selectedYear}-01-01`;
 
         const rawType = (h.type || '').toLowerCase();
-        const displayType = rawType === 'restricted' || rawType === 'optional' ? 'Optional' : 'National';
+        let displayType = 'National';
+        if (rawType === 'restricted' || rawType === 'optional') displayType = 'Optional';
+        else if (rawType === 'gazetted') displayType = 'Gazetted';
+        else if (rawType === 'company') displayType = 'Company';
+        else if (rawType === 'national') displayType = 'National';
 
         return {
           id: h.id,
@@ -117,7 +121,13 @@ export const HRHolidayManagementView = () => {
     }
 
     try {
-      const submitType = (formData.type || 'national').toLowerCase() === 'optional' ? 'restricted' : 'national';
+      const rawFormType = (formData.type || 'national').toLowerCase();
+      let submitType = 'national';
+      if (rawFormType === 'optional' || rawFormType === 'restricted') submitType = 'restricted';
+      else if (rawFormType === 'gazetted') submitType = 'gazetted';
+      else if (rawFormType === 'company') submitType = 'company';
+      else submitType = 'national';
+
       await createHoliday({
         title: formData.name.trim(),
         date: formData.fullDate,
@@ -222,7 +232,7 @@ export const HRHolidayManagementView = () => {
         </div>
 
         {/* Filter Badges */}
-        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setTypeFilter('ALL')}
@@ -247,6 +257,17 @@ export const HRHolidayManagementView = () => {
           </button>
           <button
             type="button"
+            onClick={() => setTypeFilter('Gazetted')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+              typeFilter === 'Gazetted'
+                ? 'bg-blue-100 text-blue-800 ring-1 ring-blue-600'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Gazetted
+          </button>
+          <button
+            type="button"
             onClick={() => setTypeFilter('Optional')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
               typeFilter === 'Optional'
@@ -255,6 +276,17 @@ export const HRHolidayManagementView = () => {
             }`}
           >
             Optional
+          </button>
+          <button
+            type="button"
+            onClick={() => setTypeFilter('Company')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+              typeFilter === 'Company'
+                ? 'bg-purple-100 text-purple-800 ring-1 ring-purple-600'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Company
           </button>
         </div>
       </div>
@@ -320,7 +352,11 @@ export const HRHolidayManagementView = () => {
                   className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${
                     holiday.type === 'National'
                       ? 'bg-rose-50 text-[#8B1D2C] border border-rose-200'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : holiday.type === 'Gazetted'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : holiday.type === 'Company'
+                          ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
                   }`}
                 >
                   {holiday.type}
@@ -411,28 +447,50 @@ export const HRHolidayManagementView = () => {
 
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Holiday Classification</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, type: 'National' })}
-                    className={`py-2 px-3 rounded-xl font-bold border transition-colors cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-xl font-bold border transition-colors cursor-pointer text-xs ${
                       formData.type === 'National'
                         ? 'bg-rose-50 border-[#8B1D2C] text-[#8B1D2C]'
                         : 'bg-slate-50 border-slate-200 text-slate-600'
                     }`}
                   >
-                    National Holiday
+                    National
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, type: 'Gazetted' })}
+                    className={`py-2 px-2.5 rounded-xl font-bold border transition-colors cursor-pointer text-xs ${
+                      formData.type === 'Gazetted'
+                        ? 'bg-blue-50 border-blue-500 text-blue-800'
+                        : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    Gazetted
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, type: 'Optional' })}
-                    className={`py-2 px-3 rounded-xl font-bold border transition-colors cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-xl font-bold border transition-colors cursor-pointer text-xs ${
                       formData.type === 'Optional'
                         ? 'bg-amber-50 border-amber-500 text-amber-800'
                         : 'bg-slate-50 border-slate-200 text-slate-600'
                     }`}
                   >
-                    Optional Holiday
+                    Optional
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, type: 'Company' })}
+                    className={`py-2 px-2.5 rounded-xl font-bold border transition-colors cursor-pointer text-xs ${
+                      formData.type === 'Company'
+                        ? 'bg-purple-50 border-purple-500 text-purple-800'
+                        : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    Company
                   </button>
                 </div>
               </div>

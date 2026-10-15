@@ -22,35 +22,10 @@ app.use(
   })
 );
 
-// Cross-Origin Resource Sharing
-const allowedOrigins = [
-  env.CLIENT_URL,
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://localhost:5174',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:3000'
-].filter(Boolean);
+const { corsOptions } = require('./config/corsOptions');
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        origin.startsWith('http://localhost:') ||
-        origin.startsWith('http://127.0.0.1:') ||
-        origin.endsWith('.vercel.app')
-      ) {
-        return callback(null, true);
-      }
-      return callback(new Error('Blocked by CORS'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-  })
-);
+// Cross-Origin Resource Sharing
+app.use(cors(corsOptions));
 
 // Gzip compression
 app.use(compression());

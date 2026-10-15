@@ -5,6 +5,10 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import EmployeeApp from './pages/employee/EmployeeApp';
 import SignInView from './pages/employee/SignInView';
 
+// Auth Recovery Pages
+import ForgotPasswordView from './pages/auth/ForgotPasswordView';
+import ResetPasswordView from './pages/auth/ResetPasswordView';
+
 // HR Portal
 import HRApp from './pages/hr/HRApp';
 import HRSignInView from './pages/hr/HRSignInView';
@@ -23,6 +27,11 @@ export function App() {
         {/* Standalone Authentication */}
         <Route path="/signin" element={<SignInView />} />
         <Route path="/signup" element={<Navigate to="/signin" replace />} />
+
+        {/* Password Recovery Routes */}
+        <Route path="/forgot-password" element={<ForgotPasswordView />} />
+        <Route path="/reset-password" element={<ResetPasswordView />} />
+        <Route path="/hr/forgot-password" element={<ForgotPasswordView />} />
 
         {/* ========================================== */}
         {/* EMPLOYEE PORTAL DEDICATED ROUTES          */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Clock,
@@ -10,6 +10,7 @@ import {
   ArrowRight,
   TrendingUp,
   Award,
+  ChevronLeft,
   ChevronRight,
   CalendarDays,
   ShieldCheck,
@@ -20,7 +21,8 @@ import {
   Eye,
   Filter,
   FileSpreadsheet,
-  Users
+  Users,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -97,13 +99,34 @@ export const HRDashboard = ({
   // Leave queue state
   const [leaveQueue, setLeaveQueue] = useState([]);
 
-  // Staff Attendance state
+  // Staff Attendance state & pagination
   const [staffAttendance, setStaffAttendance] = useState([]);
+  const [attendancePage, setAttendancePage] = useState(1);
+  const [attendancePageSize, setAttendancePageSize] = useState(5);
+
+  const totalStaffRecords = staffAttendance.length;
+  const attendanceTotalPages = Math.max(1, Math.ceil(totalStaffRecords / attendancePageSize));
+  const attendanceStartIndex = (attendancePage - 1) * attendancePageSize;
+  const paginatedStaffAttendance = staffAttendance.slice(
+    attendanceStartIndex,
+    attendanceStartIndex + attendancePageSize
+  );
+
+  const handleAttendancePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= attendanceTotalPages) {
+      setAttendancePage(newPage);
+    }
+  };
+
   const [isLoading, setIsLoading] = useState(true);
+  const isInitialMountRef = useRef(true);
+  const [actionInProgress, setActionInProgress] = useState(null);
 
   // Fetch dynamic personal and HR workforce dashboard metrics
-  const fetchDashboard = useCallback(async () => {
-    setIsLoading(true);
+  const fetchDashboard = useCallback(async (isSilent = false) => {
+    if (!isSilent && isInitialMountRef.current) {
+      setIsLoading(true);
+    }
     try {
       const [hrRes, empRes, staffRes] = await Promise.all([
         getHRDashboard().catch(() => null),
@@ -190,14 +213,35 @@ export const HRDashboard = ({
     } catch (err) {
       console.error('Failed to load dashboard metrics:', err?.message);
     } finally {
-      setIsLoading(false);
+      if (!isSilent && isInitialMountRef.current) {
+        setIsLoading(false);
+        isInitialMountRef.current = false;
+      }
     }
   }, []);
 
   useEffect(() => {
     if (!token) return;
-    fetchDashboard();
+    if (isInitialMountRef.current) {
+      fetchDashboard(false);
+    } else {
+      // Silent background refresh on attendance status change to prevent full-page flash
+      fetchDashboard(true);
+    }
   }, [token, user?.role, attendanceStatus, fetchDashboard]);
+
+  // Non-refreshing action handler for punch in / out and breaks
+  const handleAction = async (actionFn, type) => {
+    if (actionInProgress) return;
+    setActionInProgress(type);
+    try {
+      if (actionFn) await actionFn();
+    } catch (err) {
+      console.error(`Action ${type} error:`, err);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
 
   // Live Auto-Polling: Refresh staff attendance roster every 15s for instant punch sync
   useEffect(() => {
@@ -241,82 +285,7 @@ export const HRDashboard = ({
         </div>
       )}
 
-      {/* Staff Attendance Records Table (Moved to Top) */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Today's Staff Attendance</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Live attendance roster for all employees</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/hr/staff-attendance')}
-            className="text-xs font-bold text-[#8B1D2C] hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            View Full Records &rarr;
-          </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-4 px-6">Employee</th>
-                <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6">Punch In</th>
-                <th className="py-4 px-6">Punch Out</th>
-                <th className="py-4 px-6">Total Hours</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {staffAttendance.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="py-12 text-center text-slate-400 text-sm">
-                    No attendance records found for today.
-                  </td>
-                </tr>
-              ) : (
-                staffAttendance.map((record, index) => (
-                  <tr key={record.id || index} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold border border-slate-200">
-                          {record.employeeName?.charAt(0) || 'E'}
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-slate-900">{record.employeeName}</div>
-                          <div className="text-xs text-slate-500 font-mono">{record.employeeId || 'EMP-XX'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-6">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-                        record.status === 'Present' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        record.status === 'Absent' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                        record.status === 'Late' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                        'bg-slate-50 text-slate-700 border-slate-200'
-                      }`}>
-                        {record.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-6 text-sm font-medium text-slate-700 font-mono">
-                      {record.punchIn || '--:--'}
-                    </td>
-                    <td className="py-3 px-6 text-sm font-medium text-slate-700 font-mono">
-                      {record.punchOut || '--:--'}
-                    </td>
-                    <td className="py-3 px-6 text-sm font-bold text-slate-900">
-                      {record.totalHours || '0h 0m'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Live Attendance Control Card (Directly from Employee UI) */}
+      {/* 1. Live Attendance Control Card (Moved to Top of HR Dashboard) */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -396,10 +365,19 @@ export const HRDashboard = ({
             {attendanceStatus === 'NOT_PUNCHED_IN' && (
               <button
                 type="button"
-                onClick={onPunchIn}
-                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                disabled={!!actionInProgress}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleAction(onPunchIn, 'punch_in');
+                }}
+                className="flex-1 py-3.5 px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] hover:shadow-lg hover:shadow-[#8B1D2C]/30 hover:-translate-y-0.5 text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/20 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
               >
-                <Play className="w-4 h-4 fill-white shrink-0" /> Punch In for Today
+                {actionInProgress === 'punch_in' ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                ) : (
+                  <Play className="w-4 h-4 fill-white shrink-0" />
+                )}
+                <span>{actionInProgress === 'punch_in' ? 'Punching In...' : 'Punch In for Today'}</span>
               </button>
             )}
 
@@ -407,17 +385,35 @@ export const HRDashboard = ({
               <>
                 <button
                   type="button"
-                  onClick={onTakeBreak}
-                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-white border-2 border-amber-500 text-amber-700 hover:bg-amber-50 font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  disabled={!!actionInProgress}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleAction(onTakeBreak, 'take_break');
+                  }}
+                  className="group flex-1 py-3.5 px-6 rounded-2xl bg-white border-2 border-amber-500 text-amber-700 hover:bg-amber-500 hover:text-white hover:shadow-md hover:shadow-amber-500/25 hover:-translate-y-0.5 font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  <Coffee className="w-4 h-4 text-amber-600 shrink-0" /> Take Break
+                  {actionInProgress === 'take_break' ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-600 group-hover:text-white shrink-0" />
+                  ) : (
+                    <Coffee className="w-4 h-4 text-amber-600 group-hover:text-white transition-colors duration-200 shrink-0" />
+                  )}
+                  <span>{actionInProgress === 'take_break' ? 'Updating...' : 'Take Break'}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={onPunchOut}
-                  className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                  disabled={!!actionInProgress}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleAction(onPunchOut, 'punch_out');
+                  }}
+                  className="flex-1 py-3.5 px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] hover:shadow-lg hover:shadow-[#8B1D2C]/30 hover:-translate-y-0.5 text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/20 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  <Square className="w-4 h-4 fill-white shrink-0" /> Punch Out <span className="hidden sm:inline">& Finish Day</span>
+                  {actionInProgress === 'punch_out' ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                  ) : (
+                    <Square className="w-4 h-4 fill-white shrink-0" />
+                  )}
+                  <span>{actionInProgress === 'punch_out' ? 'Finishing Day...' : 'Punch Out & Finish Day'}</span>
                 </button>
               </>
             )}
@@ -426,40 +422,275 @@ export const HRDashboard = ({
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
                 <button
                   type="button"
-                  onClick={onEndBreak}
-                  className="flex-1 w-full py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                  disabled={!!actionInProgress}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleAction(onEndBreak, 'end_break');
+                  }}
+                  className="flex-1 w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-600/30 hover:-translate-y-0.5 text-white font-bold text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  <Play className="w-4 h-4 fill-white shrink-0" /> Resume Work
+                  {actionInProgress === 'end_break' ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-white shrink-0" />
+                  )}
+                  <span>{actionInProgress === 'end_break' ? 'Resuming...' : 'Resume Work'}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={onPunchOut}
-                  className="flex-1 w-full py-3 px-4 sm:px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                  disabled={!!actionInProgress}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleAction(onPunchOut, 'punch_out');
+                  }}
+                  className="flex-1 w-full py-3.5 px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] hover:shadow-lg hover:shadow-[#8B1D2C]/30 hover:-translate-y-0.5 text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/20 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  <Square className="w-4 h-4 fill-white shrink-0" /> Punch Out & Finish Day
+                  {actionInProgress === 'punch_out' ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                  ) : (
+                    <Square className="w-4 h-4 fill-white shrink-0" />
+                  )}
+                  <span>{actionInProgress === 'punch_out' ? 'Finishing Day...' : 'Punch Out & Finish Day'}</span>
                 </button>
               </div>
             )}
 
             {attendanceStatus === 'PUNCHED_OUT' && (
-              <button
-                type="button"
-                onClick={handleDetailedClock}
-                className="flex-1 py-3 px-4 sm:px-6 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
-              >
-                View Full Attendance Summary &rarr;
-              </button>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+                <button
+                  type="button"
+                  disabled={!!actionInProgress}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleAction(onPunchIn, 'punch_in');
+                  }}
+                  className="flex-1 w-full py-3.5 px-6 rounded-2xl bg-[#8B1D2C] hover:bg-[#731724] hover:shadow-lg hover:shadow-[#8B1D2C]/30 hover:-translate-y-0.5 text-white font-bold text-sm shadow-md shadow-[#8B1D2C]/20 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  {actionInProgress === 'punch_in' ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-white shrink-0" />
+                  )}
+                  <span>{actionInProgress === 'punch_in' ? 'Punching In...' : 'Punch In Again'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDetailedClock}
+                  className="py-3.5 px-6 rounded-2xl bg-slate-800 hover:bg-slate-900 hover:shadow-md hover:-translate-y-0.5 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ease-out"
+                >
+                  Summary &rarr;
+                </button>
+              </div>
             )}
 
             <button
               type="button"
               onClick={handleDetailedClock}
-              className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer text-center"
+              className="px-5 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 hover:text-slate-900 text-slate-700 font-semibold text-xs hover:-translate-y-0.5 hover:shadow-xs transition-all duration-200 ease-out cursor-pointer text-center"
             >
               Detailed Clock &rarr;
             </button>
           </div>
         </div>
+      </div>
+
+      {/* 2. Today's Staff Attendance Records Table */}
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-slate-900">Today's Staff Attendance</h3>
+              {totalStaffRecords > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8B1D2C]/10 text-[#8B1D2C]">
+                  {totalStaffRecords} Staff
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">Live attendance roster for all employees</p>
+          </div>
+
+          <div className="flex items-center gap-3 self-end sm:self-auto">
+            {totalStaffRecords > 5 && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="text-[11px] font-medium">Rows:</span>
+                <select
+                  value={attendancePageSize}
+                  onChange={(e) => {
+                    setAttendancePageSize(Number(e.target.value));
+                    setAttendancePage(1);
+                  }}
+                  className="px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#8B1D2C]"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => navigate('/hr/staff-attendance')}
+              className="text-xs font-bold text-[#8B1D2C] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              View Full Records &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-4 px-6">Employee</th>
+                <th className="py-4 px-6">Status</th>
+                <th className="py-4 px-6">Punch In</th>
+                <th className="py-4 px-6">Punch Out</th>
+                <th className="py-4 px-6">Total Hours</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginatedStaffAttendance.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-12 text-center text-slate-400 text-sm">
+                    No attendance records found for today.
+                  </td>
+                </tr>
+              ) : (
+                paginatedStaffAttendance.map((record, index) => (
+                  <tr key={record.id || index} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-3 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold border border-slate-200">
+                          {record.employeeName?.charAt(0) || 'E'}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-900">{record.employeeName}</div>
+                          <div className="text-xs text-slate-500 font-mono">{record.employeeId || 'EMP-XX'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-6">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
+                        record.status === 'Present' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        record.status === 'Absent' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                        record.status === 'Late' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                        'bg-slate-50 text-slate-700 border-slate-200'
+                      }`}>
+                        {record.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-6 text-sm font-medium text-slate-700 font-mono">
+                      {record.punchIn || '--:--'}
+                    </td>
+                    <td className="py-3 px-6 text-sm font-medium text-slate-700 font-mono">
+                      {record.punchOut || '--:--'}
+                    </td>
+                    <td className="py-3 px-6 text-sm font-bold text-slate-900">
+                      {record.totalHours || '0h 0m'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        {totalStaffRecords > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100 text-xs text-slate-500">
+            <div>
+              Showing <span className="font-bold text-slate-800">{attendanceStartIndex + 1}</span> to{' '}
+              <span className="font-bold text-slate-800">
+                {Math.min(attendanceStartIndex + attendancePageSize, totalStaffRecords)}
+              </span>{' '}
+              of <span className="font-bold text-slate-800">{totalStaffRecords}</span> staff members
+            </div>
+
+            {attendanceTotalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleAttendancePageChange(attendancePage - 1)}
+                  disabled={attendancePage === 1}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                    attendancePage === 1
+                      ? 'border-slate-100 text-slate-300 cursor-not-allowed bg-slate-50/50'
+                      : 'border-slate-200 text-slate-700 hover:bg-slate-50 bg-white shadow-2xs'
+                  }`}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: attendanceTotalPages }, (_, i) => i + 1).map((pageNum) => {
+                    if (attendanceTotalPages > 7) {
+                      if (
+                        pageNum === 1 ||
+                        pageNum === attendanceTotalPages ||
+                        (pageNum >= attendancePage - 1 && pageNum <= attendancePage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => handleAttendancePageChange(pageNum)}
+                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              attendancePage === pageNum
+                                ? 'bg-[#8B1D2C] text-white shadow-xs'
+                                : 'border border-slate-200 text-slate-700 hover:bg-slate-50 bg-white'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      }
+                      if (pageNum === attendancePage - 2 || pageNum === attendancePage + 2) {
+                        return (
+                          <span key={pageNum} className="text-slate-400 px-1 text-xs">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => handleAttendancePageChange(pageNum)}
+                        className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          attendancePage === pageNum
+                            ? 'bg-[#8B1D2C] text-white shadow-xs'
+                            : 'border border-slate-200 text-slate-700 hover:bg-slate-50 bg-white'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleAttendancePageChange(attendancePage + 1)}
+                  disabled={attendancePage === attendanceTotalPages}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                    attendancePage === attendanceTotalPages
+                      ? 'border-slate-100 text-slate-300 cursor-not-allowed bg-slate-50/50'
+                      : 'border-slate-200 text-slate-700 hover:bg-slate-50 bg-white shadow-2xs'
+                  }`}
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </div>

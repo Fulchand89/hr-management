@@ -80,7 +80,18 @@ const createEmployeeSchema = Joi.object({
     'date.format': 'Date of birth must be a valid ISO format (YYYY-MM-DD)'
   }),
   gender: Joi.string().valid('male', 'female', 'other').allow(null).optional(),
-  status: Joi.string().valid(...ALL_STATUSES).optional().default(USER_STATUS.ACTIVE)
+  status: Joi.string().valid(...ALL_STATUSES).optional().default(USER_STATUS.ACTIVE),
+  address: Joi.string().trim().max(255).allow('', null).optional(),
+  emergencyContactName: Joi.string().trim().max(100).allow('', null).optional(),
+  emergencyContactPhone: Joi.string()
+    .trim()
+    .pattern(/^[+0-9\s-]{7,25}$/)
+    .allow('', null)
+    .optional(),
+  emergencyContactRelation: Joi.string().trim().max(50).allow('', null).optional(),
+  bankName: Joi.string().trim().max(100).allow('', null).optional(),
+  bankAccountNumber: Joi.string().trim().max(50).allow('', null).optional(),
+  bankIfsc: Joi.string().trim().max(20).uppercase().allow('', null).optional()
 });
 
 /**
@@ -113,7 +124,18 @@ const updateEmployeeSchema = Joi.object({
   salary: Joi.number().positive().precision(2).allow(null).optional(),
   dob: Joi.date().iso().custom(validateMinimumAge).allow(null).optional(),
   gender: Joi.string().valid('male', 'female', 'other').allow(null).optional(),
-  status: Joi.string().valid(...ALL_STATUSES).optional()
+  status: Joi.string().valid(...ALL_STATUSES).optional(),
+  address: Joi.string().trim().max(255).allow('', null).optional(),
+  emergencyContactName: Joi.string().trim().max(100).allow('', null).optional(),
+  emergencyContactPhone: Joi.string()
+    .trim()
+    .pattern(/^[+0-9\s-]{7,25}$/)
+    .allow('', null)
+    .optional(),
+  emergencyContactRelation: Joi.string().trim().max(50).allow('', null).optional(),
+  bankName: Joi.string().trim().max(100).allow('', null).optional(),
+  bankAccountNumber: Joi.string().trim().max(50).allow('', null).optional(),
+  bankIfsc: Joi.string().trim().max(20).uppercase().allow('', null).optional()
 }).min(1);
 
 /**
