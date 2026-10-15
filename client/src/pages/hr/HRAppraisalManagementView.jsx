@@ -384,7 +384,7 @@ export const HRAppraisalManagementView = () => {
               {/* Current Details */}
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Current Monthly Salary</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Current Salary</span>
                   <span className="text-base font-bold text-slate-900 font-mono">
                     ₹{selectedEmp.currentSalary.toLocaleString('en-IN')}
                   </span>
@@ -446,9 +446,9 @@ export const HRAppraisalManagementView = () => {
 
                 {/* Live calculation */}
                 <div className="pt-2 border-t border-emerald-200/80 flex items-center justify-between text-xs">
-                  <span className="text-slate-600 font-medium">New Revised Monthly Salary:</span>
+                  <span className="text-slate-600 font-medium">New Revised Salary:</span>
                   <span className="font-bold font-mono text-emerald-900 text-sm">
-                    ₹{Math.round(selectedEmp.currentSalary * (1 + incrementPercent / 100)).toLocaleString('en-IN')} / mo
+                    ₹{Math.round(selectedEmp.currentSalary * (1 + incrementPercent / 100)).toLocaleString('en-IN')} / yr
                   </span>
                 </div>
               </div>

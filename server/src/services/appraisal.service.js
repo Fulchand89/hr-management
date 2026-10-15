@@ -145,7 +145,7 @@ const createAppraisalReview = async (payload, reviewer) => {
       {
         userId,
         title: '🎉 Performance Appraisal Completed & Approved',
-        message: `Congratulations! Your appraisal for ${review.cycleName} has been approved with a ${computedHike > 0 ? `+${computedHike.toFixed(0)}% salary hike` : 'rating'} (${overallScore}/5.0). Revised monthly salary: ₹${computedNewSalary.toLocaleString('en-IN')}.`,
+        message: `Congratulations! Your appraisal for ${review.cycleName} has been approved with a ${computedHike > 0 ? `+${computedHike.toFixed(0)}% salary hike` : 'rating'} (${overallScore}/5.0). Revised salary: ₹${computedNewSalary.toLocaleString('en-IN')}.`,
         type: 'appraisal',
         actionUrl: '/employee/appraisals'
       },

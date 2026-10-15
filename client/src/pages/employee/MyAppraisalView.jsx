@@ -237,16 +237,16 @@ export const MyAppraisalView = ({ onBack }) => {
               </span>
             </div>
 
-            {/* Revised Monthly Salary */}
+            {/* Revised Annual Salary */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
               <span className="text-[10px] font-bold uppercase text-slate-400 block tracking-wider">
-                Revised Monthly Salary
+                Revised Annual Salary
               </span>
               <div className="mt-1">
                 <span className="text-lg sm:text-xl font-black text-slate-900 font-mono">
                   ₹{Number(latestAppraisal.newSalary || currentSalary).toLocaleString('en-IN')}
                 </span>
-                <span className="text-[10px] text-slate-400 block">/ month</span>
+                <span className="text-[10px] text-slate-400 block">/ year</span>
               </div>
               {Number(latestAppraisal.previousSalary || 0) > 0 && (
                 <span className="text-[10px] text-slate-400 line-through mt-0.5 block">
@@ -261,10 +261,10 @@ export const MyAppraisalView = ({ onBack }) => {
                 Policy Cycle
               </span>
               <div className="mt-1 font-bold text-slate-800 text-sm">
-                {isElevenMonthCycle ? '11-Month Fast Track' : '12-Month Annual'}
+                {isElevenMonthCycle ? '11-Month Fast Track' : '1-Year Annual'}
               </div>
               <span className="text-[10px] text-slate-500 mt-1 block">
-                Next in ~{cycleMonths} months
+                Next in ~{cycleMonths === 12 ? '1 year' : `${cycleMonths} months`}
               </span>
             </div>
           </div>
@@ -373,7 +373,7 @@ export const MyAppraisalView = ({ onBack }) => {
                   <th className="py-3 px-4 whitespace-nowrap">Overall Score</th>
                   <th className="py-3 px-4 whitespace-nowrap">Performance Rating</th>
                   <th className="py-3 px-4 whitespace-nowrap">Hike %</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Revised Monthly Salary</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Revised Annual Salary</th>
                   <th className="py-3 px-4 whitespace-nowrap">Effective Date</th>
                 </tr>
               </thead>

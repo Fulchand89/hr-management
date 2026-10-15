@@ -95,36 +95,7 @@ export const EmployeePoliciesView = () => {
             Official guidelines, employee handbook, and compliance acknowledgments
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={() => navigate('/employee/policies/handbook')}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer self-start sm:self-auto"
-        >
-          <BookOpen className="w-3.5 h-3.5 text-rose-400" />
-          <span>Official Handbook</span>
-        </button>
       </div>
-
-      {/* ── Action Required Alert Strip ─────────────────────────────────── */}
-      {pendingMandatory.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5 text-rose-950 font-medium">
-            <Lock className="w-4 h-4 text-[#8B1D2C] shrink-0" />
-            <span>
-              You have <strong>{pendingMandatory.length}</strong> mandatory {pendingMandatory.length === 1 ? 'policy' : 'policies'} requiring your digital sign-off.
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => navigate('/employee/policies/' + pendingMandatory[0].id)}
-            className="px-3.5 py-1.5 rounded-lg bg-[#8B1D2C] hover:bg-[#731724] text-white font-semibold text-xs transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
-          >
-            Review &amp; Sign &rarr;
-          </button>
-        </div>
-      )}
 
       {/* ── Search, Category & Status Filter Bar ─────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">

@@ -100,15 +100,6 @@ export const EmployeePolicyDocumentsView = () => {
             </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => navigate('/employee/policies/handbook')}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-2xs transition-all cursor-pointer self-start sm:self-auto"
-        >
-          <BookOpen className="w-3.5 h-3.5 text-rose-400" />
-          <span>Official Handbook</span>
-        </button>
       </div>
 
       {/* ── Search & Category Filter Toolbar ──────────────────────── */}
