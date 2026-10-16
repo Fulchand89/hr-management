@@ -26,7 +26,9 @@ import {
   Home,
   Users,
   ChevronRight,
+  MessageSquare,
 } from 'lucide-react';
+import { useSocket } from '../../context/SocketContext';
 
 export const EmployeeLayout = ({
   activeTab = 'dashboard',
@@ -45,6 +47,7 @@ export const EmployeeLayout = ({
   children,
 }) => {
   const { user } = useAuth();
+  const { totalUnreadCount } = useSocket();
   const userName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : (user?.name || user?.email?.split('@')[0] || 'Employee');
@@ -79,6 +82,7 @@ export const EmployeeLayout = ({
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'chat', label: 'Chat', icon: MessageSquare, badge: totalUnreadCount > 0 ? totalUnreadCount : null },
     { id: 'attendance', label: 'Live Punch & Timer', icon: Clock },
     { id: 'my-attendance', label: 'My Attendance', icon: CalendarCheck },
     { id: 'attendance-correction', label: 'Attendance Corrections', icon: CalendarClock },
@@ -728,6 +732,30 @@ export const EmployeeLayout = ({
             </div>
 
             <div className="mt-3 space-y-1 overflow-y-auto flex-1 pr-1 overscroll-contain">
+              {/* Chat Module */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  onSelectTab('chat');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <span>Chat</span>
+                </div>
+                {totalUnreadCount > 0 ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8B1D2C] text-white">
+                    {totalUnreadCount}
+                  </span>
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+                )}
+              </button>
+
               {/* Attendance Corrections */}
               <button
                 type="button"

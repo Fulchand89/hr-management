@@ -769,6 +769,20 @@ const updateMyProfile = async (userId, payload) => {
     updateData.lastName = employee.lastName;
   }
 
+  // Ensure emergency contact phone contains only numeric digits if provided
+  if (updateData.emergencyContactPhone !== undefined && updateData.emergencyContactPhone !== null) {
+    const rawEmergency = String(updateData.emergencyContactPhone).trim();
+    if (rawEmergency) {
+      const digitsOnly = rawEmergency.replace(/\D/g, '');
+      if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+        throw new BadRequestError('Emergency contact phone must contain between 7 and 15 digits');
+      }
+      updateData.emergencyContactPhone = digitsOnly;
+    } else {
+      updateData.emergencyContactPhone = '';
+    }
+  }
+
   // Apply scalar profile fields
   const standardFields = ['phone', 'address', 'emergencyContactName', 'emergencyContactPhone', 'emergencyContactRelation', 'bankAccountNumber', 'bankName', 'bankIfsc'];
   standardFields.forEach((field) => {
@@ -930,7 +944,7 @@ const updateEmployeeSalaryStructure = async (id, payload, actor = null) => {
  * ========================================================
  */
 
-const uploadEmployeeDocument = async (userId, payload, file) => {
+const uploadEmployeeDocument = async (userId, payload, file, actor = null) => {
   if (!file) {
     throw new BadRequestError('Document file is required');
   }
@@ -949,6 +963,12 @@ const uploadEmployeeDocument = async (userId, payload, file) => {
     else normType = 'other';
   }
 
+  // If uploaded or updated by HR / Admin (or for an employee by HR), automatically mark as verified
+  const isHrOrAdmin = !actor || actor.role === 'hr' || actor.role === 'admin' || actor.role === 'super_admin';
+  const verificationStatus = isHrOrAdmin ? 'verified' : 'pending';
+  const verifiedBy = isHrOrAdmin && actor ? actor.id : null;
+  const verifiedAt = isHrOrAdmin ? new Date() : null;
+
   const doc = await EmployeeDocument.create({
     userId,
     title: title.trim(),
@@ -956,7 +976,10 @@ const uploadEmployeeDocument = async (userId, payload, file) => {
     fileUrl: `/uploads/${file.filename}`,
     fileSize: file.size,
     mimeType: file.mimetype,
-    verificationStatus: 'pending'
+    verificationStatus,
+    verifiedBy,
+    verifiedAt,
+    remarks: isHrOrAdmin ? 'Verified by HR' : null
   });
 
   await ActivityLog.create({

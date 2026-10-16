@@ -220,7 +220,7 @@ const updateEmployeeSalary = async (req, res, next) => {
 const uploadDocumentForEmployee = async (req, res, next) => {
   try {
     const targetUserId = req.params.id;
-    const doc = await employeeService.uploadEmployeeDocument(targetUserId, req.body, req.file);
+    const doc = await employeeService.uploadEmployeeDocument(targetUserId, req.body, req.file, req.user);
     return ApiResponse.created(res, {
       message: 'Employee document uploaded successfully',
       data: doc
@@ -232,7 +232,7 @@ const uploadDocumentForEmployee = async (req, res, next) => {
 
 const uploadMyDocument = async (req, res, next) => {
   try {
-    const doc = await employeeService.uploadEmployeeDocument(req.user.id, req.body, req.file);
+    const doc = await employeeService.uploadEmployeeDocument(req.user.id, req.body, req.file, req.user);
     return ApiResponse.created(res, {
       message: 'Document uploaded successfully',
       data: doc

@@ -193,6 +193,15 @@ export const ProfileView = ({ onBack, onLogout }) => {
     setEditLoading(true);
     setEditError('');
 
+    if (editForm.emergencyContactPhone && editForm.emergencyContactPhone.trim()) {
+      const digitsOnly = editForm.emergencyContactPhone.replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        setEditError('Emergency phone number must be at least 10 digits.');
+        setEditLoading(false);
+        return;
+      }
+    }
+
     try {
       await updateMyProfile(editForm);
       setProfile((prev) => ({
@@ -646,7 +655,10 @@ export const ProfileView = ({ onBack, onLogout }) => {
                   type="tel"
                   required
                   value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  onChange={(e) => {
+                    const validPhone = e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 20);
+                    setEditForm({ ...editForm, phone: validPhone });
+                  }}
                   placeholder="+91 98765 43210"
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
                 />
@@ -691,12 +703,34 @@ export const ProfileView = ({ onBack, onLogout }) => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Emergency Phone</label>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Emergency Phone <span className="text-[10px] text-slate-400 font-normal">(Numbers only)</span>
+                </label>
                 <input
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={15}
                   value={editForm.emergencyContactPhone}
-                  onChange={(e) => setEditForm({ ...editForm, emergencyContactPhone: e.target.value })}
-                  placeholder="Emergency contact phone"
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/\D/g, '').slice(0, 15);
+                    setEditForm({ ...editForm, emergencyContactPhone: onlyNums });
+                  }}
+                  onKeyDown={(e) => {
+                    if (
+                      !/^[0-9]$/.test(e.key) &&
+                      !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter'].includes(e.key) &&
+                      !(e.ctrlKey || e.metaKey)
+                    ) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 15);
+                    setEditForm({ ...editForm, emergencyContactPhone: pasted });
+                  }}
+                  placeholder="e.g. 9876543210"
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8B1D2C]/20 focus:border-[#8B1D2C]"
                 />
               </div>

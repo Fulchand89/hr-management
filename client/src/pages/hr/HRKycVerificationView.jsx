@@ -390,19 +390,6 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
                           </button>
                         )}
 
-                        {/* Reject Button */}
-                        {!isRejected && (
-                          <button
-                            type="button"
-                            onClick={() => openRejectModal(doc)}
-                            disabled={isSubmitting}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs cursor-pointer transition-colors disabled:opacity-50"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>Reject</span>
-                          </button>
-                        )}
-
                         {/* Delete */}
                         <button
                           type="button"
@@ -489,20 +476,6 @@ export const HRKycVerificationView = ({ onDocumentUpdated }) => {
                   >
                     <Check className="w-3.5 h-3.5" />
                     <span>Verify Document</span>
-                  </button>
-                )}
-                {previewDoc.verificationStatus !== 'rejected' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const d = previewDoc;
-                      setPreviewDoc(null);
-                      openRejectModal(d);
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    <span>Reject</span>
                   </button>
                 )}
               </div>

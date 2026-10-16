@@ -29,4 +29,5 @@ class ApiResponse {
   }
 }
 
+ApiResponse.ApiResponse = ApiResponse;
 module.exports = ApiResponse;

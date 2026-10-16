@@ -29,6 +29,9 @@ const { initResignationRequestModel } = require('./ResignationRequest');
 const { initExitClearanceModel } = require('./ExitClearance');
 const { initEmployeeReferralModel } = require('./EmployeeReferral');
 const { initAppraisalReviewModel } = require('./AppraisalReview');
+const { initConversationModel } = require('./Conversation');
+const { initConversationParticipantModel } = require('./ConversationParticipant');
+const { initChatMessageModel } = require('./ChatMessage');
 
 // 1. Initialize all models
 const Role = initRoleModel(sequelize);
@@ -58,6 +61,9 @@ const ResignationRequest = initResignationRequestModel(sequelize);
 const ExitClearance = initExitClearanceModel(sequelize);
 const EmployeeReferral = initEmployeeReferralModel(sequelize);
 const AppraisalReview = initAppraisalReviewModel(sequelize);
+const Conversation = initConversationModel(sequelize);
+const ConversationParticipant = initConversationParticipantModel(sequelize);
+const ChatMessage = initChatMessageModel(sequelize);
 
 // 2. Define Associations
 
@@ -201,6 +207,25 @@ AppraisalReview.belongsTo(Designation, { foreignKey: 'promotionDesignationId', a
 // Q. Employee Documents Verification
 EmployeeDocument.belongsTo(User, { foreignKey: 'verifiedBy', as: 'verifiedByUser' });
 
+// R. Chat Module Associations
+Conversation.hasMany(ConversationParticipant, { foreignKey: 'conversationId', as: 'participants' });
+ConversationParticipant.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+
+User.hasMany(ConversationParticipant, { foreignKey: 'userId', as: 'chatParticipants' });
+ConversationParticipant.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Conversation.belongsToMany(User, { through: ConversationParticipant, foreignKey: 'conversationId', otherKey: 'userId', as: 'members' });
+User.belongsToMany(Conversation, { through: ConversationParticipant, foreignKey: 'userId', otherKey: 'conversationId', as: 'conversations' });
+
+Conversation.hasMany(ChatMessage, { foreignKey: 'conversationId', as: 'messages' });
+ChatMessage.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+
+User.hasMany(ChatMessage, { foreignKey: 'senderId', as: 'sentMessages' });
+ChatMessage.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
+
+ChatMessage.belongsTo(ChatMessage, { foreignKey: 'replyToId', as: 'replyTo' });
+Conversation.belongsTo(ChatMessage, { foreignKey: 'lastMessageId', as: 'lastMessage' });
+
 // Model registry
 const db = {
   sequelize,
@@ -231,7 +256,10 @@ const db = {
   ResignationRequest,
   ExitClearance,
   EmployeeReferral,
-  AppraisalReview
+  AppraisalReview,
+  Conversation,
+  ConversationParticipant,
+  ChatMessage
 };
 
 module.exports = db;

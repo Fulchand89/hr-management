@@ -16,9 +16,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   AlertCircle,
-  Wallet,
-  TrendingUp,
-  Percent
+  Wallet
 } from 'lucide-react';
 import { getEmployeeById } from '../../services/hrService';
 
@@ -126,6 +124,19 @@ export const HREmployeeDetailModal = ({
   };
 
   const statusBadge = getStatusBadge(profile?.status);
+
+  const modalEarningsSum = profile?.salaryStructure
+    ? (Number(profile.salaryStructure.basicSalary || 0) +
+       Number(profile.salaryStructure.hra || 0) +
+       Number(profile.salaryStructure.specialAllowance || 0))
+    : 0;
+
+  const modalMonthlySalary =
+    profile?.salary ||
+    (modalEarningsSum > 0 ? modalEarningsSum : null) ||
+    (profile?.salaryStructure?.ctc ? Math.round(Number(profile.salaryStructure.ctc) / 12) : null) ||
+    profile?.salaryStructure?.netSalary ||
+    null;
 
   return (
     <div
@@ -349,12 +360,12 @@ export const HREmployeeDetailModal = ({
               </div>
             </div>
 
-            {/* Details Section 3: Compensation & Salary Breakdown */}
+            {/* Details Section 3: Monthly Salary */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <Wallet className="w-3.5 h-3.5 text-[#8B1D2C]" />
-                  Compensation & Salary Structure
+                  Monthly Salary
                 </h4>
                 <button
                   type="button"
@@ -368,84 +379,37 @@ export const HREmployeeDetailModal = ({
                 </button>
               </div>
 
-              {profile.salaryStructure ? (
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-3 shadow-2xs">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <span className="text-xs text-slate-500 font-medium">Annual Cost to Company (CTC)</span>
-                    <span className="text-sm font-bold text-slate-900 font-mono">
-                      ₹{Number(profile.salaryStructure.ctc).toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 bg-slate-50 rounded-xl space-y-1.5">
-                      <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3 text-emerald-600" />
-                        Monthly Earnings
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Basic Salary:</span>
-                        <span className="font-semibold text-slate-800">₹{Number(profile.salaryStructure.basicSalary || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>HRA:</span>
-                        <span className="font-semibold text-slate-800">₹{Number(profile.salaryStructure.hra || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Special Allowance:</span>
-                        <span className="font-semibold text-slate-800">₹{Number(profile.salaryStructure.specialAllowance || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-slate-50 rounded-xl space-y-1.5">
-                      <div className="text-[11px] font-bold text-rose-800 flex items-center gap-1">
-                        <Percent className="w-3 h-3 text-rose-600" />
-                        Monthly Deductions
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>PF (12%):</span>
-                        <span className="font-semibold text-slate-800">₹{Number(profile.salaryStructure.pfDeduction || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>ESIC:</span>
-                        <span className="font-semibold text-slate-800">₹{Number(profile.salaryStructure.esiDeduction || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>TDS / Tax:</span>
-                        <span className="font-semibold text-slate-800">₹{Number(profile.salaryStructure.taxDeduction || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
-                    <span className="font-bold text-emerald-900">Net Take-Home Salary:</span>
-                    <span className="text-sm font-bold text-emerald-900 font-mono">
-                      ₹{Number(profile.salaryStructure.netSalary || 0).toLocaleString()} / month
-                    </span>
-                  </div>
+              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-medium text-slate-500 block">Monthly Salary</span>
+                  <span className="text-xl font-bold text-slate-900 font-mono mt-0.5 block">
+                    {modalMonthlySalary ? (
+                      <>
+                        ₹{Number(modalMonthlySalary).toLocaleString()}
+                        <span className="text-xs font-normal text-slate-500 font-sans ml-1">/ month</span>
+                      </>
+                    ) : (
+                      <span className="text-sm font-medium text-slate-400 font-sans">Not configured</span>
+                    )}
+                  </span>
                 </div>
-              ) : (
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-slate-600 block">
-                      Annual CTC: <strong className="text-slate-900">{profile.salary ? `₹${Number(profile.salary).toLocaleString()}` : 'Not set'}</strong>
-                    </span>
-                    <span className="text-[11px] text-slate-400 block mt-0.5">
-                      Detailed component breakdown is not configured yet.
-                    </span>
-                  </div>
+                {modalMonthlySalary ? (
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-2.5 py-1 rounded-full">
+                    Active
+                  </span>
+                ) : (
                   <button
                     type="button"
                     onClick={() => {
                       onClose();
                       if (onManageSalary) onManageSalary(profile);
                     }}
-                    className="px-3 py-1.5 bg-[#8B1D2C] text-white font-bold rounded-lg shadow-xs hover:bg-[#731724] transition-colors cursor-pointer"
+                    className="px-3 py-1.5 bg-[#8B1D2C] text-white text-xs font-bold rounded-lg shadow-xs hover:bg-[#731724] transition-colors cursor-pointer"
                   >
-                    Set Structure
+                    Configure
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Footer */}

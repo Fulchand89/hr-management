@@ -28,9 +28,11 @@ import {
   Home,
   Wallet,
   TrendingUp,
-  UserMinus
+  UserMinus,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
 
 export const HRLayout = ({
   children,
@@ -49,6 +51,7 @@ export const HRLayout = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { totalUnreadCount } = useSocket();
 
   const userName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
@@ -184,6 +187,7 @@ export const HRLayout = ({
   const isReports = currentPath.startsWith('/hr/reports') || currentPath.startsWith('/hr/report');
   const isNotifications = currentPath.startsWith('/hr/notifications');
   const isProfile = currentPath.startsWith('/hr/profile');
+  const isChat = currentPath.startsWith('/hr/chat');
 
   // Complete nav items containing ALL employee fields + ALL HR fields
   const navItems = [
@@ -193,6 +197,14 @@ export const HRLayout = ({
       icon: LayoutDashboard,
       path: '/hr/dashboard',
       isActive: isDashboard,
+    },
+    {
+      id: 'chat',
+      label: 'Chat',
+      icon: MessageSquare,
+      path: '/hr/chat',
+      isActive: isChat,
+      badge: totalUnreadCount > 0 ? totalUnreadCount : null,
     },
     {
       id: 'attendance',
@@ -882,6 +894,30 @@ export const HRLayout = ({
             </div>
 
             <div className="mt-3 space-y-1 overflow-y-auto flex-1 pr-1 overscroll-contain">
+              {/* Chat Module */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMoreModalOpen(false);
+                  navigate('/hr/chat');
+                }}
+                className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-xs font-bold text-slate-800 cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <span>Chat</span>
+                </div>
+                {totalUnreadCount > 0 ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8B1D2C] text-white">
+                    {totalUnreadCount}
+                  </span>
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700" />
+                )}
+              </button>
+
               {/* Employee Management */}
               <button
                 type="button"

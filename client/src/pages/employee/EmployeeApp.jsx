@@ -26,6 +26,7 @@ import HRLeaveDetailView from '../hr/HRLeaveDetailView';
 import EmployeeKycDocumentsView from './EmployeeKycDocumentsView';
 import EmployeeHolidayCalendarView from './EmployeeHolidayCalendarView';
 import SignInView from './SignInView';
+import ChatView from '../chat/ChatView';
 
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -342,6 +343,7 @@ export const EmployeeApp = () => {
     }
     if (path.includes('/notifications') || path.includes('/notification')) return 'notifications';
     if (path.includes('/profile') || path.includes('/my-profile')) return 'profile';
+    if (path.includes('/chat')) return 'chat';
     return 'dashboard';
   };
 
@@ -679,6 +681,10 @@ export const EmployeeApp = () => {
         {/* Removed Referrals & Rewards Redirects */}
         <Route path="referrals" element={<Navigate to="/employee/dashboard" replace />} />
         <Route path="rewards" element={<Navigate to="/employee/dashboard" replace />} />
+
+        {/* Real-time WhatsApp Style Chat */}
+        <Route path="chat" element={<ChatView />} />
+        <Route path="chat/:conversationId" element={<ChatView />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/employee/dashboard" replace />} />

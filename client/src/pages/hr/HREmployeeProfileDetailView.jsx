@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -18,8 +18,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Wallet,
-  TrendingUp,
-  Percent,
   Layers,
   MapPin,
   ExternalLink,
@@ -27,9 +25,16 @@ import {
   FileText,
   Check,
   X,
-  CreditCard
+  CreditCard,
+  UploadCloud
 } from 'lucide-react';
-import { getEmployeeById, getEmployeeDocuments, verifyEmployeeDocument, updateEmployee } from '../../services/hrService';
+import {
+  getEmployeeById,
+  getEmployeeDocuments,
+  verifyEmployeeDocument,
+  updateEmployee,
+  uploadEmployeeDocumentForUser
+} from '../../services/hrService';
 import { ProfileSkeleton } from '../../components/common/Skeleton';
 
 export const HREmployeeProfileDetailView = () => {
@@ -121,16 +126,39 @@ export const HREmployeeProfileDetailView = () => {
     fetchDetail();
   }, [id]);
 
-  const handleVerifyDoc = async (docId, status) => {
-    let remarks = '';
-    if (status === 'rejected') {
-      remarks = prompt('Enter rejection reason:') || 'Document invalid or illegible';
-    }
+  const fileUploadRef = useRef(null);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+
+  const handleUploadNewDoc = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingDoc(true);
     try {
-      await verifyEmployeeDocument(docId, { status, remarks });
+      const formData = new FormData();
+      formData.append('file', file);
+      const title = file.name.replace(/\.[^/.]+$/, '');
+      formData.append('title', title);
+      formData.append('documentType', 'id_proof');
+      await uploadEmployeeDocumentForUser(id, formData);
       const resDocs = await getEmployeeDocuments(id);
       const docsList = Array.isArray(resDocs?.data) ? resDocs.data : (Array.isArray(resDocs) ? resDocs : []);
       setDocuments(docsList);
+      showToast(`Document "${title}" uploaded & verified!`);
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Failed to upload document');
+    } finally {
+      setIsUploadingDoc(false);
+      if (fileUploadRef.current) fileUploadRef.current.value = '';
+    }
+  };
+
+  const handleVerifyDoc = async (docId) => {
+    try {
+      await verifyEmployeeDocument(docId, { status: 'verified', remarks: 'Verified by HR' });
+      const resDocs = await getEmployeeDocuments(id);
+      const docsList = Array.isArray(resDocs?.data) ? resDocs.data : (Array.isArray(resDocs) ? resDocs : []);
+      setDocuments(docsList);
+      showToast('Document marked as Verified successfully!');
     } catch (err) {
       alert(err?.response?.data?.message || 'Failed to update document status');
     }
@@ -184,6 +212,19 @@ export const HREmployeeProfileDetailView = () => {
   };
 
   const statusBadge = getStatusBadge(profile?.status);
+
+  const earningsSum = profile?.salaryStructure
+    ? (Number(profile.salaryStructure.basicSalary || 0) +
+       Number(profile.salaryStructure.hra || 0) +
+       Number(profile.salaryStructure.specialAllowance || 0))
+    : 0;
+
+  const monthlySalary =
+    profile?.salary ||
+    (earningsSum > 0 ? earningsSum : null) ||
+    (profile?.salaryStructure?.ctc ? Math.round(Number(profile.salaryStructure.ctc) / 12) : null) ||
+    profile?.salaryStructure?.netSalary ||
+    null;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12 font-sans text-slate-800">
@@ -291,9 +332,9 @@ export const HREmployeeProfileDetailView = () => {
 
             <div className="flex items-center gap-2">
               <div className="p-3 bg-white border border-slate-200 rounded-xl text-right">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Annual CTC</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Monthly Salary</span>
                 <span className="text-base font-bold text-slate-900 font-mono block">
-                  {profile.salary ? `₹${Number(profile.salary).toLocaleString()}` : 'Not set'}
+                  {monthlySalary ? `₹${Number(monthlySalary).toLocaleString()}` : 'Not set'}
                 </span>
               </div>
             </div>
@@ -400,98 +441,51 @@ export const HREmployeeProfileDetailView = () => {
             </div>
           </div>
 
-          {/* Compensation & Salary Structure */}
+          {/* Monthly Salary */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-[#8B1D2C]" />
-                Compensation & Salary Breakdown
+                Monthly Salary
               </h3>
               <button
                 type="button"
                 onClick={() => navigate(`/hr/employees/${profile.id}/salary`)}
                 className="text-xs font-bold text-[#8B1D2C] hover:text-[#731724] hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <span>Revise / Configure Structure</span>
+                <span>Revise / Configure Salary</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {profile.salaryStructure ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
-                    <div className="text-xs font-bold text-emerald-800 flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
-                      <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                      Monthly Earnings (₹)
-                    </div>
-                    <div className="flex justify-between text-slate-600 pt-1">
-                      <span>Basic Salary:</span>
-                      <span className="font-bold text-slate-800">₹{Number(profile.salaryStructure.basicSalary || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>House Rent Allowance (HRA):</span>
-                      <span className="font-bold text-slate-800">₹{Number(profile.salaryStructure.hra || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Special Allowance:</span>
-                      <span className="font-bold text-slate-800">₹{Number(profile.salaryStructure.specialAllowance || 0).toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-2">
-                    <div className="text-xs font-bold text-rose-800 flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
-                      <Percent className="w-3.5 h-3.5 text-rose-600" />
-                      Monthly Deductions (₹)
-                    </div>
-                    <div className="flex justify-between text-slate-600 pt-1">
-                      <span>Provident Fund (PF):</span>
-                      <span className="font-bold text-slate-800">₹{Number(profile.salaryStructure.pfDeduction || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>ESIC Deduction:</span>
-                      <span className="font-bold text-slate-800">₹{Number(profile.salaryStructure.esiDeduction || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Tax / TDS Deduction:</span>
-                      <span className="font-bold text-slate-800">₹{Number(profile.salaryStructure.taxDeduction || 0).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
-                  <div>
-                    <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
-                      Estimated Monthly Take-Home Pay
-                    </span>
-                    <span className="text-xl font-bold text-emerald-900 font-mono mt-0.5 block">
-                      ₹{Number(profile.salaryStructure.netSalary || 0).toLocaleString()} / month
-                    </span>
-                  </div>
-                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-100/70 px-3 py-1 rounded-full">
-                    Active Structure
-                  </span>
-                </div>
+            <div className="p-5 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between">
+              <div>
+                <span className="text-xs font-medium text-slate-500 block">Monthly Salary</span>
+                <span className="text-2xl sm:text-3xl font-bold text-slate-900 font-mono mt-1 block">
+                  {monthlySalary ? (
+                    <>
+                      ₹{Number(monthlySalary).toLocaleString()}
+                      <span className="text-xs font-normal text-slate-500 font-sans ml-1.5">/ month</span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-medium text-slate-400 font-sans">Not configured</span>
+                  )}
+                </span>
               </div>
-            ) : (
-              <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-slate-700 block font-semibold">
-                    Annual CTC: {profile.salary ? `₹${Number(profile.salary).toLocaleString()}` : 'Not configured'}
-                  </span>
-                  <span className="text-slate-400 text-[11px] block mt-0.5">
-                    Breakdown into Basic, HRA, and PF has not been configured yet.
-                  </span>
-                </div>
+              {monthlySalary ? (
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-3 py-1 rounded-full">
+                  Active
+                </span>
+              ) : (
                 <button
                   type="button"
                   onClick={() => navigate(`/hr/employees/${profile.id}/salary`)}
                   className="px-4 py-2 bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
-                  Configure Salary Structure
+                  Configure Salary
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Salary Bank Account & Disbursement Details */}
@@ -569,9 +563,27 @@ export const HREmployeeProfileDetailView = () => {
                   KYC &amp; Submitted Documents ({documents.length})
                 </h3>
               </div>
-              <span className="text-[11px] font-semibold text-slate-400">
-                Identity, Address &amp; Qualifications
-              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileUploadRef}
+                  onChange={handleUploadNewDoc}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  disabled={isUploadingDoc}
+                  onClick={() => fileUploadRef.current?.click()}
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-[#8B1D2C] border border-rose-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                >
+                  {isUploadingDoc ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <UploadCloud className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isUploadingDoc ? 'Uploading...' : 'Upload Document'}</span>
+                </button>
+              </div>
             </div>
 
             {documents.length === 0 ? (
@@ -583,7 +595,6 @@ export const HREmployeeProfileDetailView = () => {
               <div className="divide-y divide-slate-100 border border-slate-200/80 rounded-xl overflow-hidden">
                 {documents.map((doc) => {
                   const isVerified = doc.verificationStatus === 'verified';
-                  const isRejected = doc.verificationStatus === 'rejected';
 
                   return (
                     <div
@@ -622,37 +633,17 @@ export const HREmployeeProfileDetailView = () => {
 
                       <div className="flex items-center gap-2">
                         {isVerified ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <Check className="w-3 h-3" /> Verified
-                          </span>
-                        ) : isRejected ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                            <X className="w-3 h-3" /> Rejected
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <Check className="w-3.5 h-3.5" /> Verified
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            <Clock className="w-3 h-3" /> Pending Review
-                          </span>
-                        )}
-
-                        {!isVerified && (
                           <button
                             type="button"
-                            onClick={() => handleVerifyDoc(doc.id, 'verified')}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors"
+                            onClick={() => handleVerifyDoc(doc.id)}
+                            className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                           >
-                            <Check className="w-3 h-3" />
+                            <Check className="w-3.5 h-3.5" />
                             <span>Verify</span>
-                          </button>
-                        )}
-
-                        {!isRejected && (
-                          <button
-                            type="button"
-                            onClick={() => handleVerifyDoc(doc.id, 'rejected')}
-                            className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs cursor-pointer transition-colors"
-                          >
-                            Reject
                           </button>
                         )}
                       </div>

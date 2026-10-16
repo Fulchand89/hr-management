@@ -256,29 +256,17 @@ export const HRKycDocumentDetailView = () => {
             {isPending && (
               <div className="space-y-3">
                 <p className="text-xs text-slate-600">
-                  Review the document preview on the left and choose an action:
+                  Review the document preview on the left and approve to verify:
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleVerify}
-                    disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50 transition-all"
-                  >
-                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    <span>Approve</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsRejectOpen(true)}
-                    disabled={isSubmitting}
-                    className="w-full py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 border border-rose-200 cursor-pointer disabled:opacity-50 transition-all"
-                  >
-                    <X className="w-4 h-4" />
-                    <span>Reject</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleVerify}
+                  disabled={isSubmitting}
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50 transition-all"
+                >
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  <span>Verify Document</span>
+                </button>
               </div>
             )}
 
@@ -293,14 +281,6 @@ export const HRKycDocumentDetailView = () => {
                     Verified on {document.verifiedAt ? new Date(document.verifiedAt).toLocaleString() : 'N/A'}.
                   </p>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsRejectOpen(true)}
-                  className="w-full py-2 rounded-xl border border-slate-200 hover:bg-rose-50 hover:text-rose-700 text-slate-600 text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  Change Decision to Reject
-                </button>
               </div>
             )}
 

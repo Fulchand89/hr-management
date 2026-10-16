@@ -42,6 +42,7 @@ import HRKycVerificationView from './HRKycVerificationView';
 import HRKycDocumentDetailView from './HRKycDocumentDetailView';
 import HRApplyLeaveView from './HRApplyLeaveView';
 import HRLeaveDetailView from './HRLeaveDetailView';
+import ChatView from '../chat/ChatView';
 
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -789,6 +790,10 @@ export const HRApp = () => {
           path="referrals-rewards"
           element={<Navigate to="/hr/dashboard" replace />}
         />
+
+        {/* Real-time WhatsApp Style Chat */}
+        <Route path="chat" element={<ChatView />} />
+        <Route path="chat/:conversationId" element={<ChatView />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/hr/dashboard" replace />} />
