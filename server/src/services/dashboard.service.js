@@ -10,7 +10,8 @@ const {
   LeaveType,
   Holiday,
   Department,
-  AppraisalReview
+  AppraisalReview,
+  ResignationRequest
 } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('../config/logger');
@@ -202,8 +203,10 @@ const getHRDashboard = async (userId) => {
     onLeaveTodayCount,
     pendingLeavesCount,
     pendingCorrectionsCount,
+    pendingResignationsCount,
     recentLeaves,
     recentCorrections,
+    recentResignations,
     upcomingHolidays,
     departments,
     personalTodayAttendance,
@@ -245,6 +248,11 @@ const getHRDashboard = async (userId) => {
       where: { status: 'pending' }
     }).catch(() => 0),
 
+    // 5b. Pending resignation applications count
+    ResignationRequest.count({
+      where: { status: 'pending' }
+    }).catch(() => 0),
+
     // 6. Recent pending leaves for approval queue
     LeaveRequest.findAll({
       where: { status: 'pending' },
@@ -273,6 +281,20 @@ const getHRDashboard = async (userId) => {
         {
           model: User,
           as: 'applicant',
+          attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'department']
+        }
+      ]
+    }).catch(() => []),
+
+    // 7b. Recent pending resignations for approval queue
+    ResignationRequest.findAll({
+      where: { status: 'pending' },
+      order: [['createdAt', 'DESC']],
+      limit: 6,
+      include: [
+        {
+          model: User,
+          as: 'employee',
           attributes: ['id', 'firstName', 'lastName', 'employeeCode', 'department']
         }
       ]
@@ -375,6 +397,24 @@ const getHRDashboard = async (userId) => {
     };
   });
 
+  // Format resignation queue items
+  const formattedResignationQueue = recentResignations.map((r) => {
+    const applicantName = r.employee
+      ? `${r.employee.firstName} ${r.employee.lastName || ''}`.trim()
+      : 'Employee';
+    return {
+      id: r.id,
+      employeeName: applicantName,
+      employeeId: r.employee?.employeeCode || 'EMP-N/A',
+      department: r.employee?.department || 'General',
+      resignationDate: r.resignationDate,
+      requestedLastWorkingDay: r.requestedLastWorkingDay,
+      reason: r.reason,
+      status: r.status,
+      appliedAt: r.createdAt
+    };
+  });
+
   // Format upcoming holidays
   const formattedHolidays = upcomingHolidays.map((h) => {
     const holidayDate = new Date(h.date);
@@ -400,10 +440,25 @@ const getHRDashboard = async (userId) => {
       attendanceRate: `${attendanceRateVal}%`,
       attendanceRateNumber: parseFloat(attendanceRateVal),
       pendingLeaveRequests: pendingLeavesCount,
-      pendingCorrectionRequests: pendingCorrectionsCount
+      pendingCorrectionRequests: pendingCorrectionsCount,
+      pendingResignationRequests: pendingResignationsCount
+    },
+    stats: {
+      totalEmployees,
+      presentToday,
+      absentToday,
+      onLeaveToday,
+      lateToday,
+      halfDayToday,
+      attendanceRate: `${attendanceRateVal}%`,
+      pendingLeaves: pendingLeavesCount,
+      pendingCorrectionRequests: pendingCorrectionsCount,
+      pendingResignations: pendingResignationsCount,
+      totalPending: pendingLeavesCount + pendingCorrectionsCount + pendingResignationsCount
     },
     leaveQueue: formattedLeaveQueue,
     attendanceQueue: formattedCorrectionQueue,
+    resignationQueue: formattedResignationQueue,
     departmentStats,
     upcomingHolidays: formattedHolidays,
     personalAttendance: personalTodayAttendance,

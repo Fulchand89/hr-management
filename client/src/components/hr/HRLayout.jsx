@@ -45,13 +45,14 @@ export const HRLayout = ({
   onPunchOut: propPunchOut,
   unreadNotifications: propUnread,
   pendingQueueCount: propPendingQueue,
+  pendingResignationsCount: propPendingResignations,
   onApplyLeaveClick,
   onLogout: propLogout,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { totalUnreadCount } = useSocket();
+  const { totalUnreadCount, notificationToast, dismissNotificationToast, unreadNotificationsCount } = useSocket();
 
   const userName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
@@ -135,7 +136,10 @@ export const HRLayout = ({
     else setInternalAttendanceStatus('PUNCHED_OUT');
   };
 
-  const unreadCount = propUnread !== undefined ? propUnread : 4;
+  const unreadCount = (propUnread !== undefined && propUnread > 0)
+    ? propUnread
+    : (unreadNotificationsCount || 0);
+  const pendingResignationsCount = propPendingResignations ?? 0;
 
   // Status configuration matching EmployeeLayout
   const getStatusBadge = () => {
@@ -289,6 +293,7 @@ export const HRLayout = ({
       icon: UserMinus,
       path: '/hr/exit-management',
       isActive: isExit,
+      badge: pendingResignationsCount > 0 ? pendingResignationsCount : null,
     },
     {
       id: 'reports',
@@ -303,6 +308,7 @@ export const HRLayout = ({
       icon: Bell,
       path: '/hr/notifications',
       isActive: isNotifications,
+      badge: unreadCount > 0 ? unreadCount : null,
     },
     {
       id: 'profile',
@@ -319,38 +325,98 @@ export const HRLayout = ({
   };
 
   return (
-    <div className="min-h-screen lg:h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-800 lg:overflow-hidden">
+    <div className="min-h-screen lg:h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-800 lg:overflow-hidden relative">
+      {/* Real-time Incoming Notification Floating Toast Banner */}
+      {notificationToast && (
+        <div className="fixed top-5 right-5 z-50 max-w-sm sm:max-w-md w-full animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border-2 border-rose-300 p-4 ring-2 ring-rose-500/10 flex items-start gap-3.5 backdrop-blur-md">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+              {notificationToast.type === 'resignation' ? (
+                <UserMinus className="w-5 h-5 animate-pulse" />
+              ) : (
+                <Bell className="w-5 h-5 animate-bounce" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-xs font-black text-slate-900 tracking-tight flex items-center gap-1.5 truncate">
+                  <span>{notificationToast.title}</span>
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping shrink-0" />
+                </h4>
+                <button
+                  type="button"
+                  onClick={dismissNotificationToast}
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+                {notificationToast.message}
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                {notificationToast.actionUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      dismissNotificationToast();
+                      navigate(notificationToast.actionUrl);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1 active:scale-95"
+                  >
+                    <span>View & Review</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={dismissNotificationToast}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Sticky Header matching EmployeeLayout */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
           {/* Left Brand & Mobile Menu Toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 cursor-pointer"
+              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 cursor-pointer shrink-0"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
             <div
               onClick={() => navigate('/hr/dashboard')}
-              className="flex items-center gap-3 cursor-pointer select-none group"
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer select-none group min-w-0"
             >
-              <div className="w-10 h-10 rounded-xl bg-white p-1 border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1 border border-slate-200 shadow-2xs flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <img src="/logo.png" alt="Gupta Tech Web Logo" className="h-full w-full object-contain" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-base tracking-tight text-slate-900 group-hover:text-[#8B1D2C] transition-colors">
+              {/* Desktop: Full branding | Mobile: Hidden text */}
+              <div className="hidden sm:block min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 group-hover:text-[#8B1D2C] transition-colors truncate">
                     Gupta Tech Web
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8B1D2C]/10 text-[#8B1D2C]">
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-[#8B1D2C]/10 text-[#8B1D2C] shrink-0">
                     HRMS
                   </span>
                 </div>
-                <p className="text-[11px] font-medium text-slate-400">People Operations Hub</p>
+                <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 truncate">People Operations Hub</p>
               </div>
+              {/* Mobile only: compact HRMS badge next to logo */}
+              <span className="sm:hidden px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#8B1D2C]/10 text-[#8B1D2C] shrink-0">
+                HRMS
+              </span>
             </div>
           </div>
 
@@ -440,8 +506,15 @@ export const HRLayout = ({
                 <div className="h-4 w-px bg-slate-200" />
                 <button
                   type="button"
-                  onClick={() => navigate('/hr/leave-requests')}
+                  onClick={() => {
+                    if (pendingResignationsCount > 0 && propPendingQueue === pendingResignationsCount) {
+                      navigate('/hr/exit-management');
+                    } else {
+                      navigate('/hr/leave-requests');
+                    }
+                  }}
                   className="text-xs font-bold text-[#8B1D2C] hover:underline flex items-center gap-1 cursor-pointer"
+                  title={`${pendingResignationsCount > 0 ? `${pendingResignationsCount} Resignation(s), ` : ''}${propPendingQueue} total pending items`}
                 >
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                   <span>Queue: {propPendingQueue} Pending</span>
@@ -451,7 +524,7 @@ export const HRLayout = ({
           </div>
 
           {/* Right Action Tools: Notifications & Profile matching EmployeeLayout */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Notification Bell matching EmployeeLayout */}
             <div className="relative">
               <button

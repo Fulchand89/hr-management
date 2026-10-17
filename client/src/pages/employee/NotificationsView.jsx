@@ -11,12 +11,13 @@ import {
   CheckCheck,
   Loader2,
   UserMinus,
-  ArrowRight
+  ArrowRight,
+  ExternalLink,
+  X
 } from 'lucide-react';
 import {
   getMyNotifications,
-  markNotificationRead,
-  markAllNotificationsRead
+  markNotificationRead
 } from '../../services/employeeService';
 
 export const NotificationsView = ({ onBack, onUnreadChange }) => {
@@ -27,6 +28,7 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [selectedNotification, setSelectedNotification] = useState(null);
 
   const loadNotifications = useCallback(async () => {
     setIsLoading(true);
@@ -119,23 +121,10 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
     }
   };
 
-  const handleNotificationClick = async (notif) => {
+  const handleViewNotification = async (notif) => {
+    setSelectedNotification(notif);
     if (!notif.read) {
-      handleMarkAsRead(notif.id);
-    }
-    if (notif.actionUrl) {
-      navigate(notif.actionUrl);
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await markAllNotificationsRead();
-      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
-      if (onUnreadChange) onUnreadChange();
-    } catch {
-      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
-      if (onUnreadChange) onUnreadChange();
+      await handleMarkAsRead(notif.id);
     }
   };
 
@@ -177,15 +166,19 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
   return (
     <div className="space-y-6">
       {/* Top Bar with Filter & Actions */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
               <Bell className="w-5 h-5 text-[#8B1D2C]" />
               Notifications Hub
-              {unreadCount > 0 && (
+              {unreadCount > 0 ? (
                 <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#8B1D2C] text-white">
                   {unreadCount} New
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  All Caught Up
                 </span>
               )}
             </h1>
@@ -193,21 +186,10 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
               Stay up to date with leave approvals, shift alerts, and company announcements.
             </p>
           </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleMarkAllAsRead}
-              className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors"
-            >
-              <CheckCheck className="w-4 h-4 text-emerald-600" />
-              <span>Mark All as Read</span>
-            </button>
-          </div>
         </div>
 
         {/* Category Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl overflow-x-auto w-fit">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl overflow-x-auto max-w-full">
           {['All', 'Attendance', 'Leaves', 'Resignation', 'Company'].map((cat) => {
             const count =
               cat === 'All'
@@ -223,7 +205,7 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
                   setActiveCategory(cat);
                   setCurrentPage(1);
                 }}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer shrink-0 transition-all ${
                   isActive
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800'
@@ -244,7 +226,7 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
       </div>
 
       {/* Notifications List */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-3">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-2xs space-y-3">
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
@@ -265,11 +247,11 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
           filteredNotifications.map((notif) => (
             <div
               key={notif.id}
-              onClick={() => handleNotificationClick(notif)}
+              onClick={() => handleViewNotification(notif)}
               className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-4 ${
                 notif.read
-                  ? 'bg-white border-slate-100 hover:bg-slate-50/60'
-                  : 'bg-rose-50/30 border-rose-100 hover:bg-rose-50/50 shadow-2xs'
+                  ? 'bg-white border-slate-100 hover:bg-slate-50/70'
+                  : 'bg-rose-50/25 border-rose-100/80 hover:bg-rose-50/45 shadow-2xs'
               }`}
             >
               <div
@@ -283,8 +265,8 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <h4
-                    className={`text-xs font-bold truncate ${
-                      notif.read ? 'text-slate-700' : 'text-slate-900'
+                    className={`text-xs truncate ${
+                      notif.read ? 'font-semibold text-slate-700' : 'font-extrabold text-slate-900'
                     }`}
                   >
                     {notif.title}
@@ -293,21 +275,54 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
                     {notif.time}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">{notif.message}</p>
-                <div className="mt-2.5 flex items-center justify-between gap-2">
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                  {notif.message}
+                </p>
+                <div className="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
                       {notif.category}
                     </span>
-                    {!notif.read && (
-                      <span className="w-2 h-2 rounded-full bg-[#8B1D2C]" title="Unread" />
+                    {notif.read ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                        <CheckCheck className="w-3 h-3 text-emerald-600" />
+                        Read
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#8B1D2C] animate-pulse" />
+                        Unread
+                      </span>
                     )}
                   </div>
-                  {notif.actionUrl && (
-                    <span className="text-[11px] font-bold text-[#8B1D2C] hover:underline flex items-center gap-1 shrink-0">
-                      View Details <ArrowRight className="w-3 h-3" />
-                    </span>
-                  )}
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewNotification(notif);
+                      }}
+                      className="text-[11px] font-bold text-[#8B1D2C] hover:text-[#6f1723] flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Read Message</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                    {notif.actionUrl && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!notif.read) handleMarkAsRead(notif.id);
+                          navigate(notif.actionUrl);
+                        }}
+                        className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 underline underline-offset-2 cursor-pointer ml-1"
+                      >
+                        <span>View Details</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -342,6 +357,94 @@ export const NotificationsView = ({ onBack, onUnreadChange }) => {
           </div>
         )}
       </div>
+
+      {/* View Notification Message Modal */}
+      {selectedNotification && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setSelectedNotification(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${getCategoryColor(
+                    selectedNotification.category
+                  )}`}
+                >
+                  {getCategoryIcon(selectedNotification.category)}
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                    {selectedNotification.title}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {selectedNotification.time}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNotification(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Badges Row */}
+            <div className="flex items-center gap-2 pt-1">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                {selectedNotification.category}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                Read
+              </span>
+            </div>
+
+            {/* Message Body */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/60 max-h-64 overflow-y-auto">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                Message Content
+              </p>
+              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+                {selectedNotification.message}
+              </p>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedNotification(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              {selectedNotification.actionUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = selectedNotification.actionUrl;
+                    setSelectedNotification(null);
+                    navigate(url);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#721724] text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                >
+                  <span>Go to Details</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

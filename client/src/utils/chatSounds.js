@@ -9,16 +9,24 @@ class ChatSounds {
   }
 
   getAudioContext() {
-    if (!this.ctx && typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return null;
+    try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (AudioContextClass) {
+      if (!AudioContextClass) return null;
+      if (!this.ctx) {
         this.ctx = new AudioContextClass();
       }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        // Only resume if user has already interacted with the page
+        const canResume = navigator.userActivation ? navigator.userActivation.hasBeenActive : true;
+        if (canResume) {
+          this.ctx.resume().catch(() => {});
+        }
+      }
+      return this.ctx;
+    } catch {
+      return null;
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
-    }
-    return this.ctx;
   }
 
   setMuted(muted) {

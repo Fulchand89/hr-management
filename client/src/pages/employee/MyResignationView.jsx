@@ -9,10 +9,6 @@ import {
   RefreshCw,
   Loader2,
   Undo2,
-  Laptop,
-  Wallet,
-  UserCheck,
-  Lock,
   XCircle,
   Building2,
   ArrowRight
@@ -187,18 +183,7 @@ export const MyResignationView = ({ onBack }) => {
     ['pending', 'submitted', 'under_review'].includes(resignation.status)
   );
 
-  const clearances = resignation?.clearances || [];
-  const clearedCount = clearances.filter((c) => c.status === 'cleared').length;
-  const totalClearances = clearances.length || 5;
-  const progressPercent = Math.round((clearedCount / totalClearances) * 100);
 
-  const deptList = [
-    { key: 'it', name: 'IT & Hardware Assets', icon: Laptop, defaultDesc: 'Laptop, accessories & access revocation' },
-    { key: 'finance', name: 'Finance & Accounts', icon: Wallet, defaultDesc: 'Salary dues, expense claims & PF balance' },
-    { key: 'hr', name: 'Human Resources', icon: UserCheck, defaultDesc: 'Exit interview, NDA verification & certificates' },
-    { key: 'admin', name: 'Admin & Facilities', icon: Lock, defaultDesc: 'ID card & access permissions return' },
-    { key: 'manager', name: 'Reporting Manager', icon: ShieldCheck, defaultDesc: 'Knowledge transfer (KT) & sprint handover' }
-  ];
 
   if (loading) {
     return <PageSkeleton statsCount={3} tableRows={4} className="max-w-6xl" />;
@@ -228,11 +213,11 @@ export const MyResignationView = ({ onBack }) => {
               </button>
             )}
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Resignation & Exit Clearance
+              Resignation & Exit Details
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Track notice period, department clearances, and full & final (F&F) settlement
+            Track notice period, resignation status, and full & final (F&F) settlement
           </p>
         </div>
 
@@ -406,7 +391,7 @@ export const MyResignationView = ({ onBack }) => {
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Exit Clearance Lifecycle
+                    Exit Lifecycle
                   </h3>
                   <p className="text-xs text-slate-500">
                     Ref #{resignation?.id?.slice(0, 8)?.toUpperCase()} • Submitted {exitDates?.submitFormatted || 'N/A'}
@@ -488,93 +473,7 @@ export const MyResignationView = ({ onBack }) => {
             )}
           </div>
 
-          {/* Department Clearances Checklist */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  <span>Department Clearances</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Clearances required from each department for final settlement processing
-                </p>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <div className="text-xs font-bold text-slate-700">
-                  {clearedCount} of {totalClearances} Cleared
-                </div>
-                <div className="w-20 bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Clearances Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {deptList.map((item, idx) => {
-                const IconComponent = item.icon;
-                const rec = clearances.find((c) => c.department?.toLowerCase() === item.key);
-                const isCleared = rec?.status === 'cleared';
-
-                return (
-                  <div
-                    key={idx}
-                    className={`p-3.5 rounded-xl border transition-all ${
-                      isCleared
-                        ? 'bg-emerald-50/40 border-emerald-200/80'
-                        : 'bg-slate-50/60 border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`p-1.5 rounded-lg ${
-                            isCleared
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-slate-200/80 text-slate-600'
-                          }`}
-                        >
-                          <IconComponent className="w-4 h-4" />
-                        </span>
-                        <div className="text-xs font-bold text-slate-800">{item.name}</div>
-                      </div>
-
-                      {isCleared ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Cleared
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                          <Clock className="w-3 h-3" />
-                          Pending
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-[11px] text-slate-500 mt-2">{item.defaultDesc}</p>
-
-                    {rec?.remarks && (
-                      <div className="mt-2 text-[10px] text-slate-600 bg-white p-1.5 rounded border border-slate-200">
-                        Remarks: {rec.remarks}
-                      </div>
-                    )}
-
-                    {isCleared && rec?.clearedByUser && (
-                      <div className="mt-1 text-[10px] text-emerald-700">
-                        Signed off by: {rec.clearedByUser.firstName} {rec.clearedByUser.lastName || ''}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       )}
 

@@ -140,6 +140,12 @@ export const EmployeeApp = () => {
     loadTodayAttendance();
     loadUnreadCount();
 
+    const handleRefresh = () => {
+      loadUnreadCount();
+    };
+    window.addEventListener('app:notification_count_refresh', handleRefresh);
+    window.addEventListener('app:notification', handleRefresh);
+
     // Poll unread notifications every 15 seconds for live status updates
     const pollInterval = setInterval(() => {
       loadUnreadCount();
@@ -154,6 +160,8 @@ export const EmployeeApp = () => {
     return () => {
       clearInterval(pollInterval);
       window.removeEventListener('focus', onWindowFocus);
+      window.removeEventListener('app:notification_count_refresh', handleRefresh);
+      window.removeEventListener('app:notification', handleRefresh);
     };
   }, [token, loadTodayAttendance, loadUnreadCount]);
 
@@ -203,7 +211,7 @@ export const EmployeeApp = () => {
       };
       await loadTodayAttendance();
     } catch (err) {
-      console.error('Punch-in failed:', err?.response?.data?.message || err.message);
+      console.debug('Punch-in handled:', err?.response?.data?.message || err.message);
     }
   };
 
@@ -227,7 +235,7 @@ export const EmployeeApp = () => {
       };
       await loadTodayAttendance();
     } catch (err) {
-      console.error('Break start failed:', err?.response?.data?.message || err.message);
+      console.debug('Break start handled:', err?.response?.data?.message || err.message);
     }
   };
 
@@ -251,7 +259,7 @@ export const EmployeeApp = () => {
       };
       await loadTodayAttendance();
     } catch (err) {
-      console.error('Break end failed:', err?.response?.data?.message || err.message);
+      console.debug('Break end handled:', err?.response?.data?.message || err.message);
     }
   };
 
@@ -275,7 +283,7 @@ export const EmployeeApp = () => {
       };
       await loadTodayAttendance();
     } catch (err) {
-      console.error('Punch-out failed:', err?.response?.data?.message || err.message);
+      console.debug('Punch-out handled:', err?.response?.data?.message || err.message);
     }
   };
 

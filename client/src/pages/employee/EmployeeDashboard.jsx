@@ -136,7 +136,7 @@ export const EmployeeDashboard = ({
           setLatestAppraisal(data.latestAppraisal);
         }
       } catch (err) {
-        console.error('Failed to load dashboard:', err?.message);
+        console.debug('Dashboard fetch handled:', err?.message);
       } finally {
         setLoading(false);
       }
@@ -151,12 +151,12 @@ export const EmployeeDashboard = ({
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#5C101B] rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-lg border border-slate-800">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#5C101B] rounded-2xl sm:rounded-3xl p-5 sm:p-8 text-white relative overflow-hidden shadow-lg border border-slate-800">
         {/* Decorative backdrop shapes */}
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 rounded-full bg-[#8B1D2C] opacity-30 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 right-48 -mb-10 w-48 h-48 rounded-full bg-amber-500 opacity-20 blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-rose-200 backdrop-blur-xs">
@@ -167,7 +167,7 @@ export const EmployeeDashboard = ({
                 Shift Active
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white">
               {getGreeting()}, {userName}!
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
@@ -197,9 +197,9 @@ export const EmployeeDashboard = ({
       </div>
 
       {/* 4 Stat Overview Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Present Days */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Days Present</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -220,7 +220,7 @@ export const EmployeeDashboard = ({
         </div>
 
         {/* Avg Working Hours */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Avg Daily Hours</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -239,7 +239,7 @@ export const EmployeeDashboard = ({
         </div>
 
         {/* Leave Balance */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Available Leaves</span>
             <div className="w-8 h-8 rounded-xl bg-rose-50 text-[#8B1D2C] flex items-center justify-center">
@@ -256,7 +256,7 @@ export const EmployeeDashboard = ({
         </div>
 
         {/* On-Time Arrival */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Punctuality Score</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -280,9 +280,9 @@ export const EmployeeDashboard = ({
       {/* Hero Live Attendance Card & Quick Action Hub */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Live Attendance Control Card */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Today's Attendance & Punch Clock</h2>
                 <p className="text-xs text-slate-500 mt-0.5">Real-time attendance tracking with live counter</p>
@@ -443,9 +443,9 @@ export const EmployeeDashboard = ({
           </div>
 
           {/* Location Verification Note */}
-          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-5 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-slate-500">
             <span className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-              <ShieldCheck className="w-4 h-4" /> {user?.branchDetails?.name ? `${user.branchDetails.name} Network` : 'Authorized Network Access'}
+              <ShieldCheck className="w-4 h-4 shrink-0" /> {user?.branchDetails?.name ? `${user.branchDetails.name} Network` : 'Authorized Network Access'}
             </span>
             <span className="text-slate-400">Authenticated Session &bull; Secure Portal</span>
           </div>
@@ -556,8 +556,8 @@ export const EmployeeDashboard = ({
       </div>
 
       {/* Recent Attendance Activity Table */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
           <div>
             <h3 className="text-base font-bold text-slate-900">Recent Attendance Records</h3>
             <p className="text-xs text-slate-500 mt-0.5">Your punch in/out timestamps for the past week</p>
@@ -565,14 +565,14 @@ export const EmployeeDashboard = ({
           <button
             type="button"
             onClick={onNavigateToMyAttendance}
-            className="text-xs font-bold text-[#8B1D2C] hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-[#8B1D2C] hover:underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
           >
             View Full Month Records &rarr;
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <table className="w-full min-w-[550px] text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 <th className="py-3 px-4">Date & Day</th>

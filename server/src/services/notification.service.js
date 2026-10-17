@@ -20,11 +20,15 @@ const getMyNotifications = async (userId, query = {}) => {
       whereClause.type = 'attendance';
     } else if (rawType === 'personnel' || rawType === 'profile') {
       whereClause[Op.or] = [
-        { type: { [Op.in]: ['info', 'warning'] } },
+        { type: { [Op.in]: ['info', 'warning', 'resignation'] } },
         { title: { [Op.like]: '%profile%' } },
         { title: { [Op.like]: '%kyc%' } },
-        { message: { [Op.like]: '%profile%' } }
+        { title: { [Op.like]: '%resignation%' } },
+        { message: { [Op.like]: '%profile%' } },
+        { message: { [Op.like]: '%resignation%' } }
       ];
+    } else if (rawType === 'resignation' || rawType === 'resignations') {
+      whereClause.type = 'resignation';
     } else if (rawType === 'company') {
       whereClause.type = { [Op.in]: ['announcement', 'info', 'success', 'warning'] };
     } else {
@@ -80,6 +84,15 @@ const markAsRead = async (notificationId, userId) => {
   notification.isRead = true;
   notification.readAt = new Date();
   await notification.save();
+
+  try {
+    const socketService = require('./socket.service');
+    if (socketService) {
+      socketService.emitToUser(userId, 'notification:unread_count_updated', {});
+    }
+  } catch {
+    // optional
+  }
 
   return notification;
 };
@@ -138,12 +151,25 @@ const createNotification = async (userId, { title, message, type = 'info', actio
  */
 const notifyHRAndAdmins = async ({ title, message, type = 'info', actionUrl = null, excludeUserId = null }) => {
   try {
+    const { Role } = require('../models');
+    let hrRoleIds = [];
+    try {
+      const hrRoles = await Role.findAll({
+        where: { name: { [Op.in]: ['hr', 'admin'] } },
+        attributes: ['id']
+      });
+      hrRoleIds = hrRoles.map((r) => r.id);
+    } catch {}
+
     const hrUsers = await User.findAll({
       where: {
-        role: { [Op.in]: ['hr', 'admin', 'HR', 'ADMIN', 'Hr', 'Admin'] },
+        [Op.or]: [
+          { role: { [Op.in]: ['hr', 'admin', 'HR', 'ADMIN', 'Hr', 'Admin'] } },
+          ...(hrRoleIds.length > 0 ? [{ roleId: { [Op.in]: hrRoleIds } }] : [])
+        ],
         status: { [Op.ne]: 'terminated' }
       },
-      attributes: ['id', 'email', 'firstName', 'lastName', 'role']
+      attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'roleId']
     });
 
     if (!hrUsers || hrUsers.length === 0) return [];
@@ -169,12 +195,27 @@ const notifyHRAndAdmins = async ({ title, message, type = 'info', actionUrl = nu
     try {
       const socketService = require('./socket.service');
       if (socketService) {
-        socketService.emitToRole('hr', 'notification', { title, message, type, actionUrl });
-        socketService.emitToRole('admin', 'notification', { title, message, type, actionUrl });
-        socketService.emitToRole('HR', 'notification', { title, message, type, actionUrl });
-        socketService.emitToRole('ADMIN', 'notification', { title, message, type, actionUrl });
-        recipients.forEach((u) => {
-          socketService.emitToUser(u.id, 'notification', { title, message, type, actionUrl });
+        const notifPayload = {
+          title,
+          message,
+          type,
+          actionUrl,
+          createdAt: new Date().toISOString()
+        };
+        socketService.emitToRole('hr', 'notification', notifPayload);
+        socketService.emitToRole('admin', 'notification', notifPayload);
+        socketService.emitToRole('HR', 'notification', notifPayload);
+        socketService.emitToRole('ADMIN', 'notification', notifPayload);
+        if (typeof socketService.broadcastToRoom === 'function') {
+          socketService.broadcastToRoom('role:hr', 'notification', notifPayload);
+          socketService.broadcastToRoom('role:admin', 'notification', notifPayload);
+        }
+        recipients.forEach((u, idx) => {
+          socketService.emitToUser(u.id, 'notification', {
+            id: created[idx]?.id || null,
+            ...notifPayload
+          });
+          socketService.emitToUser(u.id, 'notification:unread_count_updated', {});
         });
       }
     } catch {

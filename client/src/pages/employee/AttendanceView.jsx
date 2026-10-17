@@ -45,7 +45,7 @@ export const AttendanceView = ({
   return (
     <div className="space-y-6">
       {/* 1. TOP SECTION: Live Stopwatch & Punch Control (Full Width Card) */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2.5 pb-4 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -211,13 +211,13 @@ export const AttendanceView = ({
 
         {/* Bottom Security / Location Audit Badge */}
         {ipAddress && (
-          <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-8 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs text-slate-500">
             <span className="flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-rose-500" />
+              <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
               Network IP: {ipAddress}
             </span>
             <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
-              <ShieldCheck className="w-4 h-4" /> Secure IP & Attendance Verified
+              <ShieldCheck className="w-4 h-4 shrink-0" /> Secure IP & Attendance Verified
             </span>
           </div>
         )}

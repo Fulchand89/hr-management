@@ -356,8 +356,8 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
           <SkeletonTable rows={7} cols={8} hasHeader={false} />
         ) : viewMode === 'table' ? (
           <div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+              <table className="w-full min-w-[650px] text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     <th className="py-3 px-4 whitespace-nowrap">Date</th>
@@ -514,9 +514,9 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
             )}
           </div>
         ) : (
-          /* Calendar View */
-          <div className="p-4 sm:p-6">
-            <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 pb-2 border-b border-slate-100">
+          <div className="p-2 sm:p-6">
+            {/* Calendar View */}
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 pb-2 border-b border-slate-100">
               <div>Sun</div>
               <div>Mon</div>
               <div>Tue</div>
@@ -526,7 +526,7 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
               <div>Sat</div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {attendanceLogs
                 .slice()
                 .reverse()
@@ -534,14 +534,14 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
                   <div
                     key={item.dayNum}
                     onClick={() => handleOpenDetail(item.date)}
-                    className="min-h-[75px] bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl p-2 flex flex-col justify-between cursor-pointer transition-all hover:shadow-xs group hover:border-[#8B1D2C]"
+                    className="min-h-[55px] sm:min-h-[75px] bg-white hover:bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl p-1 sm:p-2 flex flex-col justify-between cursor-pointer transition-all hover:shadow-xs group hover:border-[#8B1D2C]"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-slate-800 group-hover:text-[#8B1D2C]">
+                      <span className="font-bold text-[11px] sm:text-xs text-slate-800 group-hover:text-[#8B1D2C]">
                         {item.dayNum}
                       </span>
                       <span
-                        className={`w-2 h-2 rounded-full ${
+                        className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
                           item.status === 'Present'
                             ? 'bg-emerald-500'
                             : item.status === 'Holiday'
@@ -561,7 +561,7 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
 
                     <div className="mt-1 space-y-0.5">
                       <span
-                        className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold max-w-full truncate ${
+                        className={`inline-block px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded text-[8px] sm:text-[10px] font-bold max-w-full truncate ${
                           item.status === 'Present'
                             ? 'bg-emerald-50 text-emerald-700'
                             : item.status === 'Holiday'
@@ -580,7 +580,7 @@ export const MyAttendanceView = ({ onBack, onRequestCorrection }) => {
                         {item.status === 'Holiday' && item.holidayName ? item.holidayName : item.status}
                       </span>
                       {item.in !== '--:--' && (
-                        <p className="text-[10px] font-mono text-slate-500 truncate">{item.in}</p>
+                        <p className="text-[8px] sm:text-[10px] font-mono text-slate-500 truncate hidden sm:block">{item.in}</p>
                       )}
                     </div>
                   </div>

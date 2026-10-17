@@ -63,7 +63,7 @@ const HRStaffAttendance = () => {
         : (res.data?.records || (Array.isArray(res) ? res : []));
       setDailyRecords(records);
     } catch (error) {
-      console.error('Failed to fetch daily staff attendance:', error);
+      console.debug('Failed to fetch daily staff attendance handled:', error?.message);
       setDailyRecords([]);
     } finally {
       setLoading(false);
@@ -82,7 +82,7 @@ const HRStaffAttendance = () => {
         records: Array.isArray(grid.records) ? grid.records : []
       });
     } catch (error) {
-      console.error('Failed to fetch monthly grid:', error);
+      console.debug('Failed to fetch monthly grid handled:', error?.message);
       setMonthlyData({ dates: [], records: [] });
     } finally {
       setLoading(false);
@@ -100,7 +100,7 @@ const HRStaffAttendance = () => {
         : (res.data?.records || (Array.isArray(res) ? res : (res?.records || [])));
       setDetailsData(records);
     } catch (error) {
-      console.error('Failed to fetch details all:', error);
+      console.debug('Failed to fetch details all handled:', error?.message);
       setDetailsData([]);
     } finally {
       setLoading(false);
@@ -113,7 +113,7 @@ const HRStaffAttendance = () => {
       const records = res.data?.records || (Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []));
       setEmployees(records);
     } catch (error) {
-      console.error('Failed to fetch employees list:', error);
+      console.debug('Failed to fetch employees list handled:', error?.message);
       setEmployees([]);
     }
   };

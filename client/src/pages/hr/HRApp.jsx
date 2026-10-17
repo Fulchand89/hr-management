@@ -37,7 +37,6 @@ import HRUploadPolicyDocumentView from './HRUploadPolicyDocumentView';
 import HREditPolicyView from './HREditPolicyView';
 import HRAppraisalManagementView from './HRAppraisalManagementView';
 import HRExitManagementView from './HRExitManagementView';
-import HRExitLetterView from './HRExitLetterView';
 import HRKycVerificationView from './HRKycVerificationView';
 import HRKycDocumentDetailView from './HRKycDocumentDetailView';
 import HRApplyLeaveView from './HRApplyLeaveView';
@@ -142,6 +141,7 @@ export const HRApp = () => {
   }, [user?.id]);
 
   const [pendingQueueCount, setPendingQueueCount] = useState(0);
+  const [pendingResignationsCount, setPendingResignationsCount] = useState(0);
 
   // Load unread notification count
   const loadUnreadCount = useCallback(async () => {
@@ -153,16 +153,19 @@ export const HRApp = () => {
     }
   }, []);
 
-  // Load live approvals queue count
+  // Load live approvals queue count (Leaves + Attendance Corrections + Resignations)
   const loadPendingCount = useCallback(async () => {
     try {
       const res = await getHRDashboard();
       const hrData = res?.data ?? res ?? {};
-      const pendingLeaves = hrData?.stats?.pendingLeaves || 0;
-      const pendingCorrections = hrData?.stats?.pendingCorrectionRequests || 0;
-      setPendingQueueCount(pendingLeaves + pendingCorrections);
+      const pendingLeaves = hrData?.stats?.pendingLeaves ?? hrData?.overview?.pendingLeaveRequests ?? 0;
+      const pendingCorrections = hrData?.stats?.pendingCorrectionRequests ?? hrData?.overview?.pendingCorrectionRequests ?? 0;
+      const pendingResignations = hrData?.stats?.pendingResignations ?? hrData?.overview?.pendingResignationRequests ?? 0;
+      setPendingQueueCount(pendingLeaves + pendingCorrections + pendingResignations);
+      setPendingResignationsCount(pendingResignations);
     } catch {
       setPendingQueueCount(0);
+      setPendingResignationsCount(0);
     }
   }, []);
 
@@ -171,6 +174,16 @@ export const HRApp = () => {
     loadTodayAttendance();
     loadUnreadCount();
     loadPendingCount();
+
+    // Live Socket & Focus listeners for instant real-time sync
+    const handleLiveEvent = () => {
+      loadUnreadCount();
+      loadPendingCount();
+    };
+
+    window.addEventListener('app:notification', handleLiveEvent);
+    window.addEventListener('app:resignation_submitted', handleLiveEvent);
+    window.addEventListener('app:notification_count_refresh', handleLiveEvent);
 
     // Auto-refresh unread notifications and pending queue every 15 seconds
     const pollInterval = setInterval(() => {
@@ -188,6 +201,9 @@ export const HRApp = () => {
     return () => {
       clearInterval(pollInterval);
       window.removeEventListener('focus', onWindowFocus);
+      window.removeEventListener('app:notification', handleLiveEvent);
+      window.removeEventListener('app:resignation_submitted', handleLiveEvent);
+      window.removeEventListener('app:notification_count_refresh', handleLiveEvent);
     };
   }, [token, loadTodayAttendance, loadUnreadCount, loadPendingCount]);
 
@@ -237,7 +253,7 @@ export const HRApp = () => {
       };
       await loadTodayAttendance();
     } catch (err) {
-      console.error('Punch-in failed:', err?.response?.data?.message || err.message);
+      console.debug('Punch-in handled:', err?.response?.data?.message || err.message);
     }
   };
 
@@ -261,7 +277,7 @@ export const HRApp = () => {
       };
       await loadTodayAttendance();
     } catch (err) {
-      console.error('Break start failed:', err?.response?.data?.message || err.message);
+      console.debug('Break start handled:', err?.response?.data?.message || err.message);
     }
   };
 
@@ -285,7 +301,7 @@ export const HRApp = () => {
       };
       await loadTodayAttendance();
     } catch (err) {
-      console.error('Break end failed:', err?.response?.data?.message || err.message);
+      console.debug('Break end handled:', err?.response?.data?.message || err.message);
     }
   };
 
@@ -309,7 +325,7 @@ export const HRApp = () => {
       };
       await loadTodayAttendance();
     } catch (err) {
-      console.error('Punch-out failed:', err?.response?.data?.message || err.message);
+      console.debug('Punch-out handled:', err?.response?.data?.message || err.message);
     }
   };
 
@@ -332,6 +348,7 @@ export const HRApp = () => {
       onPunchOut={handlePunchOut}
       unreadNotifications={unreadCount}
       pendingQueueCount={pendingQueueCount}
+      pendingResignationsCount={pendingResignationsCount}
       onApplyLeaveClick={() => setIsApplyLeaveModalOpen(true)}
       onLogout={handleLogout}
     >
@@ -651,7 +668,12 @@ export const HRApp = () => {
         {/* Notifications Hub View */}
         <Route
           path="notifications"
-          element={<HRNotificationsView onBack={() => navigate('/hr/dashboard')} />}
+          element={
+            <HRNotificationsView
+              onBack={() => navigate('/hr/dashboard')}
+              onUnreadChange={loadUnreadCount}
+            />
+          }
         />
         <Route path="notification" element={<Navigate to="/hr/notifications" replace />} />
 
@@ -730,11 +752,11 @@ export const HRApp = () => {
         />
         <Route
           path="exit-management/:id/letter"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/exit-management" replace />}
         />
         <Route
           path="exit-management/letter/:id"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/exit-management" replace />}
         />
         <Route
           path="exit"
@@ -742,11 +764,11 @@ export const HRApp = () => {
         />
         <Route
           path="exit/:id/letter"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/exit-management" replace />}
         />
         <Route
           path="exit/letter/:id"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/exit-management" replace />}
         />
         <Route
           path="exits"
@@ -758,11 +780,11 @@ export const HRApp = () => {
         />
         <Route
           path="resignations/:id/letter"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/resignations" replace />}
         />
         <Route
           path="resignations/letter/:id"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/resignations" replace />}
         />
         <Route
           path="resignation"
@@ -770,11 +792,11 @@ export const HRApp = () => {
         />
         <Route
           path="resignation/:id/letter"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/resignations" replace />}
         />
         <Route
           path="resignation/letter/:id"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/resignations" replace />}
         />
         <Route
           path="resignation-management"
@@ -782,7 +804,7 @@ export const HRApp = () => {
         />
         <Route
           path="letters/:id"
-          element={<HRExitLetterView />}
+          element={<Navigate to="/hr/resignations" replace />}
         />
 
         {/* Candidate Referrals & Spot Rewards (Removed - Redirect to Dashboard) */}

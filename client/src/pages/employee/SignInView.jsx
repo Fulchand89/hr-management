@@ -67,7 +67,6 @@ export const SignInView = () => {
       setForgotData(res?.data || null);
       setForgotSent(true);
     } catch (err) {
-      console.error('Modal forgot password error:', err);
       setForgotError(
         err?.response?.data?.errors?.[0]?.message ||
         err?.response?.data?.message ||
@@ -131,12 +130,6 @@ export const SignInView = () => {
       const userData = await login(cleanIdentifier, password, 'employee');
       handleRedirectAfterLogin(userData?.role);
     } catch (err) {
-      console.error('[SignIn Error]:', {
-        requestedUrl: (err?.config?.baseURL || '') + (err?.config?.url || ''),
-        status: err?.response?.status,
-        data: err?.response?.data,
-        message: err?.message
-      });
       let msg = 'Invalid credentials. Please verify your corporate email and password.';
       if (err?.response?.data?.message) {
         msg = err.response.data.message;

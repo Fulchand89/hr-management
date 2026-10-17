@@ -127,11 +127,11 @@ export const EmployeePoliciesView = () => {
         </div>
 
         {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1 self-start sm:self-auto bg-slate-100 p-0.5 rounded-lg text-xs">
+        <div className="flex items-center gap-1 self-start sm:self-auto bg-slate-100 p-0.5 rounded-lg text-xs overflow-x-auto max-w-full">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer shrink-0 ${
               statusFilter === 'all'
                 ? 'bg-white text-slate-900 shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -143,7 +143,7 @@ export const EmployeePoliciesView = () => {
           <button
             type="button"
             onClick={() => setStatusFilter('pending')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer shrink-0 ${
               statusFilter === 'pending'
                 ? 'bg-white text-rose-700 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-rose-700'
@@ -155,7 +155,7 @@ export const EmployeePoliciesView = () => {
           <button
             type="button"
             onClick={() => setStatusFilter('signed')}
-            className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+            className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer shrink-0 ${
               statusFilter === 'signed'
                 ? 'bg-white text-emerald-700 shadow-2xs font-bold'
                 : 'text-slate-600 hover:text-emerald-700'

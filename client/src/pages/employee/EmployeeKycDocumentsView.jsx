@@ -276,8 +276,8 @@ export const EmployeeKycDocumentsView = ({ onBack }) => {
       {!loading && !errorMsg && (
         <>
           {/* ── 2. Top Metric Cards ────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Total Uploaded
@@ -339,7 +339,7 @@ export const EmployeeKycDocumentsView = ({ onBack }) => {
           </div>
 
           {/* ── 3. KYC Documents Grid ───────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Official KYC Compliance Files</h3>

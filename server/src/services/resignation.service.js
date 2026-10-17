@@ -13,6 +13,7 @@ const { BadRequestError, NotFoundError, ConflictError } = require('../utils/apiE
 const { USER_STATUS } = require('../constants/status');
 const logger = require('../config/logger');
 const socketService = require('./socket.service');
+const { notifyHRAndAdmins } = require('./notification.service');
 
 const CLEARANCE_DEPTS = ['it', 'finance', 'hr', 'admin', 'manager'];
 
@@ -68,6 +69,62 @@ const submitResignation = async (userId, payload) => {
     );
 
     await transaction.commit();
+
+    // Dispatch notification & WebSocket alerts to HR and Admins
+    try {
+      const applicant = await User.findByPk(userId, {
+        attributes: ['id', 'firstName', 'lastName', 'email', 'employeeCode']
+      });
+      const applicantName = `${applicant?.firstName || ''} ${applicant?.lastName || ''}`.trim() || applicant?.email || 'An employee';
+      const empCodeStr = applicant?.employeeCode ? ` (${applicant.employeeCode})` : '';
+      const lwd = payload.requestedLastWorkingDay || 'N/A';
+      const reasonText = (payload.reason || '').trim();
+
+      await notifyHRAndAdmins({
+        title: 'New Resignation Request',
+        message: `${applicantName}${empCodeStr} has submitted a resignation request (Requested LWD: ${lwd})${reasonText ? `. Reason: "${reasonText}"` : ''}.`,
+        type: 'resignation',
+        actionUrl: '/hr/resignations',
+        excludeUserId: userId
+      });
+
+      if (socketService) {
+        const wsPayload = {
+          resignationId: resignation.id,
+          employeeId: userId,
+          employeeName: applicantName,
+          employeeCode: applicant?.employeeCode || null,
+          requestedLastWorkingDay: lwd,
+          reason: reasonText,
+          status: 'pending',
+          actionUrl: '/hr/resignations'
+        };
+        if (typeof socketService.emitToRole === 'function') {
+          socketService.emitToRole('hr', 'notification:resignation_submitted', wsPayload);
+          socketService.emitToRole('admin', 'notification:resignation_submitted', wsPayload);
+          socketService.emitToRole('HR', 'notification:resignation_submitted', wsPayload);
+          socketService.emitToRole('ADMIN', 'notification:resignation_submitted', wsPayload);
+          socketService.emitToRole('hr', 'notification', {
+            title: 'New Resignation Request',
+            message: `${applicantName}${empCodeStr} has submitted a resignation request.`,
+            type: 'resignation',
+            actionUrl: '/hr/resignations'
+          });
+          socketService.emitToRole('admin', 'notification', {
+            title: 'New Resignation Request',
+            message: `${applicantName}${empCodeStr} has submitted a resignation request.`,
+            type: 'resignation',
+            actionUrl: '/hr/resignations'
+          });
+        }
+        if (typeof socketService.broadcastToRoom === 'function') {
+          socketService.broadcastToRoom('role:admin', 'notification:resignation_submitted', wsPayload);
+          socketService.broadcastToRoom('role:hr', 'notification:resignation_submitted', wsPayload);
+        }
+      }
+    } catch (notifErr) {
+      logger.warn('Failed to dispatch resignation notification to HR/Admins:', notifErr.message);
+    }
 
     return await getResignationById(resignation.id);
   } catch (err) {
@@ -274,8 +331,8 @@ const updateResignationStatus = async (id, payload, actor) => {
       const lwd = approvedLastWorkingDay || resignation.requestedLastWorkingDay;
       notifMessage = `Your resignation request has been approved by HR. Approved Last Working Day: ${lwd}.`;
     } else if (status === 'completed') {
-      notifTitle = 'Exit Process Completed';
-      notifMessage = 'Your exit clearance and full & final settlement process has been completed.';
+      notifTitle = 'Resignation Approved & Exit Completed';
+      notifMessage = 'Your resignation request has been approved by HR and your exit process is completed.';
     }
 
     const createdNotif = await Notification.create(

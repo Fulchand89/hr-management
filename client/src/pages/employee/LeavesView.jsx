@@ -229,10 +229,10 @@ export const LeavesView = ({ onBack }) => {
       </div>
 
       {/* Filter Tabs and Search Bar */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl overflow-x-auto">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl overflow-x-auto max-w-full">
             {['All', 'Pending', 'Approved', 'Rejected'].map((tab) => {
               const isActive = activeFilter === tab;
 
@@ -273,14 +273,14 @@ export const LeavesView = ({ onBack }) => {
         </div>
 
         {/* Leave Requests Table */}
-        <div className="overflow-x-auto pt-2">
+        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 pt-2">
           {isLoading ? (
             <div className="py-12 flex items-center justify-center gap-2 text-slate-500 text-xs">
               <Loader2 className="w-5 h-5 animate-spin text-[#8B1D2C]" />
               <span>Loading leave records...</span>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[600px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="py-3 px-4">Leave Type</th>

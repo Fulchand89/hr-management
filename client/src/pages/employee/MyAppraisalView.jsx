@@ -339,21 +339,25 @@ export const MyAppraisalView = ({ onBack }) => {
             </p>
           </div>
 
-          <div className="inline-flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200 text-xs text-slate-700">
-            <span className="font-semibold">Review Cycle:</span>
-            <span className="font-bold text-[#8B1D2C]">
-              {isElevenMonthCycle ? '11-Month Fast Track (< ₹15,000)' : '12-Month Annual Cycle (≥ ₹15,000)'}
-            </span>
-            <span className="text-slate-400">&bull;</span>
-            <span className="font-semibold">Target:</span>
-            <span className="font-mono font-bold text-slate-800">{nextAppraisalInfo.dueDateFormatted}</span>
+          <div className="inline-flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-200 text-xs text-slate-700">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold">Review Cycle:</span>
+              <span className="font-bold text-[#8B1D2C]">
+                {isElevenMonthCycle ? '11-Month Fast Track (< ₹15,000)' : '12-Month Annual Cycle (≥ ₹15,000)'}
+              </span>
+            </div>
+            <span className="text-slate-400 hidden sm:inline">&bull;</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold">Target:</span>
+              <span className="font-mono font-bold text-slate-800">{nextAppraisalInfo.dueDateFormatted}</span>
+            </div>
           </div>
         </div>
       )}
 
       {/* ── Appraisal History Table (If appraisals exist) ───────────────── */}
       {appraisals.length > 0 && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs space-y-4">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-2xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h2 className="text-sm font-bold text-slate-900">
@@ -366,7 +370,7 @@ export const MyAppraisalView = ({ onBack }) => {
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs min-w-[620px]">
               <thead>
                 <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-[11px] uppercase tracking-wider">
                   <th className="py-3 px-4 whitespace-nowrap">Review Cycle</th>

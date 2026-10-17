@@ -22,7 +22,9 @@ import {
   Filter,
   FileSpreadsheet,
   Users,
-  Loader2
+  Loader2,
+  UserMinus,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -90,7 +92,8 @@ export const HRDashboard = ({
     halfDayToday: 0,
     attendanceRate: '0.0%',
     pendingLeaveRequests: 0,
-    pendingCorrectionRequests: 0
+    pendingCorrectionRequests: 0,
+    pendingResignationRequests: 0
   });
 
   // Attendance correction requests state
@@ -98,6 +101,9 @@ export const HRDashboard = ({
 
   // Leave queue state
   const [leaveQueue, setLeaveQueue] = useState([]);
+
+  // Resignation queue state
+  const [resignationQueue, setResignationQueue] = useState([]);
 
   // Staff Attendance state & pagination
   const [staffAttendance, setStaffAttendance] = useState([]);
@@ -162,6 +168,16 @@ export const HRDashboard = ({
         );
       }
 
+      // 3b. Resignation Queue
+      if (Array.isArray(hrData?.resignationQueue)) {
+        setResignationQueue(
+          hrData.resignationQueue.map((item) => ({
+            ...item,
+            avatarInitial: (item.employeeName || 'E').charAt(0).toUpperCase()
+          }))
+        );
+      }
+
       // 4. Personal Attendance Recent Logs & Summary
       const combinedRecent = empData?.recentLogs || hrData?.personalAttendance || [];
       if (Array.isArray(combinedRecent)) {
@@ -211,7 +227,7 @@ export const HRDashboard = ({
         setStaffAttendance(staffList);
       }
     } catch (err) {
-      console.error('Failed to load dashboard metrics:', err?.message);
+      console.debug('Dashboard metrics fetch handled:', err?.message);
     } finally {
       if (!isSilent && isInitialMountRef.current) {
         setIsLoading(false);
@@ -228,6 +244,18 @@ export const HRDashboard = ({
       // Silent background refresh on attendance status change to prevent full-page flash
       fetchDashboard(true);
     }
+
+    const handleLiveUpdate = () => {
+      fetchDashboard(true);
+    };
+
+    window.addEventListener('app:resignation_submitted', handleLiveUpdate);
+    window.addEventListener('app:notification', handleLiveUpdate);
+
+    return () => {
+      window.removeEventListener('app:resignation_submitted', handleLiveUpdate);
+      window.removeEventListener('app:notification', handleLiveUpdate);
+    };
   }, [token, user?.role, attendanceStatus, fetchDashboard]);
 
   // Non-refreshing action handler for punch in / out and breaks
@@ -237,7 +265,7 @@ export const HRDashboard = ({
     try {
       if (actionFn) await actionFn();
     } catch (err) {
-      console.error(`Action ${type} error:`, err);
+      console.debug(`Action ${type} error:`, err?.message || err);
     } finally {
       setActionInProgress(null);
     }
@@ -493,6 +521,77 @@ export const HRDashboard = ({
           </div>
         </div>
       </div>
+
+      {/* Pending Resignations & Exit Notices Queue Card */}
+      {resignationQueue && resignationQueue.length > 0 && (
+        <div className="bg-gradient-to-r from-rose-50/90 via-white to-orange-50/40 rounded-3xl p-5 border border-rose-200/90 shadow-2xs animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rose-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center font-bold shadow-xs">
+                <UserMinus className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Pending Resignation Notices
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white animate-pulse">
+                    {resignationQueue.length} Action Required
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Employees have submitted formal resignation notices requiring HR review & notice period sanction
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/hr/exit-management')}
+              className="px-3.5 py-1.5 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1 self-start sm:self-auto shrink-0"
+            >
+              <span>Manage Resignations</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-3.5">
+            {resignationQueue.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => navigate('/hr/exit-management')}
+                className="bg-white rounded-2xl p-4 border border-rose-100/80 hover:border-rose-300 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-slate-900 truncate group-hover:text-[#8B1D2C] transition-colors">
+                      {item.employeeName}
+                    </span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                      {item.employeeId}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                    {item.department}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-700 bg-rose-50/40 p-2.5 rounded-xl border border-rose-100/70 line-clamp-2">
+                    <span className="font-semibold text-slate-800">Reason:</span> {item.reason || 'Not specified'}
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">
+                    Req. LWD: <strong className="text-slate-800 font-semibold">{item.requestedLastWorkingDay || '--'}</strong>
+                  </span>
+                  <span className="text-xs font-bold text-[#8B1D2C] group-hover:underline flex items-center gap-0.5">
+                    Review &rarr;
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 2. Today's Staff Attendance Records Table */}
       <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs">

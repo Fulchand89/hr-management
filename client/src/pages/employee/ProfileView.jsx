@@ -345,7 +345,7 @@ export const ProfileView = ({ onBack, onLogout }) => {
       )}
 
       {/* Header Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -360,11 +360,11 @@ export const ProfileView = ({ onBack, onLogout }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => setIsEditModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
           >
             <Edit2 className="w-3.5 h-3.5 text-[#8B1D2C]" />
             <span>Edit Contact</span>
@@ -372,7 +372,7 @@ export const ProfileView = ({ onBack, onLogout }) => {
           <button
             type="button"
             onClick={() => setIsPasswordModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#8B1D2C] hover:bg-[#731724] text-white text-xs font-bold shadow-md shadow-[#8B1D2C]/20 transition-all cursor-pointer"
           >
             <Lock className="w-3.5 h-3.5" />
             <span>Change Password</span>
@@ -381,7 +381,7 @@ export const ProfileView = ({ onBack, onLogout }) => {
       </div>
 
       {/* Profile Overview Card */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center sm:items-start gap-5">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center sm:items-start gap-5">
         <div className="relative group shrink-0">
           {resolvedAvatar ? (
             <img

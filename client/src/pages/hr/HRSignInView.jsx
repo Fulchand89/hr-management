@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Mail,
   Lock,
@@ -67,12 +67,6 @@ export const HRSignInView = ({ onSignIn }) => {
         navigate('/hr/dashboard');
       }
     } catch (err) {
-      console.error('[HR SignIn Error]:', {
-        requestedUrl: (err?.config?.baseURL || '') + (err?.config?.url || ''),
-        status: err?.response?.status,
-        data: err?.response?.data,
-        message: err?.message
-      });
       let msg = 'Invalid credentials. Please verify your corporate email and password.';
       if (err?.response?.data?.message) {
         msg = err.response.data.message;
